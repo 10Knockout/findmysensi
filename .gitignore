@@ -12,3 +12,5 @@ coverage/
 .env
 .env.local
 .env.*.local
+*.tsbuildinfo
+apps/web/next-env.d.ts
