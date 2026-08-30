@@ -4,14 +4,14 @@
 
 | Field             | Value                                                                                                                 |
 | ----------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Status            | Approved normative specification                                                                                      |
+| Status            | Draft normative specification; architecture approved, awaiting final written-spec approval                            |
 | Date              | 2026-08-30                                                                                                            |
 | Product           | FindMySensi                                                                                                           |
 | Repository        | `findmysensi` (public, MPL-2.0)                                                                                       |
 | Companion service | `findmysensi-secure` (private; independently built and deployed)                                                      |
 | Scope             | Public product, deterministic trainer, public contracts, public-facing privacy behavior, and cross-service invariants |
 | Authority         | Master Project Build Brief plus approved Design Sections 1–11 and all approval amendments                             |
-| Next gate         | Implementation execution according to approved implementation plan                                                    |
+| Next gate         | Human written-spec approval, then `superpowers:writing-plans`                                                         |
 
 This document is the normative public design for FindMySensi. It records the architecture already approved through the sectioned design process. It does not authorize product implementation, select unprofiled numeric thresholds, or disclose private security logic.
 
@@ -88,7 +88,7 @@ The public repository owns:
 - Crosshair definitions, editor, presets, and share-code format.
 - Device capability checks, benchmark harnesses, graphics presets, Potato Mode, and performance diagnostics.
 - Public profiles/leaderboard/results UI and narrow public data-transfer types.
-- Zod/TypeScript API schemas, canonical ranked-proof encodings, public error codes, and golden vectors.
+- Public user/browser API Zod/TypeScript schemas, canonical ranked-proof encodings, safe public error codes, and golden vectors. Private admin, moderation, job, migration, audit, and control-plane contracts remain private.
 - A local mock API that is impossible to select in production.
 - Documentation, tests, CI, licensing, contribution, governance, funding, and security-reporting files.
 
@@ -344,6 +344,8 @@ Catch-up work is bounded; an unconstrained `while (behind) step()` loop is forbi
 
 Practice may recover more permissively and can pause/rebuild after Pointer Lock or renderer loss. Ranked never resumes after meaningful focus/visibility loss, unexpected Pointer Lock loss, hard heartbeat expiry, replay-destroying overflow, renderer/context loss, or unrecoverable simulation backlog.
 
+Practice and Ranked expose different mutation contracts. Practice may pause, restart, change sensitivity, change permitted target presentation, and alter explicitly practice-only training parameters. Ranked cannot pause. Its canonical sensitivity, input-calibration identity, scenario/difficulty, authoritative settings, engine/scenario/scoring versions, renderer choice, viewport policy, and any other field covered by `settingsHash` are frozen before activation. A Ranked mutation attempt is rejected and, when it could make exact replay ambiguous, invalidates the run. The Protocol V1 Freeze enumerates every hashed field and its canonical encoding; no Ranked implementation may add an unbound authoritative setting.
+
 ## 5. Public API and ranked protocol
 
 The public protocol package is the only compile-time contract shared with the private service. It contains public DTOs, Zod validation, binary codecs, compatibility metadata, public errors, fixtures, and golden vectors. It contains no persistence model or private decision policy.
@@ -357,10 +359,24 @@ The public protocol package is the only compile-time contract shared with the pr
 - Compatible control-plane versions may overlap during deployment. Ranked engine/scenario/scoring behavior is exact; compatibility MUST NOT mutate frozen rules.
 - A protocol mismatch triggers at most one hard reload and compatibility retry. If still unsupported, the UI shows a stable recovery screen. A ranked ticket is never requested before compatibility is established.
 
+Before production route handlers, canonical codecs, ticket verification, or private endpoint adapters are implemented, the public repository MUST approve and publish a **Protocol V1 Freeze** artifact. Exploratory benchmark prototypes may precede this gate, but are non-release tooling and cannot become a production contract implicitly. The freeze contains:
+
+- exact HTTP methods and paths;
+- caller class, authentication, authorization, CSRF, Origin/Fetch-Metadata, and cache policy;
+- request/response schemas, status codes, stable public errors, size limits, and idempotency behavior;
+- exact ticket fields and canonical signature bytes;
+- exact binary magic, field order, widths, signedness, endianness, framing, discriminants, domains, and rejection rules;
+- named resource maxima and their approved numeric values for the owning release;
+- supported-version and compatibility rules;
+- independently derived golden bytes, hashes, signatures, malformed vectors, and expected outcomes.
+
+No Ranked-capable implementation may substitute illustrative fields, conceptual paths, or locally selected limits for this artifact.
+
 The public endpoint families include account/session DTOs, settings, profiles, leaderboards, history, sensitivity data, ranked creation/sync/finish/status, exports, and deletion requests. Exact paths and all request/response schemas are frozen in the versioned protocol package before implementation. Ranked lifecycle paths are conceptually:
 
 ```text
 POST /api/v1/ranked/runs
+POST /api/v1/ranked/runs/{runId}/activate
 POST /api/v1/ranked/runs/{runId}/sync
 POST /api/v1/ranked/runs/{runId}/finish
 GET  /api/v1/ranked/runs/{runId}
@@ -368,33 +384,42 @@ GET  /api/v1/ranked/runs/{runId}
 
 State-changing browser requests MUST carry validated same-origin request context using SameSite cookies plus `Sec-Fetch-Site`, `Origin`, and an appropriate CSRF/custom header/token. A sibling subdomain is not automatically granted ranked authority. The private service decides enforcement; the public client consistently supplies the required contract.
 
+Production uses HTTPS/TLS everywhere, HSTS after domain/subdomain rollout review, a strict nonce/hash-based Content Security Policy without `unsafe-eval`, `frame-ancestors` protection, `X-Content-Type-Options: nosniff`, a restrictive `Referrer-Policy`, a least-privilege `Permissions-Policy`, and Secure/HttpOnly/appropriate SameSite cookies. Header behavior is integration-tested at the same-origin edge and direct private origin. `includeSubDomains` or HSTS preload is enabled only after every affected hostname is verified. Custom "encrypted API payload" schemes are prohibited without a reviewed threat model; TLS, canonical signatures, and private at-rest/proof encryption serve distinct purposes.
+
 ### 5.2 Ranked ticket
 
-The server issues an Ed25519-signed ticket with public fields equivalent to:
+The canonical Ed25519-signed ticket payload contains exactly these field identities, with widths and encodings frozen by the protocol version:
 
 ```text
-runId
 ticketClass
-user/run binding
+runId
+principalBinding
+createRequestId
 modeId
+boardId
+protocolVersion
 engineVersion
 scenarioVersion
 scoringVersion
-protocolVersion
+verifierVersion
 seedBankVersion
-seed or released segment seed
-issuedAt / expiresAt
-durationTicks
-tickDuration
+seed or releasedSegmentSeed
 settingsHash
+tickDuration
+durationTicks / maximumTerminalTick
+issuedAt
+expiresAt
 initialNonce
-keyId
+releaseId
+kid
 signature
 ```
 
-Wall-clock fields belong to protocol validation, not aim-core. `ticketClass=PRODUCTION_SMOKE` is reserved for trusted release verification and can never update PBs, leaderboards, achievements, or competitive progression.
+Aliases are forbidden in canonical encoding. The Ranked creation request MUST NOT accept `ticketClass`, smoke status, eligibility, PB/leaderboard permissions, or competitive-write flags from the client. The private service assigns those properties, and the client treats them as signed read-only output. Wall-clock fields belong to protocol validation, not aim-core. `ticketClass=PRODUCTION_SMOKE` is reserved for trusted release verification and can never update PBs, leaderboards, achievements, or competitive progression.
 
-The private signing key never reaches this repository or a browser. The public protocol supports active and retired verification key IDs. During rotation, a new key signs new tickets while the former public key remains verification-valid until all of its tickets are impossible to be active. Browser-shipped HMAC secrets are prohibited.
+Ed25519 is the only accepted ticket-signature algorithm for Protocol V1. A ticket `kid` selects only a key from a trusted, versioned `RankedVerificationKeySet`; a ticket cannot supply or select an arbitrary algorithm or public key. The live client key set retains a retired public key until no ticket signed by it can still be active. Independently, the private historical verifier registry retains that public key for as long as any retained replayable proof requires it. Key retirement MUST NOT make a retained official record unreplayable.
+
+The key set is pinned to an approved public release or obtained through a versioned same-origin contract anchored by that release. The private signing key never reaches this repository or a browser. Browser-shipped HMAC secrets are prohibited.
 
 ### 5.3 Ranked state machine
 
@@ -407,18 +432,35 @@ CREATED → ACTIVE → FINISHING → VERIFIED
                             └→ REJECTED
 
 CREATED → EXPIRED
+CREATED → INVALIDATED
 ACTIVE  → INVALIDATED
 ACTIVE  → EXPIRED
 ```
 
+`CREATED → ACTIVE` occurs only through the explicit activation operation after ticket validation and the standardized ready/countdown. Activation is idempotent by run, `activationRequestId`, and canonical request hash. An identical retry returns the same activation acknowledgement; a conflicting retry is rejected. The server atomically binds the accepted activation/deadline state before the client starts authoritative tick 0. If activation is not acknowledged, gameplay does not start; an unactivated ticket eventually expires. Account/security revocation may atomically move either `CREATED` or `ACTIVE` to `INVALIDATED`.
+
 Terminal states never transition back. `INVALIDATED` cannot resume. The private store enforces transitions, expected sequence, and state version atomically.
+
+Public result DTOs expose separate safe fields:
+
+```text
+runState: CREATED | ACTIVE | FINISHING | VERIFIED | PROVISIONAL | REVIEW | REJECTED | EXPIRED | INVALIDATED
+verificationDisposition: VERIFIED | PROVISIONAL | REVIEW | REJECTED | null
+competitiveEligibility: ELIGIBLE | WITHHELD | INELIGIBLE | REMOVED
+```
+
+`FINISHING` is the only verification-processing state. Before a verification disposition, `verificationDisposition` is `null`; after terminal verification it equals the immutable original `runState` disposition. `competitiveEligibility` is the current public projection after later policy/moderation adjudication and may change without rewriting the proof, replay, component metrics, score, or original disposition. Public responses expose no adjudication reason, risk value, threshold, evidence field, or private case identifier.
+
+The public mapping is exact: `CREATED`/`ACTIVE` show no result; `FINISHING` shows processing; `VERIFIED + ELIGIBLE` shows verified and publishable; any disposition plus `WITHHELD` shows a neutral not-currently-published state; `INELIGIBLE` shows a completed noncompetitive result where disclosure is safe; `REMOVED` shows no longer published; `REVIEW` shows additional verification required; `REJECTED`, `EXPIRED`, and `INVALIDATED` use their stable neutral terminal copy. Contract tests enumerate every permitted combination and reject impossible combinations.
 
 Public UI language is neutral:
 
+- `FINISHING` — Submission accepted; verification is processing.
 - `VERIFIED` — Score verified.
-- `PROVISIONAL` — Verification is still processing or not yet eligible for authoritative publication.
+- `PROVISIONAL` — Verification completed, but this submission is not currently eligible for authoritative competitive publication. It does not later become `VERIFIED`.
 - `REVIEW` — Additional verification required.
 - `REJECTED` — This ranked submission was not accepted.
+- `WITHHELD` / `REMOVED` — The result is not currently published.
 
 `REVIEW` is not a public accusation. Private reason codes and risk details never appear in protocol schemas, UI, public logs, or this repository.
 
@@ -435,7 +477,7 @@ Each accepted proof chunk binds:
 - Fresh server nonce.
 - Canonical bounded chunk bytes.
 
-The server acknowledges accepted chunks and supplies the next nonce. The parser rejects unknown versions, incorrect magic, excessive lengths/counts, invalid ticks, gaps, duplicates, non-canonical integers, impossible event order, data after the terminal tick, and total-limit violations before expensive replay.
+The server acknowledges accepted chunks and supplies the next nonce. The parser rejects unknown versions, incorrect magic, excessive lengths/counts, invalid ticks, gaps, duplicate events, impossible repeated semantic records, non-canonical integers, impossible event order, data after the terminal tick, and total-limit violations before expensive replay. A transport retry for an already accepted sequence is permitted only when its canonical request/chunk hash is identical; it returns the exact stored acknowledgement and next nonce. The same sequence with different canonical bytes or hash is a protocol violation.
 
 Heartbeat/sync timing includes empirically selected normal jitter tolerance followed by a hard deadline. There is no resumable Ranked freeze. Crossing the deadline stops simulation and permanently invalidates that attempt, even if connectivity returns shortly afterward. `navigator.onLine` is only a hint; actual server communication is authority.
 
@@ -457,6 +499,7 @@ UX session check
   → request idempotent ticket
   → validate ticket
   → standardized ready/countdown
+  → idempotently activate run and receive acknowledgement
   → start authoritative tick 0
 ```
 
@@ -519,7 +562,8 @@ score
 analytics
   metricVersion, mathematical definitions, interpretation rules
 seedPolicy
-  generator version, constraints, approved seed bank and evidence
+  generator version, constraints, validation tooling/evidence format,
+  seed-bank version and integrity hash
 evidence
   pilot/holdout protocol, reliability, exploit and hardware results
 artifacts
@@ -549,7 +593,9 @@ Headline seed tests MUST reject trivial single-line memorization. Strafe seed te
 
 ### 6.3 Ranked seed fairness
 
-Ranked initially uses a prevalidated/constrained seed bank per scenario release. Offline generation evaluates a large candidate pool and removes spatial, timing, motion, and opportunity outliers before approval. The private service selects an approved seed; the public release specifies how that seed deterministically produces the run.
+Ranked initially uses a prevalidated/constrained seed bank per scenario release. The public repository owns the deterministic seed generator, opportunity constraints, validator, evidence format, and public seed-bank version/integrity contract. The private repository owns the approved production bank contents, approval record, and server-side selection. Offline generation evaluates a large candidate pool and removes spatial, timing, motion, and opportunity outliers before approval.
+
+Production bank contents are private operational data, not a cryptographic secret or a substitute for deterministic verification. A signed ticket reveals the selected seed material required for that run. The repositories exchange only released packages/contracts and integrity identifiers, never sibling filesystem data.
 
 Every seed has equalized opportunity structure. Where relevant, release-fixed quotas cover target sizes, directions, speed bands, reversals, pauses, motion phases, and timing windows. A seed changes arrangement, not the quantity of skill opportunity.
 
@@ -579,7 +625,7 @@ Before holdout data is observed, the validation protocol declares sample-size an
 ### 6.6 Leaderboards and records
 
 - Every mode/version has its own permanent global board; no daily/weekly/monthly board in v1.
-- One user has at most one active row: their best eligible `VERIFIED` score for that board.
+- One user has at most one active row: their best currently eligible authoritative score for that board under the immutable verification disposition plus current append-only adjudication projection.
 - Equal scores receive equal competitive rank. `achievedAt` may order display but does not break the tie.
 - Standard competition ranking follows, e.g. `#12, #12, #14`.
 - Percentile uses unique verified players, not runs, and remains hidden below a sufficient predeclared population.
@@ -589,6 +635,12 @@ Before holdout data is observed, the validation protocol declares sample-size an
 - Canonical raw component metrics are preserved independently from the immutable composite score, subject to privacy/retention policy.
 
 Normal UI may display “Grid” without engineering version noise. When incompatible boards exist, it exposes Current and clearly labeled Legacy boards. Records and evidence always retain the complete version tuple internally.
+
+### 6.7 Results contract
+
+Every completed run shows the run class/status, score, PB comparison, and—when population/eligibility permits—global rank and percentile. It also shows applicable primary outcomes such as hits, misses, accuracy, acquisition time, first-flick error, corrections, over/underflick, path efficiency, consistency, tracking error, directional strengths/weaknesses, and run-health/performance context such as average FPS and frame stability. A metric appears only when its versioned mathematical definition applies to that scenario and enough valid evidence exists.
+
+The results view includes a short cautious interpretation and lightweight history where data exists: recent score, sensitivity-recommendation history, directional weakness, accuracy, and aim-category summaries. HTML/CSS/SVG and semantic table/text equivalents are preferred; a charting dependency requires bundle evidence. Advice never overstates a single run or presents system-health measures as player skill.
 
 ## 7. Sensitivity, conversion, calibration, and crosshair
 
@@ -640,7 +692,13 @@ V1 publishes only adapters supported by in-house measurement and review. Valoran
 
 Game-derived cm/360 from a validated adapter plus nominal DPI may be shown directly as nominal. Browser-derived physical/game values are gated by `InputUnitCalibration` confidence. Where the browser-to-device mapping is uncertain, FindMySensi returns a valid internal trainer sensitivity and labels game/cm output `Low` or `Moderate` confidence instead of implying physical certainty.
 
-### 7.3 Blind calibration
+### 7.3 Known-sensitivity flow
+
+An experienced user may enter a game, game sensitivity, and nominal mouse DPI. With an approved versioned adapter, the client validates the game-specific range/step and hipfire/ADS policy, converts to the canonical sensitivity domain, reports the adapter/provenance version and nominal confidence, and offers to save the game configuration plus canonical trainer setting. No calibration is required.
+
+Saving is explicit and idempotent. The persisted DTO contains the source game/adapter version, entered sensitivity, `nominalDpi` plus source, derived canonical value, confidence/provenance, and user-selected primary-game status. It never persists a browser raw-input stream. The trainer consumes the saved canonical value through the typed setting boundary; it does not repeatedly reverse-convert from display strings. Unsupported or stale adapters produce an honest unsupported/reverify state rather than a guessed conversion.
+
+### 7.4 Blind calibration
 
 Blind calibration does not request or display the user's current game sensitivity before freezing its recommendation. A product-defined neutral reference—not the current sensitivity—anchors a bounded logarithmic search.
 
@@ -666,15 +724,17 @@ Confidence is only `LOW`, `MODERATE`, or `HIGH` in v1. High confidence requires 
 
 Disagreement is useful. The result may report a balanced range and explain a tracking/precision tradeoff rather than forcing a mythical perfect point.
 
-### 7.4 Reveal My Real Sens research benchmark
+### 7.5 Reveal My Real Sens research benchmark
 
 After the recommendation is irreversibly frozen, an experienced user MAY opt into “Reveal My Real Sens.” The prior sensitivity is never available to the recommendation algorithm. With separate research consent, the product records the frozen recommendation, algorithm version, post-result revealed value, and comparison error for aggregate validation.
 
 Research participation is optional and never affects access, rank, calibration result, or account status.
 
-### 7.5 Sensi Battle and Mouse Swap
+### 7.6 Sensi Battle and Mouse Swap
 
-Sensi Battle presents neutral A/B candidates using a predetermined counterbalancing schedule. Candidate identity order and left/right position are both counterbalanced; accent color, labels, and visual emphasis cannot favor one choice before reveal.
+Sensi Battle presents equivalent deterministic blocks for neutral A/B candidates using a predetermined counterbalancing schedule. Candidate identity order and left/right position are both counterbalanced; values, accent color, labels, and visual emphasis cannot favor one choice before reveal. It compares the applicable versioned objective measures—accuracy, first-flick error, corrections, tracking, acquisition time, consistency, and over/underflick—then asks `A`, `B`, or `COULD_NOT_TELL`.
+
+The versioned decision rule gives objective performance more weight than subjective preference, declares tie/insufficient-evidence behavior, and records both without pretending they are the same signal. A winner may face a bounded neighboring candidate; each round preserves equivalent opportunity and acclimation. The final output updates the recommendation/range only after the frozen stopping rule is met and reports categorical confidence and evidence provenance.
 
 Mouse Swap separates:
 
@@ -685,11 +745,19 @@ Mouse Swap separates:
 
 Passive histories are partitioned by a low-entropy `CalibrationEnvironmentKey` and meaningful mouse/DPI/input-profile changes. The key exists only to decide whether sessions are comparable. It cannot identify a person, become a risk identity, or be repurposed for advertising/analytics.
 
-### 7.6 Crosshair system
+### 7.7 Crosshair system
 
 V1 includes approximately six original presets: Classic, Small Cross, Tiny Cross, Dot, Outlined Dot, and Open Cross. The editor supports color/opacity, center-dot controls, outline controls, and inner/outer line enablement, length, thickness, gap, opacity, and outline.
 
 Crosshairs serialize to a compact, validated, versioned FindMySensi share code. There is no marketplace or ranking. Practice may allow broad customization. Ranked allows safe player-owned crosshair shape/color/thickness while standardizing task visibility; low crosshair contrast produces a warning rather than silently changing an expert user's choice.
+
+### 7.8 Passive recommendation refinement
+
+After an initial calibration, comparable normal Practice sessions may refine the recommendation using a documented, deterministic/statistical algorithm. Inputs are limited to valid versioned summary metrics, run-health eligibility, canonical sensitivity, and a matching `CalibrationEnvironmentKey`; Ranked proof streams and private anti-cheat features are not repurposed for this model.
+
+The algorithm uses an explicit recency-weight function or bounded rolling window so old evidence cannot dominate indefinitely. Its version fixes eligibility, weighting, minimum evidence, outlier handling, recommendation/range update rule, confidence rule, and reset behavior. It preserves the initial result and each subsequent recommendation as provenance-bearing history rather than rewriting history. Material environment changes partition the series and lower confidence until enough new comparable data exists.
+
+`CalibrationEnvironmentKey` and `PerformanceEnvironmentKey` each require a versioned field allowlist, coarse bucketing, predeclared encoded-cardinality/entropy ceiling, enumerated-combination test, and privacy approval before persistence. Raw hardware identifiers, exact high-entropy timing signatures, full user agent, IP address, fonts/plugins, canvas/audio output, or an unbounded field cannot enter either key. Any allowlist or ceiling change requires a privacy review and new key version.
 
 ## 8. Rendering, performance, and device behavior
 
@@ -735,7 +803,7 @@ Foundation tokens cover color, spacing, radius, type, borders, shadow, focus, mo
 
 1280×720 is the source-of-truth application viewport. Application navigation targets 56–64 px and has an 80 px hard ceiling. Every core view keeps the primary action and score/PB/rank priority visible, avoids required horizontal scrolling, and keeps dialogs/settings usable. Full-height trainer/app layouts use modern viewport units deliberately; long marketing/docs pages use stable document flow rather than universal `100dvh` sections.
 
-The following states require design and browser evidence before their feature is complete:
+Before UI implementation for any state begins, its responsive design, hierarchy, interaction states, accessibility behavior, and 1280×720 composition require explicit human approval. The approved design may be refined through a new review, but implementation cannot silently replace it. The required pre-implementation design set is:
 
 1. Landing page.
 2. Registration.
@@ -770,11 +838,13 @@ V1 has no ads, marketing trackers, data sale/sharing, covert fingerprinting, pro
 
 Entering Ranked explicitly permits publication of username, verified score, rank, and board/mode. Public profile, sensitivity, mouse setup, and calibration history are separate opt-ins. Optional research has granular, revocable consent and is never required for access or competition.
 
-Practice raw input remains in memory/local storage by default; only an explicitly saved summary is uploaded. Ranked submits a bounded proof to the private service. Public retention commitments are:
+Leaderboard publication is a distinct explicit setting and MUST be enabled before the private service may issue a `COMPETITIVE` ticket. Disabling it is an idempotent unpublish request that immediately blocks new Competitive tickets, removes the active public username/profile/leaderboard projection, and invalidates its public-cache entries or allows only the documented short TTL to expire. Eligible verified runs and PB data remain private only for their applicable retention period. Re-enabling publication does not silently republish an earlier result; a new explicit publication action is required. A separately governed official-record exception may retain only a lawful minimal pseudonymous entry such as `Deleted competitor`; no hidden reidentification mapping is permitted.
+
+Raw practice pointer events remain in memory and are not persisted by default. Summarized practice history may remain in user-controlled local storage; only an explicitly saved summary is uploaded. Ranked submits a bounded proof to the private service. Public retention commitments are:
 
 | Data                            | Default                                           |
 | ------------------------------- | ------------------------------------------------- |
-| Raw practice stream             | Never uploaded by default                         |
+| Raw practice stream             | Never uploaded by the v1 product; only an explicitly saved summary may cross the API boundary |
 | Local practice history          | Until the user clears it                          |
 | Saved summaries/settings        | Until user/account deletion                       |
 | Ordinary verified proof         | 30 days after terminal verification               |
@@ -783,8 +853,16 @@ Practice raw input remains in memory/local storage by default; only an explicitl
 | Suspicious/appealed proof       | Case closure, at most 180 days absent lawful hold |
 | Consented debug trace           | 14 days                                           |
 | Research sample                 | Study-specific disclosed duration                 |
+| Raw IP in restricted app-controlled abuse storage | Maximum seven days                                |
+| Rotating keyed abuse bucket     | 30 days                                           |
+| Email delivery metadata         | 30 days                                           |
+| Narrow security-state events    | 90 days                                           |
+| Admin/moderation audit          | 365 days, then documented review                  |
+| Provider runtime logs           | Provider-plan retention; never durable evidence authority |
 
-An official record without retained exact replay proof cannot continue to be described as historically replayable. Account deletion immediately revokes sessions/tickets and runs an idempotent private deletion workflow. Public identity/mappings are removed; any lawful minimal historical entry uses a non-reversible “Deleted competitor” identity, not a secret reidentification map.
+This table is the complete v1 category-level retention contract, subject only to disclosed lawful holds and counsel-approved exceptions. Restricted raw-IP storage is separate from ordinary application logging; full IP addresses remain forbidden in ordinary logs. A user-controlled local export may write raw Practice data to the user's own device but does not upload it. Any future raw-input research collection requires a separately approved protocol version, granular opt-in consent, stated purpose, explicit retention and withdrawal behavior, and privacy/security review; it cannot be introduced through an ordinary Practice-summary endpoint.
+
+An official record without retained exact replay proof cannot continue to be described as historically replayable. Account deletion immediately revokes sessions/tickets and runs an idempotent private deletion workflow. Public identity/mappings are removed; any lawful minimal historical entry uses a non-reversible “Deleted competitor” identity, not a secret reidentification map. User-visible account deletion reports completion only after every eligible private proof/export/debug/research object deletion is reconciled or a disclosed lawful hold/exemption applies.
 
 Recent password/security reauthentication is required for deletion, full export, and email change. Exports are bounded, asynchronous if needed, expire automatically, and use a short-lived authenticated download. User controls cover access, correction, export, leaderboard visibility, research consent, and deletion status.
 
@@ -798,7 +876,7 @@ Safe observability uses allowlisted structured completion/state events with requ
 
 Before launch, every service-level objective has a written numerator, denominator, measurement point, exclusions, and evaluation window; synthetic health is separate from real-user SLIs. Initial guardrails are 99.9% successful public pages for valid traffic, 99.9% authenticated API success, 95% valid ranked finishes returning terminal-or-accepted-pending within four seconds, 99% accepted verification reaching a terminal state within fifteen minutes, 99% intended transactional email accepted by the provider (not inbox delivery), and 99.9% retention/deletion jobs completed by deadline.
 
-Initial recovery objectives are two-hour service RTO and fifteen-minute durable competitive/auth data RPO. The RPO applies to both Turso metadata and the selected ProofStore; production is blocked if provider versioning/recovery and reconciliation evidence cannot meet it. Restore, code rollback, key rotation, deletion, origin rejection, and environment isolation are rehearsed before launch.
+Initial recovery objectives are a two-hour Public/API service RTO and a fifteen-minute durable auth/competitive-data RPO. The private recovery specification defines the clocks, recovered service level, consistency point, and drill evidence. The RPO applies jointly to Turso metadata and ProofStore evidence; a write acknowledged as durable but absent from the reconciled recovery point counts as data loss. Production is blocked until provider and reconciliation drills pass those definitions. Restore, code rollback, key rotation, deletion, origin rejection, and environment isolation are rehearsed before launch.
 
 Operational kill switches can stop new ranked tickets, pause PB/leaderboard writes, force queued-only verification, disable email resend, make moderation read-only, and disable a compromised key ID. Their state is durable, audited, step-up protected, only briefly cached, and fail-safe: if the private service cannot determine whether Ranked issuance is enabled during a relevant fault, it issues no ticket. A switch can never change a frozen score, seed, geometry, or accepted proof.
 
@@ -821,13 +899,25 @@ Deterministic proof has four distinct layers:
 
 Differential parity proves both environments interpret the same engine/protocol identically; it does not prove shared mathematics correct. Independent goldens provide that check. The private verifier MUST NOT fork a second gameplay engine.
 
+The differential gates have distinct ownership:
+
+- Public pull requests run browser-built-runtime versus Node public-integration parity using only public packages and synthetic/public fixtures; this never invokes private CI.
+- Private pull requests run private-verifier integration against the exact currently pinned stable public packages and corresponding browser-produced fixtures.
+- Coordinated cross-repository changes run browser/private differential validation only after an allowlisted protected public commit produces immutable RC artifacts for private staging.
+
+Only the coordinated RC gate proves parity for a proposed cross-repository change. A public fork or ordinary public pull request cannot trigger it.
+
 Mandatory public invariant tests cover semantic-boundary aggregation, same-tick ordering, tick-only core input, chunk-partition invariance, overflow propagation, snapshot ownership, viewport/DPR independence, score/range overflow, exact binary encoding, authoritative dependency allowlists, and cadence version binding. Seeded property failures record/minimize their seed/stream. Goldens cannot be auto-regenerated from the implementation under test; changes require independent derivation, review, and a new ranked version where behavior differs.
 
 Browser coverage includes pinned release versions of Chrome, Edge, Firefox, and Safari; raw/fallback paths; permission/capability failure; macOS mouse; focus/lock loss; DPR 1/2; 1280×720, 1600×900, 1920×1080, 2560×1440; 16:9/16:10/4:3/5:4 Fit/Stretch/Bars; manual multi-monitor; and mobile training-blocked UX. Product support may say “current stable family subject to capability checks,” while evidence records exact browser versions.
 
-PR CI covers lint/format, types, unit/property/goldens, differential smoke, contracts, production build, Chromium E2E, 1280×720, a11y scan, bundle graph, short polling benchmark, and changed-endpoint security tests. Nightly adds large properties, all historical goldens, full browser matrix, ranked mutation tests, soak, scans, migration/deletion compatibility, and historical replay. Release candidates add physical hardware, provider integration, migrations/key rotations, restore, origin protection, kill switches, rollback, and adversarial review. Production verifies exact RC artifacts, manifest, migrations, telemetry, rollback target, smoke tests, then deliberately enables Ranked.
+PR CI covers lint/format, types, unit/property/goldens, browser-versus-Node public integration parity, contracts, production build, Chromium E2E, 1280×720, a11y scan, bundle graph, short polling benchmark, and changed-endpoint security tests. Nightly adds large properties, all historical goldens, full browser matrix, ranked mutation tests, soak, scans, migration/deletion compatibility, and historical replay. Release candidates add physical hardware, provider integration, migrations/key rotations, restore, origin protection, kill switches, rollback, and adversarial review.
+
+Production verifies the exact stable package and deployment artifact hashes recorded in the sealed release manifest. RC evidence MAY be reused only when provenance proves the stable artifact was produced from the approved protected source and the reused check is unaffected by permitted release-metadata changes. Contract-, encoding-, hash-, differential-, and artifact-sensitive checks MUST run against the exact stable artifacts consumed by production. Production MUST NOT consume an RC package. Migrations, telemetry, rollback target, and smoke evidence are then confirmed before Ranked is deliberately enabled.
 
 Determinism/security/protocol/auth/migration/a11y/1280×720 failures are not made green by retries. One visible diagnostic retry is allowed only for classified runner/browser-launch/external-sandbox failure. It does not erase the first failure. CI tracks flake rate by test/browser/workflow; critical deterministic/security tests tolerate zero flakiness. Quarantine requires owner/issue/evidence/mitigation and ≤14-day expiry; critical categories cannot be quarantined.
+
+For final written-spec approval, the proposed initial general-suite budget in each repository is fewer than 0.5% retry-dependent job outcomes over a rolling 30 days, and no individual noncritical test may have two or more retry-pass failures in its most recent 20 executions. A coordinated release must pass both repositories' budgets. A retry-dependent outcome is a job that fails initially and passes without a source/configuration change on the permitted diagnostic retry; the denominator is completed executions of jobs eligible for that retry during the window. A failure proven to occur before test behavior executes because of runner startup, browser launch, or external-sandbox infrastructure is classified and tracked separately. It never erases the event or permits an unclassified test failure to be relabeled after the fact. Metrics are reported by repository, workflow, browser, job, and test where applicable.
 
 Behavioral features and bug/security/protocol/database fixes begin with or include a test that fails without the intended behavior. Typo-only docs, architecture prose, nonfunctional asset replacement, changelog, and generated metadata may document why no executable test applies. Emergency mitigation may move quickly, but the regression test/permanent fix is required before normal release progression resumes.
 
@@ -841,13 +931,13 @@ Security findings use a documented product rubric: technical impact, exploitabil
 
 CI uses least privilege, no fork secrets, no unsafe privileged `pull_request_target`, full-SHA Action pins, locked/reviewed dependencies, secret/code/dependency/license scans, SBOM, immutable protected-tag artifacts, hashes, and provenance attestations. A PR changing workflows, deployment/release/migration/publishing scripts, infrastructure, CODEOWNERS, or rulesets cannot execute its modified privileged workflow with staging/production secrets before review and merge.
 
-Every coordinated release has an immutable `releaseId` binding public/private commits and deployments plus all engine/protocol/scenario/scoring/verifier/schema/seed/config versions. The full manifest remains private. A sanitized public manifest publishes only safe public commit/version/build/artifact-hash information. Logs, support IDs, audit events, ranked runs, incidents, and evidence reference `releaseId` where appropriate.
+Every coordinated release receives a `releaseId` before its first deployment; the identifier is never reused. Its candidate manifest may be completed only through append-only, revisioned updates while deployment identities and evidence are produced. Once both repository commits, exact stable artifacts, deployment identities, schema/configuration versions, required evidence, and rollback target are known, the manifest is sealed and immutable. Ranked enablement requires the running deployments to match a sealed manifest. Aborted identifiers remain recorded and can never be activated or reassigned. The full manifest remains private; a sanitized public manifest publishes only safe public commit/version/build/artifact-hash information. Logs, support IDs, audit events, ranked runs, incidents, and evidence reference the `releaseId` plus candidate revision/state where applicable.
 
 Production smoke uses a noncompetitive ticket/scenario and exercises ticket, chunk, heartbeat, finish, replay, proof storage, verification, and transaction paths with PB/leaderboard/achievement writes disabled.
 
 Break-glass procedure is: declare incident → prefer kill switch → minimal fix → focused correctness/security tests → independent second look where available → emergency deploy → immediate verify → run normal gates → post-incident review. Ranked kill switches are preferred over risky live hotfixes.
 
-The public repository is MPL-2.0. First-party source uses Exhibit A or `SPDX-License-Identifier: MPL-2.0`. Contributions use DCO 1.1 sign-off; no CLA in v1. Required public governance files are `README.md`, `LICENSE`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, `CHANGELOG.md`, `GOVERNANCE.md`, funding, CODEOWNERS, PR template, issue templates, CI, and third-party/license notices. A future trademark policy governs the name/identity separately from code copyright.
+The public repository is MPL-2.0. First-party source uses Exhibit A or `SPDX-License-Identifier: MPL-2.0`. Contributions use DCO 1.1 sign-off; no CLA in v1. Required public governance/onboarding files are `README.md`, `LICENSE`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, `CHANGELOG.md`, `GOVERNANCE.md`, `.env.example` containing placeholders only, local-run documentation, funding, CODEOWNERS, PR template, CI, third-party/license notices, and distinct issue templates for bugs, features, performance, input problems, and training modes. A future trademark policy governs the name/identity separately from code copyright.
 
 Security reports use a private channel with supported versions, triage expectations, counsel-reviewed safe harbor, coordinated disclosure, and reporter-credit preference. Production data, proofs, screenshots, secrets, migrations, private telemetry/thresholds, cases/bans, or incident details never become public fixtures. Fixtures are deterministic synthetic data with generator version/seed.
 
@@ -859,11 +949,13 @@ A change is complete only when applicable evidence proves:
 - A meaningful failing behavioral test, or documented non-behavioral exemption.
 - Relevant unit/property/golden/contract/integration/E2E tests pass.
 - Typecheck, lint, production build, and diff inspection pass.
-- Browser behavior, console, controls, and screenshots were checked for visual work.
+- Whenever a development server was started, browser automation opened the site, verified rendering and console, inspected key controls, exercised the primary path, captured screenshots, and checked desktop plus mobile-size behavior; compilation alone is never UI evidence.
 - Performance was measured for hot-path, bundle, DB, or network changes.
 - Accessibility, security, privacy, protocol, docs/ADR/changelog, and migration impacts were handled.
 - No secret, production data, private heuristic, mock code, or migration crossed into the public repository.
 - Independent review and required CI passed with exact commands/artifacts reported.
+
+When behavior breaks, the implementation workflow invokes `superpowers:systematic-debugging` before changing code. Before any completion claim it invokes `superpowers:verification-before-completion`, inspects the final diff, reruns the applicable tests/typecheck/lint/production build/browser checks, compares the result with the approved spec and plan, and reports concrete command/evidence output.
 
 Ranked production remains disabled until deterministic browser/verifier parity, independent goldens, protocol adversarial tests, server-authoritative scoring, migration/restore, proof encryption/deletion/recovery, auth/CSRF/origin protection, hardware/browser evidence, accessibility/720p, privacy/legal/hosting, SLO/alerts, kill-switch/rollback, and independent human adversarial security review all pass. No unresolved Critical/High security issue may remain.
 
@@ -879,6 +971,25 @@ These do not reopen the approved architecture; each is a measured implementation
 - Initial private ProofStore provider and proof-recovery capability.
 - Game adapter publication after current-build measurement.
 - Hosting plan, launch jurisdictions, legal wording, and any future under-18 flow.
+
+Every deferred item requires a versioned `OpenDecisionRecord` before a dependent capability can become `RELEASE-READY`:
+
+```text
+decisionId
+status and owner
+dependent capability / release / version
+candidate set
+measurement, benchmark, pilot, or legal-review method
+representative environment or cohort
+predeclared acceptance criteria
+raw evidence identities
+selected outcome and rejected alternatives
+version-binding consequences
+reviewers / approvers
+decision and review timestamps
+```
+
+A dependent task MAY build explicitly labeled measurement tooling or non-release prototypes while the record is open. It MUST NOT embed an unapproved production default. Parser maxima, simulation cadence, chunk/heartbeat deadlines, and ProofStore/recovery selection block their dependent Ranked work or release gate until decided. Once selected, a ranked-relevant value is bound to its owning immutable version; changing it requires the applicable new version and ADR/review.
 
 No deferred value may be silently selected in production. It is documented, tested, version-bound where ranked-relevant, and approved through the implementation/release process.
 
