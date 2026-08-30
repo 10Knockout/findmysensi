@@ -2,16 +2,16 @@
 
 ## Document control
 
-| Field | Value |
-|---|---|
-| Status | Approved normative specification |
-| Date | 2026-08-30 |
-| Product | FindMySensi |
-| Repository | `findmysensi` (public, MPL-2.0) |
-| Companion service | `findmysensi-secure` (private; independently built and deployed) |
-| Scope | Public product, deterministic trainer, public contracts, public-facing privacy behavior, and cross-service invariants |
-| Authority | Master Project Build Brief plus approved Design Sections 1–11 and all approval amendments |
-| Next gate | Implementation execution according to approved implementation plan |
+| Field             | Value                                                                                                                 |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Status            | Approved normative specification                                                                                      |
+| Date              | 2026-08-30                                                                                                            |
+| Product           | FindMySensi                                                                                                           |
+| Repository        | `findmysensi` (public, MPL-2.0)                                                                                       |
+| Companion service | `findmysensi-secure` (private; independently built and deployed)                                                      |
+| Scope             | Public product, deterministic trainer, public contracts, public-facing privacy behavior, and cross-service invariants |
+| Authority         | Master Project Build Brief plus approved Design Sections 1–11 and all approval amendments                             |
+| Next gate         | Implementation execution according to approved implementation plan                                                    |
 
 This document is the normative public design for FindMySensi. It records the architecture already approved through the sectioned design process. It does not authorize product implementation, select unprofiled numeric thresholds, or disclose private security logic.
 
@@ -168,20 +168,20 @@ Ranked finish moves the run to `FINISHING` and creates recoverable verification 
 
 The implementation plan may refine physical paths, but it MUST preserve these logical boundaries:
 
-| Logical package/surface | Responsibility | Forbidden dependencies |
-|---|---|---|
-| `apps/web` | Routes, Server Components, client islands, metadata, UI composition | Turso client, private auth/risk code |
-| `@findmysensi/aim-core` | Pure deterministic simulation, geometry, collisions, authoritative local state | DOM, React, network, storage, browser clocks |
-| `@findmysensi/input-browser` | Pointer Lock, raw/fallback event capture, ordered bounded buffering | React hot-path state, scenario scoring |
-| `@findmysensi/render-canvas` | Ultra-light Canvas2D presentation | Authoritative mechanics or input math |
-| `@findmysensi/render-webgl` | Optional warmed WebGL2 presentation | Authoritative mechanics or input math |
-| `@findmysensi/scenarios` | Versioned authoritative scenario releases plus separate presentation metadata | Private risk policy, renderer-dependent mechanics |
-| `@findmysensi/scoring` | Public integer scoring specifications and provisional scoring | Leaderboard/PB writes, private acceptance policy |
-| `@findmysensi/sensitivity` | Canonical sensitivity types, evidence registry, calibration and converters | Claims unsupported by adapter/input provenance |
-| `@findmysensi/crosshair` | Presets, validation, rendering description, share-code codec | Marketplace/ranking behavior |
-| `@findmysensi/protocol` | Zod/TypeScript DTOs, binary codecs, errors, version compatibility, goldens | Database schema, private reason codes |
-| `@findmysensi/mock-api` | Local synthetic API behavior | Production dependency graph or real secrets/data |
-| performance/test tooling | Polling simulation, deterministic fixtures, bundle and browser evidence | Production user data |
+| Logical package/surface      | Responsibility                                                                 | Forbidden dependencies                            |
+| ---------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------- |
+| `apps/web`                   | Routes, Server Components, client islands, metadata, UI composition            | Turso client, private auth/risk code              |
+| `@findmysensi/aim-core`      | Pure deterministic simulation, geometry, collisions, authoritative local state | DOM, React, network, storage, browser clocks      |
+| `@findmysensi/input-browser` | Pointer Lock, raw/fallback event capture, ordered bounded buffering            | React hot-path state, scenario scoring            |
+| `@findmysensi/render-canvas` | Ultra-light Canvas2D presentation                                              | Authoritative mechanics or input math             |
+| `@findmysensi/render-webgl`  | Optional warmed WebGL2 presentation                                            | Authoritative mechanics or input math             |
+| `@findmysensi/scenarios`     | Versioned authoritative scenario releases plus separate presentation metadata  | Private risk policy, renderer-dependent mechanics |
+| `@findmysensi/scoring`       | Public integer scoring specifications and provisional scoring                  | Leaderboard/PB writes, private acceptance policy  |
+| `@findmysensi/sensitivity`   | Canonical sensitivity types, evidence registry, calibration and converters     | Claims unsupported by adapter/input provenance    |
+| `@findmysensi/crosshair`     | Presets, validation, rendering description, share-code codec                   | Marketplace/ranking behavior                      |
+| `@findmysensi/protocol`      | Zod/TypeScript DTOs, binary codecs, errors, version compatibility, goldens     | Database schema, private reason codes             |
+| `@findmysensi/mock-api`      | Local synthetic API behavior                                                   | Production dependency graph or real secrets/data  |
+| performance/test tooling     | Polling simulation, deterministic fixtures, bundle and browser evidence        | Production user data                              |
 
 Broad cross-domain barrel exports SHOULD be avoided. Native `import()` loads non-React runtime modules; `next/dynamic` is reserved primarily for React surfaces.
 
@@ -534,16 +534,16 @@ Community scenarios MAY be declarative where generic properties suffice, but off
 
 V1 begins with fewer than ten tasks:
 
-| Mode | Authoritative skill/mechanics | Primary score inputs | Diagnostic examples |
-|---|---|---|---|
-| Grid | Three non-overlapping medium stationary targets; hit removes one and schedules a balanced replacement | Successful clears/hits and misses | Acquisition time, corrections, path efficiency, direction |
-| Pinpoint | Six very small stationary targets; replacement on hit; precision and planning | Precision clears/hits and misses | Endpoint error, correction cost, route behavior |
-| Multi | Stationary large/medium/small targets with equal release-defined opportunity quotas | Hits/clears by published primary weights and misses | Size adaptation and target selection |
-| Headline | Targets in a controlled head-height corridor with deliberate vertical variation | Hits/clears and misses | Horizontal maintenance and vertical correction |
-| Strafe | Horizontal lanes with balanced left/right, speed, reversal, and stop opportunities in constrained unpredictable order | Hits/clears and misses | Intercept/reacquisition behavior |
-| Smooth Track | Continuously moving target path with balanced motion opportunities | Simple integer formula using time on target and release-defined error component | Mean/p95 angular error, reversals, tracking loss |
-| Tempo | Balanced targets synchronized to a versioned BPM/timing schedule | Successful hits plus published early/late and miss treatment | Timing bias and consistency |
-| Sensi Lab | Blind calibration tasks | Not ranked | Candidate utility and confidence evidence |
+| Mode         | Authoritative skill/mechanics                                                                                         | Primary score inputs                                                            | Diagnostic examples                                       |
+| ------------ | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| Grid         | Three non-overlapping medium stationary targets; hit removes one and schedules a balanced replacement                 | Successful clears/hits and misses                                               | Acquisition time, corrections, path efficiency, direction |
+| Pinpoint     | Six very small stationary targets; replacement on hit; precision and planning                                         | Precision clears/hits and misses                                                | Endpoint error, correction cost, route behavior           |
+| Multi        | Stationary large/medium/small targets with equal release-defined opportunity quotas                                   | Hits/clears by published primary weights and misses                             | Size adaptation and target selection                      |
+| Headline     | Targets in a controlled head-height corridor with deliberate vertical variation                                       | Hits/clears and misses                                                          | Horizontal maintenance and vertical correction            |
+| Strafe       | Horizontal lanes with balanced left/right, speed, reversal, and stop opportunities in constrained unpredictable order | Hits/clears and misses                                                          | Intercept/reacquisition behavior                          |
+| Smooth Track | Continuously moving target path with balanced motion opportunities                                                    | Simple integer formula using time on target and release-defined error component | Mean/p95 angular error, reversals, tracking loss          |
+| Tempo        | Balanced targets synchronized to a versioned BPM/timing schedule                                                      | Successful hits plus published early/late and miss treatment                    | Timing bias and consistency                               |
+| Sensi Lab    | Blind calibration tasks                                                                                               | Not ranked                                                                      | Candidate utility and confidence evidence                 |
 
 Headline seed tests MUST reject trivial single-line memorization. Strafe seed tests MUST reject predictable reversal rhythms. Smooth Track evaluates both on-target time and angular error so target radius alone cannot dominate interpretation.
 
@@ -772,17 +772,17 @@ Entering Ranked explicitly permits publication of username, verified score, rank
 
 Practice raw input remains in memory/local storage by default; only an explicitly saved summary is uploaded. Ranked submits a bounded proof to the private service. Public retention commitments are:
 
-| Data | Default |
-|---|---|
-| Raw practice stream | Never uploaded by default |
-| Local practice history | Until the user clears it |
-| Saved summaries/settings | Until user/account deletion |
-| Ordinary verified proof | 30 days after terminal verification |
-| Active PB/top-board proof | While competitively active, then 90 days |
-| Published official-record proof | While the record is officially replayable |
-| Suspicious/appealed proof | Case closure, at most 180 days absent lawful hold |
-| Consented debug trace | 14 days |
-| Research sample | Study-specific disclosed duration |
+| Data                            | Default                                           |
+| ------------------------------- | ------------------------------------------------- |
+| Raw practice stream             | Never uploaded by default                         |
+| Local practice history          | Until the user clears it                          |
+| Saved summaries/settings        | Until user/account deletion                       |
+| Ordinary verified proof         | 30 days after terminal verification               |
+| Active PB/top-board proof       | While competitively active, then 90 days          |
+| Published official-record proof | While the record is officially replayable         |
+| Suspicious/appealed proof       | Case closure, at most 180 days absent lawful hold |
+| Consented debug trace           | 14 days                                           |
+| Research sample                 | Study-specific disclosed duration                 |
 
 An official record without retained exact replay proof cannot continue to be described as historically replayable. Account deletion immediately revokes sessions/tickets and runs an idempotent private deletion workflow. Public identity/mappings are removed; any lawful minimal historical entry uses a non-reversible “Deleted competitor” identity, not a secret reidentification map.
 
@@ -898,19 +898,19 @@ Public code may define safe protocol shapes and deterministic verification rules
 
 ## 16. Decision traceability
 
-| Approved design section | Normative coverage here |
-|---|---|
-| 1 — Repository/service topology | §§2–3: sibling Git repos, ownership, independent builds, same-origin API, private migrations |
-| 2 — Gameplay runtime | §4: causal input, fixed ticks, fixed-point determinism, snapshot reuse, binary hashes, overflow |
-| 3 — Ranked protocol | §5: versioned API, state/idempotency, Ed25519 lifecycle, resource bounds, deadlines, historical replay |
-| 4 — Private auth/data boundary | §§2, 3, 5, 10, 15: public-facing auth contract and explicit private ownership without schema leakage |
-| 5 — Public application | §§3, 5: split transports, server-only DTO boundary, preload order, bundle/mock/offline/version behavior |
-| 6 — Sensitivity/calibration | §7: incompatible units, provenance, nominal DPI, acclimation/reference blocks, utilities/confidence/research |
-| 7 — Scenarios/scoring | §6: original modes, seed fairness, shot semantics, analytics separation, ranks, pilots, versioning |
-| 8 — Performance/device/rendering | §§4, 8: canonical viewport, renderer fixation, DPR separation, safety ceilings, instrumentation, profiling |
-| 9 — Visual/UX/a11y | §9: ranked visibility, 720p, tokens/focus, honest canvas, live regions/charts, restrained assets |
-| 10 — Privacy/retention/operations | §§2, 10, 12–15: age/consent, retention/deletion/export, no fingerprinting, evidence privacy, gates |
-| 11 — Verification/release/governance | §§11–13: layered evidence, RC flow, releaseId/smoke, human review, flake/CI/TDD, OSS, break-glass |
+| Approved design section              | Normative coverage here                                                                                      |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| 1 — Repository/service topology      | §§2–3: sibling Git repos, ownership, independent builds, same-origin API, private migrations                 |
+| 2 — Gameplay runtime                 | §4: causal input, fixed ticks, fixed-point determinism, snapshot reuse, binary hashes, overflow              |
+| 3 — Ranked protocol                  | §5: versioned API, state/idempotency, Ed25519 lifecycle, resource bounds, deadlines, historical replay       |
+| 4 — Private auth/data boundary       | §§2, 3, 5, 10, 15: public-facing auth contract and explicit private ownership without schema leakage         |
+| 5 — Public application               | §§3, 5: split transports, server-only DTO boundary, preload order, bundle/mock/offline/version behavior      |
+| 6 — Sensitivity/calibration          | §7: incompatible units, provenance, nominal DPI, acclimation/reference blocks, utilities/confidence/research |
+| 7 — Scenarios/scoring                | §6: original modes, seed fairness, shot semantics, analytics separation, ranks, pilots, versioning           |
+| 8 — Performance/device/rendering     | §§4, 8: canonical viewport, renderer fixation, DPR separation, safety ceilings, instrumentation, profiling   |
+| 9 — Visual/UX/a11y                   | §9: ranked visibility, 720p, tokens/focus, honest canvas, live regions/charts, restrained assets             |
+| 10 — Privacy/retention/operations    | §§2, 10, 12–15: age/consent, retention/deletion/export, no fingerprinting, evidence privacy, gates           |
+| 11 — Verification/release/governance | §§11–13: layered evidence, RC flow, releaseId/smoke, human review, flake/CI/TDD, OSS, break-glass            |
 
 ## 17. Specification acceptance criteria
 
