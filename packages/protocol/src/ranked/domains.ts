@@ -1,0 +1,4 @@
+export const STATE_HASH_DOMAIN_V1 = "FMS:STATE-HASH:V1";
+export const TICKET_DOMAIN_V1 = "FMS:TICKET:V1";
+export const CHUNK_HASH_DOMAIN_V1 = "FMS:CHUNK-HASH:V1";
+export const PROOF_DOMAIN_V1 = "FMS:PROOF:V1";

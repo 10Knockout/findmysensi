@@ -1,0 +1,14 @@
+{
+  "version": "1.0.0",
+  "domain": "FMS:STATE-HASH:V1",
+  "description": "Hand-derived canonical simulation state vector with domain separation and SHA-256",
+  "state": {
+    "tick": 120,
+    "yaw": 4194304,
+    "pitch": -1000,
+    "valid": true,
+    "shotsCount": 5
+  },
+  "canonical_bytes_hex": "11464d533a53544154452d484153483a5631780000000000400018fcffff0105000000",
+  "canonical_bytes_length": 35
+}
