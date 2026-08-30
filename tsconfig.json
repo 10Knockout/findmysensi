@@ -4,5 +4,8 @@
     "composite": true
   },
   "files": [],
-  "references": [{ "path": "./packages/protocol" }]
+  "references": [
+    { "path": "./packages/protocol" },
+    { "path": "./packages/aim-core" }
+  ]
 }
