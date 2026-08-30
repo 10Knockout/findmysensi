@@ -12,6 +12,10 @@ export default defineConfig({
         __dirname,
         "packages/aim-core/src/index.ts",
       ),
+      "@findmysensi/input-browser": resolve(
+        __dirname,
+        "packages/input-browser/src/index.ts",
+      ),
     },
   },
   test: {

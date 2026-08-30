@@ -7,7 +7,8 @@
     "baseUrl": ".",
     "paths": {
       "@findmysensi/protocol": ["./packages/protocol/src/index.ts"],
-      "@findmysensi/aim-core": ["./packages/aim-core/src/index.ts"]
+      "@findmysensi/aim-core": ["./packages/aim-core/src/index.ts"],
+      "@findmysensi/input-browser": ["./packages/input-browser/src/index.ts"]
     },
     "strict": true,
     "noUncheckedIndexedAccess": true,

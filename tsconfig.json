@@ -6,6 +6,7 @@
   "files": [],
   "references": [
     { "path": "./packages/protocol" },
-    { "path": "./packages/aim-core" }
+    { "path": "./packages/aim-core" },
+    { "path": "./packages/input-browser" }
   ]
 }
