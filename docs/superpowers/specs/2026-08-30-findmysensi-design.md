@@ -4,14 +4,16 @@
 
 | Field             | Value                                                                                                                 |
 | ----------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Status            | Draft normative specification; architecture approved, awaiting final written-spec approval                            |
+| Status            | Approved normative specification                                                                                      |
 | Date              | 2026-08-30                                                                                                            |
 | Product           | FindMySensi                                                                                                           |
 | Repository        | `findmysensi` (public, MPL-2.0)                                                                                       |
 | Companion service | `findmysensi-secure` (private; independently built and deployed)                                                      |
 | Scope             | Public product, deterministic trainer, public contracts, public-facing privacy behavior, and cross-service invariants |
 | Authority         | Master Project Build Brief plus approved Design Sections 1–11 and all approval amendments                             |
-| Next gate         | Human written-spec approval, then `superpowers:writing-plans`                                                         |
+| Approval          | Human owner approval recorded in the project thread after review of Sections 1–11 and this normative specification    |
+| Approval date     | 2026-08-30                                                                                                            |
+| Next gate         | Implementation-plan approval and execution-approach selection                                                         |
 
 This document is the normative public design for FindMySensi. It records the architecture already approved through the sectioned design process. It does not authorize product implementation, select unprofiled numeric thresholds, or disclose private security logic.
 
@@ -842,23 +844,23 @@ Leaderboard publication is a distinct explicit setting and MUST be enabled befor
 
 Raw practice pointer events remain in memory and are not persisted by default. Summarized practice history may remain in user-controlled local storage; only an explicitly saved summary is uploaded. Ranked submits a bounded proof to the private service. Public retention commitments are:
 
-| Data                            | Default                                           |
-| ------------------------------- | ------------------------------------------------- |
-| Raw practice stream             | Never uploaded by the v1 product; only an explicitly saved summary may cross the API boundary |
-| Local practice history          | Until the user clears it                          |
-| Saved summaries/settings        | Until user/account deletion                       |
-| Ordinary verified proof         | 30 days after terminal verification               |
-| Active PB/top-board proof       | While competitively active, then 90 days          |
-| Published official-record proof | While the record is officially replayable         |
-| Suspicious/appealed proof       | Case closure, at most 180 days absent lawful hold |
-| Consented debug trace           | 14 days                                           |
-| Research sample                 | Study-specific disclosed duration                 |
-| Raw IP in restricted app-controlled abuse storage | Maximum seven days                                |
-| Rotating keyed abuse bucket     | 30 days                                           |
-| Email delivery metadata         | 30 days                                           |
-| Narrow security-state events    | 90 days                                           |
-| Admin/moderation audit          | 365 days, then documented review                  |
-| Provider runtime logs           | Provider-plan retention; never durable evidence authority |
+| Data                                              | Default                                                                                       |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Raw practice stream                               | Never uploaded by the v1 product; only an explicitly saved summary may cross the API boundary |
+| Local practice history                            | Until the user clears it                                                                      |
+| Saved summaries/settings                          | Until user/account deletion                                                                   |
+| Ordinary verified proof                           | 30 days after terminal verification                                                           |
+| Active PB/top-board proof                         | While competitively active, then 90 days                                                      |
+| Published official-record proof                   | While the record is officially replayable                                                     |
+| Suspicious/appealed proof                         | Case closure, at most 180 days absent lawful hold                                             |
+| Consented debug trace                             | 14 days                                                                                       |
+| Research sample                                   | Study-specific disclosed duration                                                             |
+| Raw IP in restricted app-controlled abuse storage | Maximum seven days                                                                            |
+| Rotating keyed abuse bucket                       | 30 days                                                                                       |
+| Email delivery metadata                           | 30 days                                                                                       |
+| Narrow security-state events                      | 90 days                                                                                       |
+| Admin/moderation audit                            | 365 days, then documented review                                                              |
+| Provider runtime logs                             | Provider-plan retention; never durable evidence authority                                     |
 
 This table is the complete v1 category-level retention contract, subject only to disclosed lawful holds and counsel-approved exceptions. Restricted raw-IP storage is separate from ordinary application logging; full IP addresses remain forbidden in ordinary logs. A user-controlled local export may write raw Practice data to the user's own device but does not upload it. Any future raw-input research collection requires a separately approved protocol version, granular opt-in consent, stated purpose, explicit retention and withdrawal behavior, and privacy/security review; it cannot be introduced through an ordinary Practice-summary endpoint.
 
