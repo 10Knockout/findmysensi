@@ -16,6 +16,10 @@ export default defineConfig({
         __dirname,
         "packages/input-browser/src/index.ts",
       ),
+      "@findmysensi/performance": resolve(
+        __dirname,
+        "packages/performance/src/index.ts",
+      ),
     },
   },
   test: {
