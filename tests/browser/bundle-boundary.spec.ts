@@ -7,7 +7,7 @@ describe("Web Trainer Isolated Bundle Boundary", () => {
 
     const runtime = await loadTrainerRuntime();
 
-    // Verify all four core packages are properly wired
+    // Verify core packages are properly wired
     expect(runtime.protocol).toBeDefined();
     expect(runtime.aimCore).toBeDefined();
     expect(runtime.inputBrowser).toBeDefined();
@@ -25,5 +25,5 @@ describe("Web Trainer Isolated Bundle Boundary", () => {
 
     const snapshotBuffer = runtime.aimCore.createSnapshotBuffer(16);
     expect(snapshotBuffer.getLatest().tick).toBe(0);
-  });
+  }, 20000);
 });

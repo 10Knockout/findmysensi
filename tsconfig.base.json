@@ -10,7 +10,10 @@
       "@findmysensi/aim-core": ["./packages/aim-core/src/index.ts"],
       "@findmysensi/input-browser": ["./packages/input-browser/src/index.ts"],
       "@findmysensi/performance": ["./packages/performance/src/index.ts"],
-      "@findmysensi/render-canvas": ["./packages/render-canvas/src/index.ts"]
+      "@findmysensi/render-canvas": ["./packages/render-canvas/src/index.ts"],
+      "@findmysensi/scenarios": ["./packages/scenarios/src/index.ts"],
+      "@findmysensi/analytics": ["./packages/analytics/src/index.ts"],
+      "@findmysensi/scoring": ["./packages/scoring/src/index.ts"]
     },
     "strict": true,
     "noUncheckedIndexedAccess": true,

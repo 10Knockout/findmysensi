@@ -5,6 +5,9 @@ const nextConfig = {
     "@findmysensi/aim-core",
     "@findmysensi/input-browser",
     "@findmysensi/render-canvas",
+    "@findmysensi/scenarios",
+    "@findmysensi/analytics",
+    "@findmysensi/scoring",
   ],
   webpack: (config) => {
     config.resolve.extensionAlias = {

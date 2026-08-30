@@ -9,6 +9,9 @@
     { "path": "./packages/aim-core" },
     { "path": "./packages/input-browser" },
     { "path": "./packages/performance" },
-    { "path": "./packages/render-canvas" }
+    { "path": "./packages/render-canvas" },
+    { "path": "./packages/scenarios" },
+    { "path": "./packages/analytics" },
+    { "path": "./packages/scoring" }
   ]
 }

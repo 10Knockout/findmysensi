@@ -24,6 +24,18 @@ export default defineConfig({
         __dirname,
         "packages/render-canvas/src/index.ts",
       ),
+      "@findmysensi/scenarios": resolve(
+        __dirname,
+        "packages/scenarios/src/index.ts",
+      ),
+      "@findmysensi/analytics": resolve(
+        __dirname,
+        "packages/analytics/src/index.ts",
+      ),
+      "@findmysensi/scoring": resolve(
+        __dirname,
+        "packages/scoring/src/index.ts",
+      ),
     },
   },
   test: {

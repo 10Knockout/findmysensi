@@ -29,7 +29,10 @@
       ],
       "@findmysensi/render-canvas": [
         "../../packages/render-canvas/src/index.ts"
-      ]
+      ],
+      "@findmysensi/scenarios": ["../../packages/scenarios/src/index.ts"],
+      "@findmysensi/analytics": ["../../packages/analytics/src/index.ts"],
+      "@findmysensi/scoring": ["../../packages/scoring/src/index.ts"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
