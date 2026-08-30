@@ -8,6 +8,7 @@
     { "path": "./packages/protocol" },
     { "path": "./packages/aim-core" },
     { "path": "./packages/input-browser" },
-    { "path": "./packages/performance" }
+    { "path": "./packages/performance" },
+    { "path": "./packages/render-canvas" }
   ]
 }

@@ -20,6 +20,10 @@ export default defineConfig({
         __dirname,
         "packages/performance/src/index.ts",
       ),
+      "@findmysensi/render-canvas": resolve(
+        __dirname,
+        "packages/render-canvas/src/index.ts",
+      ),
     },
   },
   test: {

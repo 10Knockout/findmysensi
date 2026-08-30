@@ -9,7 +9,8 @@
       "@findmysensi/protocol": ["./packages/protocol/src/index.ts"],
       "@findmysensi/aim-core": ["./packages/aim-core/src/index.ts"],
       "@findmysensi/input-browser": ["./packages/input-browser/src/index.ts"],
-      "@findmysensi/performance": ["./packages/performance/src/index.ts"]
+      "@findmysensi/performance": ["./packages/performance/src/index.ts"],
+      "@findmysensi/render-canvas": ["./packages/render-canvas/src/index.ts"]
     },
     "strict": true,
     "noUncheckedIndexedAccess": true,
