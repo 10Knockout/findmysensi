@@ -4,3 +4,4 @@ export * from "./prng/xoshiro128ss.js";
 export * from "./input/types.js";
 export * from "./state/types.js";
 export * from "./state/step.js";
+export * from "./render/snapshot.js";
