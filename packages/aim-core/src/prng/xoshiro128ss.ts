@@ -8,18 +8,35 @@ function rotl(x: number, k: number): number {
   return ((x << k) | (x >>> (32 - k))) >>> 0;
 }
 
-export function createPrngV1(seed: Uint8Array): PrngV1 {
-  if (seed.byteLength !== 16) {
+export function createPrngV1(
+  seed: Uint8Array | readonly [number, number, number, number],
+): PrngV1 {
+  let s0 = 0;
+  let s1 = 0;
+  let s2 = 0;
+  let s3 = 0;
+
+  if (seed instanceof Uint8Array) {
+    if (seed.byteLength !== 16) {
+      throw new RangeError(
+        `PrngV1 requires a 16-byte (128-bit) seed. Received ${seed.byteLength} bytes.`,
+      );
+    }
+    const view = new DataView(seed.buffer, seed.byteOffset, seed.byteLength);
+    s0 = view.getUint32(0, true);
+    s1 = view.getUint32(4, true);
+    s2 = view.getUint32(8, true);
+    s3 = view.getUint32(12, true);
+  } else if (Array.isArray(seed) && seed.length === 4) {
+    s0 = (seed[0] ?? 0) >>> 0;
+    s1 = (seed[1] ?? 0) >>> 0;
+    s2 = (seed[2] ?? 0) >>> 0;
+    s3 = (seed[3] ?? 0) >>> 0;
+  } else {
     throw new RangeError(
-      `PrngV1 requires a 16-byte (128-bit) seed. Received ${seed.byteLength} bytes.`,
+      "PrngV1 seed must be a 16-byte Uint8Array or [u32, u32, u32, u32] tuple.",
     );
   }
-
-  const view = new DataView(seed.buffer, seed.byteOffset, seed.byteLength);
-  let s0 = view.getUint32(0, true);
-  let s1 = view.getUint32(4, true);
-  let s2 = view.getUint32(8, true);
-  let s3 = view.getUint32(12, true);
 
   // Non-zero fallback constants (fractional parts of sqrt(2), sqrt(3), sqrt(5), sqrt(7))
   if (s0 === 0 && s1 === 0 && s2 === 0 && s3 === 0) {
