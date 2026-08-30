@@ -4,5 +4,5 @@
     "composite": true
   },
   "files": [],
-  "references": []
+  "references": [{ "path": "./packages/protocol" }]
 }
