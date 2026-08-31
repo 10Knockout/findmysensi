@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import React from "react";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
+import "./globals.css";
 
 export const metadata: Metadata = {
   title: "FindMySensi — Precision Aim Trainer & Universal Sensitivity Matching",
@@ -13,19 +16,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" style={{ backgroundColor: "#07090e", color: "#f8fafc" }}>
-      <body
-        style={{
-          margin: 0,
-          padding: 0,
-          fontFamily:
-            '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif',
-          WebkitFontSmoothing: "antialiased",
-          backgroundColor: "#07090e",
-          color: "#f8fafc",
-          minHeight: "100vh",
-        }}
-      >
+    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
+      <body className="font-sans antialiased bg-zinc-950 text-zinc-50 min-h-screen m-0 p-0">
         {children}
       </body>
     </html>
