@@ -18,7 +18,9 @@
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run",
     "test:watch": "vitest",
-    "build": "npm run build --workspaces --if-present"
+    "build": "npm run build --workspaces --if-present",
+    "clean": "npm run clean --workspaces --if-present",
+    "check:boundaries": "node tools/architecture/check-boundaries.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.20.0",
