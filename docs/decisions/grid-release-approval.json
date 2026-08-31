@@ -1,0 +1,8 @@
+{
+  "id": "grid-rc1-approval",
+  "title": "Grid Scenario V1 Release Candidate 1 Approval",
+  "status": "approved",
+  "context": "The deterministic Grid scenario candidate has been implemented across aim-core, scenarios, and scoring. Partition-invariant bounds are proven, and causality-preserving sequencing ensures true competitive determinism.",
+  "decision": "Freeze the Grid candidate as RC1 and pin it via immutable .tgz artifacts in the secure private server shell (Handshake B).",
+  "signatures": ["user"]
+}
