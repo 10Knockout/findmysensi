@@ -13,6 +13,8 @@ coverage/
 .env.local
 .env.*.local
 *.tsbuildinfo
+*.tgz
+*.d.ts.map
 apps/web/next-env.d.ts
 __pycache__/
 *.pyc

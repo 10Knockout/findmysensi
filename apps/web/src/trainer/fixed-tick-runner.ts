@@ -13,6 +13,7 @@ export interface FixedTickRunnerOptions {
 
 export interface FixedTickRunner {
   start(): void;
+  resume(): void;
   stop(reason: RunStopReason): void;
   onAnimationFrame(nowMs: number): void;
   isRunning(): boolean;
@@ -49,6 +50,13 @@ export class BoundedFixedTickRunner implements FixedTickRunner {
     this.currentTick = 0;
     this.lastFrameTimeMs = -1;
     this.accumulatorMs = 0;
+  }
+
+  public resume(): void {
+    if (this.running) return;
+    this.running = true;
+    // Drop wall-clock time spent paused without resetting deterministic state.
+    this.lastFrameTimeMs = -1;
   }
 
   public stop(_reason: RunStopReason): void {

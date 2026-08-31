@@ -55,7 +55,7 @@ export class BrowserApiClient {
     data: RegisterRequest,
   ): Promise<{ ok: boolean; error?: string }> {
     try {
-      const res = await fetch(`${this.baseUrl}/api/auth/sign-up/email`, {
+      const res = await fetch(`${this.baseUrl}/api/v1/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -66,6 +66,51 @@ export class BrowserApiClient {
           .json()
           .catch(() => ({ message: "Registration failed" }));
         return { ok: false, error: err.message || "Registration failed" };
+      }
+      return { ok: true };
+    } catch {
+      return { ok: false, error: "Network error. Please try again." };
+    }
+  }
+
+  async getDevelopmentVerificationOtp(email: string): Promise<string | null> {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/v1/dev/verification-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email }),
+      });
+      if (!res.ok) return null;
+      const data = (await res.json()) as { otp?: unknown };
+      return typeof data.otp === "string" ? data.otp : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async verifyEmailOtp(
+    email: string,
+    otp: string,
+  ): Promise<{ ok: boolean; error?: string }> {
+    try {
+      const res = await fetch(
+        `${this.baseUrl}/api/auth/email-otp/verify-email`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ email, otp }),
+        },
+      );
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as {
+          message?: string;
+        } | null;
+        return {
+          ok: false,
+          error: data?.message ?? "Invalid or expired code.",
+        };
       }
       return { ok: true };
     } catch {
@@ -89,12 +134,21 @@ export class BrowserApiClient {
     data: ForgotPasswordRequest,
   ): Promise<{ ok: boolean; error?: string }> {
     try {
-      const res = await fetch(`${this.baseUrl}/api/auth/forget-password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(data),
-      });
+      const res = await fetch(
+        `${this.baseUrl}/api/auth/request-password-reset`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            ...data,
+            redirectTo:
+              typeof window === "undefined"
+                ? "/reset-password"
+                : `${window.location.origin}/reset-password`,
+          }),
+        },
+      );
       if (!res.ok) {
         return { ok: false, error: "Failed to send reset email." };
       }

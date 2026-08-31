@@ -1,1 +1,0 @@
-{"version":3,"file":"handshake.d.ts","sourceRoot":"","sources":["handshake.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,CAAC,EAAE,MAAM,KAAK,CAAC;AAExB,eAAO,MAAM,sBAAsB;;;;;;;;;;;iBAOjC,CAAC;AAEH,MAAM,MAAM,gBAAgB,GAAG,CAAC,CAAC,KAAK,CAAC,OAAO,sBAAsB,CAAC,CAAC;AAEtE,eAAO,MAAM,uBAAuB;;;;;;;;iBAQlC,CAAC;AAEH,MAAM,MAAM,iBAAiB,GAAG,CAAC,CAAC,KAAK,CAAC,OAAO,uBAAuB,CAAC,CAAC"}

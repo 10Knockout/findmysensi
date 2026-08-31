@@ -20,6 +20,9 @@ describe("Privacy-Safe Local Practice History", () => {
       accuracyPercentage: 92.3,
       durationSeconds: 60,
       killsPerSecond: 1.0,
+      exactReplayPreserved: true,
+      inputOverflowEvents: 0,
+      inputHighWaterMark: 12,
     };
 
     const sample2: PracticeSummaryRecord = {
@@ -33,6 +36,9 @@ describe("Privacy-Safe Local Practice History", () => {
       accuracyPercentage: 85.7,
       durationSeconds: 60,
       killsPerSecond: 0.5,
+      exactReplayPreserved: false,
+      inputOverflowEvents: 2,
+      inputHighWaterMark: 4096,
     };
 
     history.save(sample1);

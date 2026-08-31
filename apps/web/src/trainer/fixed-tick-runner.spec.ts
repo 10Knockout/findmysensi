@@ -54,4 +54,26 @@ describe("Bounded Fixed-Tick Simulation Runner", () => {
     expect(tickCount).toBe(4);
     expect(onLagViolation).toHaveBeenCalled();
   });
+
+  it("resumes without resetting or repeating deterministic ticks", () => {
+    const executedTicks: Tick[] = [];
+    const runner = createFixedTickRunner({
+      tickRateHz: 100,
+      onTick: (tick) => executedTicks.push(tick),
+      onRender: () => {},
+    });
+
+    runner.start();
+    runner.onAnimationFrame(0);
+    runner.onAnimationFrame(25);
+    runner.stop("manual_abort");
+    expect(executedTicks).toEqual([0, 1]);
+
+    runner.resume();
+    runner.onAnimationFrame(1_000);
+    runner.onAnimationFrame(1_015);
+
+    expect(executedTicks).toEqual([0, 1, 2, 3]);
+    expect(runner.getTickCount()).toBe(4);
+  });
 });

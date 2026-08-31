@@ -1,11 +1,11 @@
-import React from "react";
-import { PracticeResults } from "../../../../src/features/results/PracticeResults.js";
+import { notFound, redirect } from "next/navigation";
 
-interface ResultsPageProps {
+export default async function ResultsPage({
+  params,
+}: {
   params: Promise<{ mode: string }>;
-}
-
-export default async function ResultsPage({ params }: ResultsPageProps) {
+}) {
   const { mode } = await params;
-  return <PracticeResults mode={mode || "grid"} />;
+  if (mode !== "grid") notFound();
+  redirect(`/app/train/${mode}/results`);
 }

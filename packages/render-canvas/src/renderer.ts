@@ -1,8 +1,4 @@
-import {
-  RenderSnapshotView,
-  createAngleUnits,
-  degreesToAngleUnits,
-} from "@findmysensi/aim-core";
+import { RenderSnapshotView, degreesToAngleUnits } from "@findmysensi/aim-core";
 import {
   AimRenderer,
   CrosshairConfig,
@@ -95,10 +91,7 @@ export class Canvas2DPotatoRenderer implements AimRenderer {
       const relYaw = rawTargetX - playerYaw;
       const relPitch = rawTargetY - playerPitch;
 
-      const screenPos = vp.simToDisplay(
-        createAngleUnits(relYaw),
-        createAngleUnits(relPitch),
-      );
+      const screenPos = vp.simToDisplay(relYaw, relPitch);
       const radiusPx = Math.max(2, rawRadius * pxPerAngleUnit);
 
       // Draw flat circle body

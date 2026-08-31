@@ -7,6 +7,7 @@ import { createViewportTransform } from "@findmysensi/render-canvas";
 import {
   attachInputListener,
   createPointerLockController,
+  detectInputCapabilities,
 } from "@findmysensi/input-browser";
 import {
   PracticeRunController,
@@ -31,6 +32,7 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
   const [misses, setMisses] = useState(0);
   const [accuracy, setAccuracy] = useState(100);
   const [countdown, setCountdown] = useState<number | null>(null);
+  const [lockError, setLockError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!canvasRef.current || !containerRef.current) return;
@@ -75,7 +77,7 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
           setGameState(newState);
           if (newState === "completed") {
             setTimeout(() => {
-              router.push(`/train/${mode}/results`);
+              router.push(`/app/train/${mode}/results`);
             }, 600);
           }
         },
@@ -106,10 +108,11 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
     controllerRef.current = controller;
 
     // Attach input listener to window / canvas
+    const preferredInputSource = detectInputCapabilities().preferredSource;
     const detachInput = attachInputListener(
       window,
       controller.getRingBuffer(),
-      "pointermove",
+      preferredInputSource,
     );
 
     // Animation frame loop
@@ -143,14 +146,13 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
 
   const startCountdownAndLock = async () => {
     if (!canvasRef.current) return;
-
-    try {
-      const pointerLock = createPointerLockController();
-      await pointerLock.requestLock(canvasRef.current, {
-        unadjustedMovement: true,
-      });
-    } catch {
-      // Fallback
+    setLockError(null);
+    const locked = await acquirePointerLock(canvasRef.current);
+    if (!locked) {
+      setLockError(
+        "Mouse lock was not granted. Click Start again and allow pointer lock in your browser.",
+      );
+      return;
     }
 
     setCountdown(3);
@@ -169,13 +171,11 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
 
   const handleResume = async () => {
     if (!canvasRef.current) return;
-    try {
-      const pointerLock = createPointerLockController();
-      await pointerLock.requestLock(canvasRef.current, {
-        unadjustedMovement: true,
-      });
-    } catch {
-      // Fallback
+    setLockError(null);
+    const locked = await acquirePointerLock(canvasRef.current);
+    if (!locked) {
+      setLockError("Mouse lock was not granted. The session remains paused.");
+      return;
     }
     controllerRef.current?.resume();
   };
@@ -271,8 +271,8 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
                 <span className="text-zinc-200">3 Non-overlapping</span>
               </div>
               <div className="flex justify-between">
-                <span>Cadence:</span>
-                <span className="text-zinc-200">128 Hz Fixed Kernel</span>
+                <span>Mode:</span>
+                <span className="text-zinc-200">Local practice</span>
               </div>
               <div className="flex justify-between">
                 <span>Controls:</span>
@@ -288,6 +288,12 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
             >
               START PRACTICE (CLICK TO LOCK)
             </button>
+
+            {lockError ? (
+              <p role="alert" className="text-sm text-red-300">
+                {lockError}
+              </p>
+            ) : null}
 
             <p className="text-[11px] text-zinc-500 font-mono">
               Press{" "}
@@ -320,6 +326,11 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
               >
                 Resume Session
               </button>
+              {lockError ? (
+                <p role="alert" className="text-sm text-red-300">
+                  {lockError}
+                </p>
+              ) : null}
               <button
                 onClick={() => router.push("/app")}
                 className="w-full py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-semibold rounded-lg transition-colors"
@@ -332,4 +343,32 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
       )}
     </div>
   );
+}
+
+async function acquirePointerLock(canvas: HTMLCanvasElement): Promise<boolean> {
+  const controller = createPointerLockController();
+  try {
+    await controller.requestLock(canvas, { unadjustedMovement: true });
+  } catch {
+    return false;
+  }
+
+  if (document.pointerLockElement === canvas) return true;
+
+  return new Promise<boolean>((resolve) => {
+    let settled = false;
+    const finish = (locked: boolean) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeout);
+      document.removeEventListener("pointerlockchange", onChange);
+      document.removeEventListener("pointerlockerror", onError);
+      resolve(locked);
+    };
+    const onChange = () => finish(document.pointerLockElement === canvas);
+    const onError = () => finish(false);
+    const timeout = window.setTimeout(() => finish(false), 1000);
+    document.addEventListener("pointerlockchange", onChange);
+    document.addEventListener("pointerlockerror", onError);
+  });
 }

@@ -32,7 +32,7 @@ function ResetPasswordForm() {
     setLoading(true);
 
     const client = new BrowserApiClient();
-    const result = await client.resetPassword({ token, password });
+    const result = await client.resetPassword({ token, newPassword: password });
 
     if (result.ok) {
       router.push("/login?reset=1");

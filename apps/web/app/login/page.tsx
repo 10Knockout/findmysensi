@@ -44,7 +44,7 @@ export default function LoginPage() {
             Sign In
           </h1>
           <p className="text-sm text-zinc-400 mt-1">
-            Access your aim training dashboard & history
+            Sign in to access Gridshot practice
           </p>
         </div>
 
@@ -56,10 +56,15 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
+            <label
+              htmlFor="login-email"
+              className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2"
+            >
               Email Address
             </label>
             <input
+              id="login-email"
+              name="email"
               type="email"
               required
               value={email}
@@ -71,7 +76,10 @@ export default function LoginPage() {
 
           <div>
             <div className="flex justify-between items-center mb-2">
-              <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+              <label
+                htmlFor="login-password"
+                className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider"
+              >
                 Password
               </label>
               <Link
@@ -82,6 +90,8 @@ export default function LoginPage() {
               </Link>
             </div>
             <input
+              id="login-password"
+              name="password"
               type="password"
               required
               value={password}
@@ -106,7 +116,7 @@ export default function LoginPage() {
             href="/register"
             className="text-emerald-400 hover:underline font-semibold"
           >
-            Create an account (18+)
+            Create an account
           </Link>
         </div>
       </div>

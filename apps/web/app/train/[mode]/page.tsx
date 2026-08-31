@@ -1,6 +1,5 @@
-import React from "react";
 import { notFound } from "next/navigation";
-import { TrainerBootstrap } from "../../../src/trainer/TrainerBootstrap.js";
+import { redirect } from "next/navigation";
 
 interface TrainPageProps {
   params: Promise<{
@@ -15,5 +14,5 @@ export default async function TrainPage({ params }: TrainPageProps) {
     notFound();
   }
 
-  return <TrainerBootstrap mode={mode} />;
+  redirect(`/app/train/${mode}`);
 }

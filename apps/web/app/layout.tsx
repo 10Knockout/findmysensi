@@ -14,10 +14,14 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "FindMySensi — Precision Aim Trainer & Universal Sensitivity Matching",
+  title: "FindMySensi — Gridshot Aim Trainer",
   description:
     "Universal, deterministic aim trainer and sensitivity matching engine across modern competitive FPS games.",
 };
+
+// Per-request CSP nonces require dynamic rendering so Next can attach the
+// middleware-generated nonce to framework and inline scripts.
+export const dynamic = "force-dynamic";
 
 export default function RootLayout({
   children,

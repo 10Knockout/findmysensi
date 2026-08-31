@@ -60,6 +60,7 @@ export class PracticeRunController {
   private playerPitch: number = 0;
   private totalOverflowEvents: number = 0;
   private highWaterMark: number = 0;
+  private exactReplayPreserved: boolean = true;
 
   constructor(
     callbacks: PracticeRunCallbacks,
@@ -96,6 +97,8 @@ export class PracticeRunController {
     this.playerPitch = 0;
     this.totalOverflowEvents = 0;
     this.highWaterMark = 0;
+    this.exactReplayPreserved = true;
+    this.ringBuffer.reset();
 
     const initialTargets = this.engine.initialize(this.prng);
     for (const t of initialTargets) {
@@ -132,7 +135,7 @@ export class PracticeRunController {
     if (this.state === "paused" && this.runner) {
       this.state = "playing";
       this.callbacks.onStateChange(this.state);
-      this.runner.start();
+      this.runner.resume();
     }
   }
 
@@ -163,6 +166,9 @@ export class PracticeRunController {
     }
     if (stats.highWaterMark > this.highWaterMark) {
       this.highWaterMark = stats.highWaterMark;
+    }
+    if (stats.lostTemporalPrecision) {
+      this.exactReplayPreserved = false;
     }
 
     const clock = {
@@ -263,6 +269,9 @@ export class PracticeRunController {
       accuracyPercentage: finalMetrics.accuracyPercentage,
       durationSeconds: Math.round(this.totalDurationTicks / 128),
       killsPerSecond: finalMetrics.killsPerSecond,
+      exactReplayPreserved: this.exactReplayPreserved,
+      inputOverflowEvents: this.totalOverflowEvents,
+      inputHighWaterMark: this.highWaterMark,
     });
 
     this.callbacks.onComplete(finalScore);

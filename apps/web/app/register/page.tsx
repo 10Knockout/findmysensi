@@ -1,161 +1,295 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BrowserApiClient } from "@findmysensi/api-client";
+import { RegisterRequestSchema } from "@findmysensi/protocol";
+
+const USERNAME_HELP =
+  "3-24 characters. Use letters, numbers, @, _, -, !, #, $, or | only.";
+const PASSWORD_HELP =
+  "At least 8 characters with one uppercase letter, one lowercase letter, and one symbol.";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [ageAttestation, setAgeAttestation] = useState(false);
+  const [form, setForm] = useState({
+    firstName: "",
+    lastName: "",
+    username: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
+  const [verificationEmail, setVerificationEmail] = useState<string | null>(
+    null,
+  );
+  const [otp, setOtp] = useState("");
+  const [toast, setToast] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const update = (field: keyof typeof form, value: string) => {
+    setForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     setError(null);
 
-    if (!ageAttestation) {
+    if (form.password !== form.confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    const request = {
+      firstName: form.firstName,
+      lastName: form.lastName,
+      username: form.username,
+      email: form.email,
+      password: form.password,
+    };
+    const parsed = RegisterRequestSchema.safeParse(request);
+    if (!parsed.success) {
       setError(
-        "You must attest that you are 18 years of age or older to create an account.",
+        parsed.error.issues[0]?.path[0] === "username"
+          ? USERNAME_HELP
+          : PASSWORD_HELP,
       );
       return;
     }
 
     setLoading(true);
-
     const client = new BrowserApiClient();
-    const result = await client.register({
-      username,
-      email,
-      password,
-      ageAttestation: true,
-    });
-
-    if (result.ok) {
-      router.push("/login?registered=1");
-    } else {
-      setError(result.error || "Registration failed. Please try again.");
+    const result = await client.register(parsed.data);
+    if (!result.ok) {
+      setError(result.error ?? "Registration failed. Please try again.");
       setLoading(false);
+      return;
     }
+
+    const normalizedEmail = parsed.data.email.trim().toLowerCase();
+    const developmentOtp =
+      await client.getDevelopmentVerificationOtp(normalizedEmail);
+    setVerificationEmail(normalizedEmail);
+    setForm((current) => ({ ...current, password: "", confirmPassword: "" }));
+    setToast(
+      developmentOtp
+        ? `Development verification code: ${developmentOtp}`
+        : "Verification code sent. Check your email.",
+    );
+    if (developmentOtp) setOtp(developmentOtp);
+    setLoading(false);
+  };
+
+  const handleVerify = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!verificationEmail) return;
+    setLoading(true);
+    setError(null);
+    const result = await new BrowserApiClient().verifyEmailOtp(
+      verificationEmail,
+      otp,
+    );
+    if (result.ok) {
+      router.push("/login?verified=1");
+      return;
+    }
+    setError(result.error ?? "Invalid or expired code.");
+    setLoading(false);
   };
 
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100 flex items-center justify-center p-6">
-      <div className="max-w-md w-full bg-zinc-900 border border-zinc-800 rounded-xl p-8 shadow-2xl">
+      {toast ? (
+        <div
+          role="status"
+          className="fixed top-5 right-5 z-50 max-w-sm rounded-lg border border-emerald-500/50 bg-emerald-950 px-4 py-3 text-sm text-emerald-100 shadow-xl"
+        >
+          {toast}
+        </div>
+      ) : null}
+
+      <div className="max-w-lg w-full bg-zinc-900 border border-zinc-800 rounded-xl p-8 shadow-2xl">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 rounded bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center font-black text-black text-lg">
+            <span className="w-8 h-8 rounded bg-emerald-400 flex items-center justify-center font-black text-black text-lg">
               S
-            </div>
-            <span className="text-xl font-bold tracking-tight text-white">
-              FindMySensi
             </span>
+            <span className="text-xl font-bold text-white">FindMySensi</span>
           </Link>
-          <h1 className="text-2xl font-bold text-white tracking-tight">
-            Create an Account
+          <h1 className="text-2xl font-bold text-white">
+            {verificationEmail ? "Verify your email" : "Create your account"}
           </h1>
           <p className="text-sm text-zinc-400 mt-1">
-            Join the competitive deterministic aim training platform
+            {verificationEmail
+              ? `Enter the code sent to ${verificationEmail}`
+              : "Create a profile, then start Gridshot."}
           </p>
         </div>
 
-        {error && (
-          <div className="mb-6 p-4 rounded-lg bg-red-950/50 border border-red-800/50 text-red-300 text-sm">
+        {error ? (
+          <div
+            role="alert"
+            className="mb-5 rounded-lg border border-red-800 bg-red-950/50 p-3 text-sm text-red-200"
+          >
             {error}
           </div>
+        ) : null}
+
+        {verificationEmail ? (
+          <form onSubmit={handleVerify} className="space-y-4">
+            <label
+              htmlFor="verification-otp"
+              className="block text-sm font-semibold text-zinc-200"
+            >
+              Six-digit verification code
+            </label>
+            <input
+              id="verification-otp"
+              name="otp"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              required
+              minLength={6}
+              maxLength={6}
+              value={otp}
+              onChange={(event) =>
+                setOtp(event.target.value.replace(/\D/g, ""))
+              }
+              className="w-full rounded-lg border border-zinc-700 bg-black/50 px-4 py-3 text-center font-mono text-2xl tracking-[0.4em] text-white focus:border-emerald-400 focus:outline-none"
+            />
+            <button
+              disabled={loading}
+              className="w-full rounded-lg bg-emerald-400 px-4 py-3 font-bold text-zinc-950 disabled:opacity-50"
+            >
+              {loading ? "Verifying..." : "Verify Email"}
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field
+                id="firstName"
+                label="First name"
+                value={form.firstName}
+                onChange={(value) => update("firstName", value)}
+                autoComplete="given-name"
+              />
+              <Field
+                id="lastName"
+                label="Last name"
+                value={form.lastName}
+                onChange={(value) => update("lastName", value)}
+                autoComplete="family-name"
+              />
+            </div>
+            <Field
+              id="username"
+              label="Username"
+              value={form.username}
+              onChange={(value) => update("username", value)}
+              autoComplete="username"
+              pattern="[A-Za-z0-9@_!#$|\-]+"
+              help={USERNAME_HELP}
+            />
+            <Field
+              id="email"
+              label="Email"
+              type="email"
+              value={form.email}
+              onChange={(value) => update("email", value)}
+              autoComplete="email"
+            />
+            <Field
+              id="password"
+              label="Password"
+              type="password"
+              value={form.password}
+              onChange={(value) => update("password", value)}
+              autoComplete="new-password"
+              help={PASSWORD_HELP}
+            />
+            <Field
+              id="confirmPassword"
+              label="Re-enter password"
+              type="password"
+              value={form.confirmPassword}
+              onChange={(value) => update("confirmPassword", value)}
+              autoComplete="new-password"
+            />
+            <button
+              disabled={loading}
+              className="w-full rounded-lg bg-emerald-400 px-4 py-3 font-bold text-zinc-950 disabled:opacity-50"
+            >
+              {loading ? "Creating account..." : "Create Account"}
+            </button>
+          </form>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
-              Username
-            </label>
-            <input
-              type="text"
-              required
-              minLength={3}
-              maxLength={20}
-              pattern="^[a-zA-Z0-9_]+$"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="aim_god"
-              className="w-full px-4 py-3 bg-black/50 border border-zinc-800 rounded-lg text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition-colors"
-            />
-            <p className="text-xs text-zinc-500 mt-1">
-              3-20 characters, alphanumeric & underscores only
-            </p>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
-              Email Address
-            </label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              className="w-full px-4 py-3 bg-black/50 border border-zinc-800 rounded-lg text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition-colors"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
-              Password
-            </label>
-            <input
-              type="password"
-              required
-              minLength={8}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full px-4 py-3 bg-black/50 border border-zinc-800 rounded-lg text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition-colors"
-            />
-            <p className="text-xs text-zinc-500 mt-1">Minimum 8 characters</p>
-          </div>
-
-          <div className="pt-2">
-            <label className="flex items-start gap-3 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                required
-                checked={ageAttestation}
-                onChange={(e) => setAgeAttestation(e.target.checked)}
-                className="mt-1 w-4 h-4 rounded bg-black/50 border border-zinc-700 text-emerald-400 focus:ring-emerald-400 focus:ring-offset-zinc-950"
-              />
-              <span className="text-xs text-zinc-300 leading-relaxed">
-                I attest that I am{" "}
-                <strong className="text-white">18 years of age or older</strong>{" "}
-                and agree to the Terms of Service & Privacy Policy.
-              </span>
-            </label>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 px-4 bg-emerald-400 hover:bg-emerald-300 text-zinc-950 font-bold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-4"
-          >
-            {loading ? "Creating Account..." : "Create Account"}
-          </button>
-        </form>
-
-        <div className="mt-8 text-center text-sm text-zinc-400">
-          Already have an account?{" "}
+        <p className="mt-7 text-center text-sm text-zinc-400">
+          Already registered?{" "}
           <Link
             href="/login"
-            className="text-emerald-400 hover:underline font-semibold"
+            className="font-semibold text-emerald-400 hover:underline"
           >
-            Sign In
+            Sign in
           </Link>
-        </div>
+        </p>
       </div>
     </main>
+  );
+}
+
+interface FieldProps {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  type?: string;
+  autoComplete?: string;
+  pattern?: string;
+  help?: string;
+}
+
+function Field({
+  id,
+  label,
+  value,
+  onChange,
+  type = "text",
+  autoComplete,
+  pattern,
+  help,
+}: FieldProps) {
+  return (
+    <div>
+      <label
+        htmlFor={id}
+        className="mb-2 block text-xs font-semibold uppercase tracking-wider text-zinc-300"
+      >
+        {label}
+      </label>
+      <input
+        id={id}
+        name={id}
+        type={type}
+        required
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        autoComplete={autoComplete}
+        pattern={pattern}
+        minLength={id === "username" ? 3 : undefined}
+        maxLength={
+          id === "username"
+            ? 24
+            : id === "firstName" || id === "lastName"
+              ? 50
+              : 100
+        }
+        className="w-full rounded-lg border border-zinc-700 bg-black/50 px-4 py-3 text-white focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400"
+      />
+      {help ? <p className="mt-1 text-xs text-zinc-400">{help}</p> : null}
+    </div>
   );
 }

@@ -22,7 +22,10 @@ export interface DisplayRect {
 }
 
 export interface ViewportTransform {
-  simToDisplay(yaw: AngleUnits, pitch: AngleUnits): { x: number; y: number };
+  simToDisplay(
+    yaw: AngleUnits | number,
+    pitch: AngleUnits | number,
+  ): { x: number; y: number };
   displayToSim(x: number, y: number): { yaw: AngleUnits; pitch: AngleUnits };
   readonly displayRect: DisplayRect;
   readonly scaleFactor: number;
@@ -100,8 +103,8 @@ export class CanonicalViewportTransform implements ViewportTransform {
   }
 
   public simToDisplay(
-    yaw: AngleUnits,
-    pitch: AngleUnits,
+    yaw: AngleUnits | number,
+    pitch: AngleUnits | number,
   ): { x: number; y: number } {
     const x = this.centerX + yaw * this.pxPerAngleUnitX;
     const y = this.centerY - pitch * this.pxPerAngleUnitY;

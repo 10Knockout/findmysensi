@@ -1,6 +1,4 @@
 /** @type {import('next').NextConfig} */
-const isProd = process.env.NODE_ENV === "production";
-
 const nextConfig = {
   async rewrites() {
     // In development, proxy relative /api/* requests to backend or mock
@@ -17,18 +15,10 @@ const nextConfig = {
     ];
   },
   async headers() {
-    const cspDirectives = isProd
-      ? "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none';"
-      : "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' http://localhost:4000 http://localhost:4100 http://127.0.0.1:4000 http://127.0.0.1:4100;";
-
     return [
       {
         source: "/(.*)",
         headers: [
-          {
-            key: "Content-Security-Policy",
-            value: cspDirectives,
-          },
           {
             key: "X-Frame-Options",
             value: "DENY",
@@ -58,6 +48,8 @@ const nextConfig = {
     "@findmysensi/analytics",
     "@findmysensi/scoring",
     "@findmysensi/api-client",
+    "@findmysensi/sensitivity",
+    "@findmysensi/crosshair",
   ],
   webpack: (config) => {
     config.resolve.extensionAlias = {

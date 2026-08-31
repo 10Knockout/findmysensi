@@ -9,6 +9,9 @@ export interface PracticeSummaryRecord {
   readonly accuracyPercentage: number;
   readonly durationSeconds: number;
   readonly killsPerSecond: number;
+  readonly exactReplayPreserved: boolean;
+  readonly inputOverflowEvents: number;
+  readonly inputHighWaterMark: number;
 }
 
 const STORAGE_KEY = "findmysensi:practice_history:v1";
