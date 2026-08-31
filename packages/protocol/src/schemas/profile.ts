@@ -9,7 +9,8 @@ export const ProfileSettingsSchema = z
   })
   .strict();
 
-export const UpdateProfileSettingsSchema = ProfileSettingsSchema.partial().strict();
+export const UpdateProfileSettingsSchema =
+  ProfileSettingsSchema.partial().strict();
 
 export type ProfileSettings = z.infer<typeof ProfileSettingsSchema>;
 export type UpdateProfileSettings = z.infer<typeof UpdateProfileSettingsSchema>;

@@ -44,7 +44,8 @@ export class BrowserApiClient {
         } | null;
         return {
           ok: false,
-          error: body?.message ?? body?.error ?? `Request failed (${res.status}).`,
+          error:
+            body?.message ?? body?.error ?? `Request failed (${res.status}).`,
         };
       }
       return { ok: true, data: (await res.json()) as T };
@@ -54,9 +55,12 @@ export class BrowserApiClient {
   }
 
   async getSession(): Promise<SessionResponse | null> {
-    const result = await this.requestJson<SessionResponse>("/api/auth/get-session", {
-      method: "GET",
-    });
+    const result = await this.requestJson<SessionResponse>(
+      "/api/auth/get-session",
+      {
+        method: "GET",
+      },
+    );
     return result.ok ? (result.data ?? null) : null;
   }
 
@@ -86,17 +90,22 @@ export class BrowserApiClient {
         body: JSON.stringify({ email }),
       },
     );
-    return result.ok && typeof result.data?.otp === "string" ? result.data.otp : null;
+    return result.ok && typeof result.data?.otp === "string"
+      ? result.data.otp
+      : null;
   }
 
   async verifyEmailOtp(
     email: string,
     otp: string,
   ): Promise<{ ok: boolean; error?: string }> {
-    const result = await this.requestJson<unknown>("/api/auth/email-otp/verify-email", {
-      method: "POST",
-      body: JSON.stringify({ email, otp }),
-    });
+    const result = await this.requestJson<unknown>(
+      "/api/auth/email-otp/verify-email",
+      {
+        method: "POST",
+        body: JSON.stringify({ email, otp }),
+      },
+    );
     return { ok: result.ok, ...(result.error ? { error: result.error } : {}) };
   }
 
@@ -107,16 +116,19 @@ export class BrowserApiClient {
   async forgotPassword(
     data: ForgotPasswordRequest,
   ): Promise<{ ok: boolean; error?: string }> {
-    const result = await this.requestJson<unknown>("/api/auth/request-password-reset", {
-      method: "POST",
-      body: JSON.stringify({
-        ...data,
-        redirectTo:
-          typeof window === "undefined"
-            ? "/reset-password"
-            : `${window.location.origin}/reset-password`,
-      }),
-    });
+    const result = await this.requestJson<unknown>(
+      "/api/auth/request-password-reset",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          ...data,
+          redirectTo:
+            typeof window === "undefined"
+              ? "/reset-password"
+              : `${window.location.origin}/reset-password`,
+        }),
+      },
+    );
     return { ok: result.ok, ...(result.error ? { error: result.error } : {}) };
   }
 
@@ -130,7 +142,9 @@ export class BrowserApiClient {
     return { ok: result.ok, ...(result.error ? { error: result.error } : {}) };
   }
 
-  async getLeaderboard(modeId: string): Promise<ApiResult<LeaderboardResponse>> {
+  async getLeaderboard(
+    modeId: string,
+  ): Promise<ApiResult<LeaderboardResponse>> {
     return this.requestJson<LeaderboardResponse>(
       `/api/v1/leaderboards/${encodeURIComponent(modeId)}`,
       { method: "GET", cache: "no-store" },
@@ -170,10 +184,13 @@ export class BrowserApiClient {
   }
 
   async handshakeA(data: HandshakeRequest): Promise<HandshakeResponse | null> {
-    const result = await this.requestJson<HandshakeResponse>("/api/v1/handshake-a", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
+    const result = await this.requestJson<HandshakeResponse>(
+      "/api/v1/handshake-a",
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      },
+    );
     return result.ok ? (result.data ?? null) : null;
   }
 }

@@ -10,8 +10,18 @@ export const TrainerSettingsSchema = z
       .regex(/^\d+(?:\.\d+)?$/)
       .nullable()
       .default(null),
-    nominalDpi: z.number().int().positive().max(100_000).nullable().default(null),
-    fovDegrees: z.number().min(40).max(140).default(DEFAULT_TRAINING_FOV_DEGREES),
+    nominalDpi: z
+      .number()
+      .int()
+      .positive()
+      .max(100_000)
+      .nullable()
+      .default(null),
+    fovDegrees: z
+      .number()
+      .min(40)
+      .max(140)
+      .default(DEFAULT_TRAINING_FOV_DEGREES),
     targetColor: z
       .string()
       .regex(/^#[0-9A-Fa-f]{6}$/)
@@ -33,8 +43,20 @@ export const TrainerSettingsSchema = z
         "custom",
       ])
       .default("native"),
-    customResolutionWidth: z.number().int().min(640).max(7680).nullable().default(null),
-    customResolutionHeight: z.number().int().min(480).max(4320).nullable().default(null),
+    customResolutionWidth: z
+      .number()
+      .int()
+      .min(640)
+      .max(7680)
+      .nullable()
+      .default(null),
+    customResolutionHeight: z
+      .number()
+      .int()
+      .min(480)
+      .max(4320)
+      .nullable()
+      .default(null),
     aspectRatio: z
       .enum(["16:9", "16:10", "4:3", "5:4", "custom"])
       .default("16:9"),

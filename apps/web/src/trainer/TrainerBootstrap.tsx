@@ -2,7 +2,10 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createAimRenderer, createViewportTransform } from "@findmysensi/render-canvas";
+import {
+  createAimRenderer,
+  createViewportTransform,
+} from "@findmysensi/render-canvas";
 import {
   attachInputListener,
   createPointerLockController,
@@ -80,18 +83,25 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
             pauseDeadlineRef.current = null;
           }
           if (newState === "completed") {
-            window.setTimeout(() => router.push(`/app/train/${mode}/results`), 600);
+            window.setTimeout(
+              () => router.push(`/app/train/${mode}/results`),
+              600,
+            );
           }
         },
         onTickProgress: (currentTick, totalTicks) => {
-          setRemainingSeconds(Math.max(0, Math.ceil((totalTicks - currentTick) / 128)));
+          setRemainingSeconds(
+            Math.max(0, Math.ceil((totalTicks - currentTick) / 128)),
+          );
         },
         onScoreUpdate: (newScore, newHits, newMisses) => {
           setScore(newScore);
           setHits(newHits);
           setMisses(newMisses);
           const totalShots = newHits + newMisses;
-          setAccuracy(totalShots > 0 ? Math.round((newHits / totalShots) * 100) : 100);
+          setAccuracy(
+            totalShots > 0 ? Math.round((newHits / totalShots) * 100) : 100,
+          );
         },
         onComplete: () => {},
       },
@@ -148,7 +158,9 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
     setLockError(null);
     const locked = await acquirePointerLock(canvasRef.current);
     if (!locked) {
-      setLockError("Mouse lock was not granted. Click again and allow Pointer Lock in your browser.");
+      setLockError(
+        "Mouse lock was not granted. Click again and allow Pointer Lock in your browser.",
+      );
       return;
     }
 
@@ -181,19 +193,45 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
   };
 
   return (
-    <div ref={containerRef} className="relative flex h-screen w-full select-none items-center justify-center overflow-hidden bg-zinc-950 font-sans touch-none">
-      <canvas ref={canvasRef} id="simulation-canvas" className="block cursor-crosshair focus:outline-none" tabIndex={0} aria-label="FindMySensi Gridshot simulation" />
+    <div
+      ref={containerRef}
+      className="relative flex h-screen w-full select-none items-center justify-center overflow-hidden bg-zinc-950 font-sans touch-none"
+    >
+      <canvas
+        ref={canvasRef}
+        id="simulation-canvas"
+        className="block cursor-crosshair focus:outline-none"
+        tabIndex={0}
+        aria-label="FindMySensi Gridshot simulation"
+      />
 
       {gameState === "playing" ? (
         <div className="pointer-events-none absolute left-0 right-0 top-6 z-10 flex items-start justify-between px-8 font-mono">
-          <HudGroup items={[['TIME', `${remainingSeconds}s`], ['SCORE', score.toLocaleString()]]} />
-          <HudGroup items={[['ACCURACY', `${accuracy}%`], ['HITS / MISS', `${hits} / ${misses}`]]} />
+          <HudGroup
+            items={[
+              ["TIME", `${remainingSeconds}s`],
+              ["SCORE", score.toLocaleString()],
+            ]}
+          />
+          <HudGroup
+            items={[
+              ["ACCURACY", `${accuracy}%`],
+              ["HITS / MISS", `${hits} / ${misses}`],
+            ]}
+          />
         </div>
       ) : null}
 
       {countdown !== null ? (
         <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-          <div className="text-center"><span className="block font-mono text-8xl font-black text-emerald-400">{countdown}</span><p className="mt-4 font-mono text-sm uppercase tracking-widest text-zinc-400">GET READY</p></div>
+          <div className="text-center">
+            <span className="block font-mono text-8xl font-black text-emerald-400">
+              {countdown}
+            </span>
+            <p className="mt-4 font-mono text-sm uppercase tracking-widest text-zinc-400">
+              GET READY
+            </p>
+          </div>
         </div>
       ) : null}
 
@@ -201,13 +239,30 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/80 p-6 backdrop-blur-md">
           <div className="w-full max-w-md space-y-6 rounded-2xl border border-zinc-800 bg-zinc-900 p-8 text-center shadow-2xl">
             <div>
-              <span className="rounded border border-emerald-500/30 bg-emerald-950 px-2.5 py-1 font-mono text-xs font-bold uppercase tracking-wider text-emerald-400">GRIDSHOT</span>
-              <h1 className="mt-3 text-3xl font-black tracking-tight text-white">Gridshot</h1>
-              <p className="mt-2 text-sm leading-relaxed text-zinc-400">Click start to capture the mouse and begin the 60-second run.</p>
+              <span className="rounded border border-emerald-500/30 bg-emerald-950 px-2.5 py-1 font-mono text-xs font-bold uppercase tracking-wider text-emerald-400">
+                GRIDSHOT
+              </span>
+              <h1 className="mt-3 text-3xl font-black tracking-tight text-white">
+                Gridshot
+              </h1>
+              <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+                Click start to capture the mouse and begin the 60-second run.
+              </p>
             </div>
-            <button onClick={startCountdownAndLock} className="w-full rounded-xl bg-emerald-400 py-4 text-lg font-black text-zinc-950 hover:bg-emerald-300">START GRIDSHOT</button>
-            {lockError ? <p role="alert" className="text-sm text-red-300">{lockError}</p> : null}
-            <p className="font-mono text-[11px] text-zinc-500">Esc releases mouse capture and pauses the run.</p>
+            <button
+              onClick={startCountdownAndLock}
+              className="w-full rounded-xl bg-emerald-400 py-4 text-lg font-black text-zinc-950 hover:bg-emerald-300"
+            >
+              START GRIDSHOT
+            </button>
+            {lockError ? (
+              <p role="alert" className="text-sm text-red-300">
+                {lockError}
+              </p>
+            ) : null}
+            <p className="font-mono text-[11px] text-zinc-500">
+              Esc releases mouse capture and pauses the run.
+            </p>
           </div>
         </div>
       ) : null}
@@ -216,19 +271,56 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/80 p-6 backdrop-blur-md">
           <div className="w-full max-w-sm space-y-6 rounded-2xl border border-zinc-800 bg-zinc-900 p-8 text-center shadow-2xl">
             <div>
-              <span className="font-mono text-xs font-bold uppercase tracking-widest text-amber-400">PAUSED</span>
-              <h2 className="mt-1 text-2xl font-bold text-white">Gridshot paused</h2>
-              <p className="mt-2 text-xs text-zinc-500">Pause time does not advance simulation time. This run closes after 10 minutes paused.</p>
-              <p className="mt-2 font-mono text-sm text-zinc-300">{formatPauseTime(pauseSecondsLeft)} remaining</p>
+              <span className="font-mono text-xs font-bold uppercase tracking-widest text-amber-400">
+                PAUSED
+              </span>
+              <h2 className="mt-1 text-2xl font-bold text-white">
+                Gridshot paused
+              </h2>
+              <p className="mt-2 text-xs text-zinc-500">
+                Pause time does not advance simulation time. This run closes
+                after 10 minutes paused.
+              </p>
+              <p className="mt-2 font-mono text-sm text-zinc-300">
+                {formatPauseTime(pauseSecondsLeft)} remaining
+              </p>
             </div>
             <div className="space-y-3">
-              <button onClick={handleResume} className="w-full rounded-lg bg-emerald-400 py-3 font-bold text-zinc-950 hover:bg-emerald-300">Resume</button>
-              <button onClick={openSettings} className="w-full rounded-lg border border-zinc-700 bg-zinc-800 py-3 font-semibold text-zinc-200 hover:bg-zinc-700">Settings</button>
-              <button onClick={startCountdownAndLock} className="w-full rounded-lg border border-zinc-700 bg-zinc-800 py-3 font-semibold text-zinc-200 hover:bg-zinc-700">Restart</button>
-              <button onClick={() => router.push("/app")} className="w-full rounded-lg border border-zinc-800 py-3 font-semibold text-zinc-400 hover:bg-zinc-800">Exit to Home</button>
-              {lockError ? <p role="alert" className="text-sm text-red-300">{lockError}</p> : null}
+              <button
+                onClick={handleResume}
+                className="w-full rounded-lg bg-emerald-400 py-3 font-bold text-zinc-950 hover:bg-emerald-300"
+              >
+                Resume
+              </button>
+              <button
+                onClick={openSettings}
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 py-3 font-semibold text-zinc-200 hover:bg-zinc-700"
+              >
+                Settings
+              </button>
+              <button
+                onClick={startCountdownAndLock}
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 py-3 font-semibold text-zinc-200 hover:bg-zinc-700"
+              >
+                Restart
+              </button>
+              <button
+                onClick={() => router.push("/app")}
+                className="w-full rounded-lg border border-zinc-800 py-3 font-semibold text-zinc-400 hover:bg-zinc-800"
+              >
+                Exit to Home
+              </button>
+              {lockError ? (
+                <p role="alert" className="text-sm text-red-300">
+                  {lockError}
+                </p>
+              ) : null}
             </div>
-            <p className="text-[11px] text-zinc-500">Settings opens separately so this paused run stays in memory. Saved presentation/input settings are applied by the trainer integration as they become supported.</p>
+            <p className="text-[11px] text-zinc-500">
+              Settings opens separately so this paused run stays in memory.
+              Saved presentation/input settings are applied by the trainer
+              integration as they become supported.
+            </p>
           </div>
         </div>
       ) : null}
@@ -242,7 +334,10 @@ function HudGroup({ items }: { items: [string, string][] }) {
       {items.map(([label, value], index) => (
         <React.Fragment key={label}>
           {index > 0 ? <div className="h-8 w-px bg-zinc-800" /> : null}
-          <div><span className="block text-[10px] text-zinc-500">{label}</span><span className="text-xl font-bold text-white">{value}</span></div>
+          <div>
+            <span className="block text-[10px] text-zinc-500">{label}</span>
+            <span className="text-xl font-bold text-white">{value}</span>
+          </div>
         </React.Fragment>
       ))}
     </div>

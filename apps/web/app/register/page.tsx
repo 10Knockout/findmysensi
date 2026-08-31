@@ -19,7 +19,9 @@ export default function RegisterPage() {
     password: "",
     confirmPassword: "",
   });
-  const [verificationEmail, setVerificationEmail] = useState<string | null>(null);
+  const [verificationEmail, setVerificationEmail] = useState<string | null>(
+    null,
+  );
   const [otp, setOtp] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -90,7 +92,9 @@ export default function RegisterPage() {
       <div className="w-full max-w-lg rounded-xl border border-zinc-800 bg-zinc-900 p-8 shadow-2xl">
         <div className="mb-8 text-center">
           <Link href="/" className="mb-4 inline-flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded bg-emerald-400 text-lg font-black text-black">S</span>
+            <span className="flex h-8 w-8 items-center justify-center rounded bg-emerald-400 text-lg font-black text-black">
+              S
+            </span>
             <span className="text-xl font-bold text-white">FindMySensi</span>
           </Link>
           <h1 className="text-2xl font-bold text-white">
@@ -104,14 +108,20 @@ export default function RegisterPage() {
         </div>
 
         {error ? (
-          <div role="alert" className="mb-5 rounded-lg border border-red-800 bg-red-950/50 p-3 text-sm text-red-200">
+          <div
+            role="alert"
+            className="mb-5 rounded-lg border border-red-800 bg-red-950/50 p-3 text-sm text-red-200"
+          >
             {error}
           </div>
         ) : null}
 
         {verificationEmail ? (
           <form onSubmit={handleVerify} className="space-y-4">
-            <label htmlFor="verification-otp" className="block text-sm font-semibold text-zinc-200">
+            <label
+              htmlFor="verification-otp"
+              className="block text-sm font-semibold text-zinc-200"
+            >
               Verification code
             </label>
             <input
@@ -123,14 +133,20 @@ export default function RegisterPage() {
               minLength={6}
               maxLength={6}
               value={otp}
-              onChange={(event) => setOtp(event.target.value.replace(/\D/g, ""))}
+              onChange={(event) =>
+                setOtp(event.target.value.replace(/\D/g, ""))
+              }
               className="w-full rounded-lg border border-zinc-700 bg-black/50 px-4 py-3 text-center font-mono text-2xl tracking-[0.4em] text-white focus:border-emerald-400 focus:outline-none"
             />
-            <button disabled={loading} className="w-full rounded-lg bg-emerald-400 px-4 py-3 font-bold text-zinc-950 disabled:opacity-50">
+            <button
+              disabled={loading}
+              className="w-full rounded-lg bg-emerald-400 px-4 py-3 font-bold text-zinc-950 disabled:opacity-50"
+            >
               {loading ? "Verifying..." : "Verify Email"}
             </button>
             <p className="text-center text-xs text-zinc-500">
-              Verification email is sent by the configured transactional email provider. No fallback code is generated in the UI.
+              Verification email is sent by the configured transactional email
+              provider. No fallback code is generated in the UI.
             </p>
           </form>
         ) : (
@@ -169,7 +185,10 @@ export default function RegisterPage() {
               onChange={(value) => update("confirmPassword", value)}
               autoComplete="new-password"
             />
-            <button disabled={loading} className="w-full rounded-lg bg-emerald-400 px-4 py-3 font-bold text-zinc-950 disabled:opacity-50">
+            <button
+              disabled={loading}
+              className="w-full rounded-lg bg-emerald-400 px-4 py-3 font-bold text-zinc-950 disabled:opacity-50"
+            >
               {loading ? "Creating account..." : "Create Account"}
             </button>
           </form>
@@ -177,7 +196,12 @@ export default function RegisterPage() {
 
         <p className="mt-7 text-center text-sm text-zinc-400">
           Already registered?{" "}
-          <Link href="/login" className="font-semibold text-emerald-400 hover:underline">Sign in</Link>
+          <Link
+            href="/login"
+            className="font-semibold text-emerald-400 hover:underline"
+          >
+            Sign in
+          </Link>
         </p>
       </div>
     </main>
@@ -195,10 +219,24 @@ interface FieldProps {
   help?: string;
 }
 
-function Field({ id, label, value, onChange, type = "text", autoComplete, pattern, help }: FieldProps) {
+function Field({
+  id,
+  label,
+  value,
+  onChange,
+  type = "text",
+  autoComplete,
+  pattern,
+  help,
+}: FieldProps) {
   return (
     <div>
-      <label htmlFor={id} className="mb-2 block text-xs font-semibold uppercase tracking-wider text-zinc-300">{label}</label>
+      <label
+        htmlFor={id}
+        className="mb-2 block text-xs font-semibold uppercase tracking-wider text-zinc-300"
+      >
+        {label}
+      </label>
       <input
         id={id}
         name={id}

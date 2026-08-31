@@ -34,6 +34,7 @@
 ### Task 1: Lock public protocol and settings invariants
 
 **Files:**
+
 - Modify: `packages/protocol/src/schemas/auth.ts`
 - Create: `packages/protocol/src/schemas/profile.ts`
 - Create: `packages/protocol/src/schemas/settings.ts`
@@ -42,6 +43,7 @@
 - Test: `packages/protocol/test/product-shell.spec.ts`
 
 **Interfaces:**
+
 - `RegisterRequestSchema` accepts `{ username, email, password }` only.
 - `TrainerSettingsSchema` contains presentation/input settings only and has no target-size, target-style, target-motion or score fields.
 - `LeaderboardResponseSchema` is keyed by `modeId` and contains real rows only.
@@ -54,6 +56,7 @@
 ### Task 2: Simplify private registration and preserve Better Auth + Resend
 
 **Files:**
+
 - Modify: `findmysensi-secure/packages/auth/src/index.ts`
 - Modify: `findmysensi-secure/apps/api/src/app.ts`
 - Modify: `findmysensi-secure/packages/database/src/schema.ts`
@@ -69,6 +72,7 @@
 ### Task 3: Add persistent profile/settings APIs
 
 **Files:**
+
 - Private database schema/migration.
 - Private API handlers for `/api/v1/me/profile` and `/api/v1/me/settings`.
 - Public API-client methods and protocol schemas.
@@ -82,6 +86,7 @@
 ### Task 4: Add real per-mode leaderboard read model
 
 **Files:**
+
 - Private leaderboard schema/read query and `/api/v1/leaderboards/:modeId` GET.
 - Public protocol/client and landing component.
 
@@ -93,6 +98,7 @@
 ### Task 5: Rebuild static landing around real product flow
 
 **Files:**
+
 - Modify: `apps/web/app/page.tsx`
 - Create focused landing components as needed.
 
@@ -106,6 +112,7 @@
 ### Task 6: Simplify registration UI
 
 **Files:**
+
 - Modify: `apps/web/app/register/page.tsx`
 
 - [ ] Remove first/last-name fields.
@@ -115,6 +122,7 @@
 ### Task 7: Make Trainer Home Gridshot-only
 
 **Files:**
+
 - Modify: `apps/web/app/app/page.tsx`
 
 - [ ] Remove all other mode cards and duplicate converter/crosshair/mouse-swap cards from the authenticated home.
@@ -124,6 +132,7 @@
 ### Task 8: Build persistent Settings UI
 
 **Files:**
+
 - Replace: `apps/web/app/app/settings/page.tsx`
 - Add focused client components/models under `apps/web/src/features/settings/`.
 
@@ -138,6 +147,7 @@
 ### Task 9: Adjust pause shell without changing Gridshot gameplay yet
 
 **Files:**
+
 - Modify: `apps/web/src/trainer/TrainerBootstrap.tsx`
 - Modify controller only if necessary to support pause timeout state cleanly.
 

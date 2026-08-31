@@ -29,7 +29,10 @@ export function LiveLeaderboard() {
 
   if (error) {
     return (
-      <div role="alert" className="rounded-xl border border-red-900 bg-red-950/30 p-5 text-sm text-red-200">
+      <div
+        role="alert"
+        className="rounded-xl border border-red-900 bg-red-950/30 p-5 text-sm text-red-200"
+      >
         Could not load the live Gridshot leaderboard. {error}
       </div>
     );
@@ -63,9 +66,14 @@ export function LiveLeaderboard() {
         </thead>
         <tbody>
           {rows.slice(0, 10).map((row) => (
-            <tr key={row.userId} className="border-b border-zinc-800/70 last:border-0">
+            <tr
+              key={row.userId}
+              className="border-b border-zinc-800/70 last:border-0"
+            >
               <td className="px-4 py-3 font-mono text-zinc-400">#{row.rank}</td>
-              <td className="px-4 py-3 font-semibold text-zinc-100">{row.username}</td>
+              <td className="px-4 py-3 font-semibold text-zinc-100">
+                {row.username}
+              </td>
               <td className="px-4 py-3 text-right font-mono font-bold text-emerald-400">
                 {row.score.toLocaleString()}
               </td>
