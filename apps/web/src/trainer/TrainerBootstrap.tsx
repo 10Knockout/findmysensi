@@ -2,8 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createAimRenderer } from "@findmysensi/render-canvas";
-import { createViewportTransform } from "@findmysensi/render-canvas";
+import { createAimRenderer, createViewportTransform } from "@findmysensi/render-canvas";
 import {
   attachInputListener,
   createPointerLockController,
@@ -18,14 +17,16 @@ interface TrainerBootstrapProps {
   mode: string;
 }
 
+const MAX_PAUSE_MS = 10 * 60 * 1000;
+
 export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const controllerRef = useRef<PracticeRunController | null>(null);
+  const pauseDeadlineRef = useRef<number | null>(null);
 
   const [gameState, setGameState] = useState<PracticeRunState>("ready");
-  const [_locked, setLocked] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(60);
   const [score, setScore] = useState(0);
   const [hits, setHits] = useState(0);
@@ -33,6 +34,7 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
   const [accuracy, setAccuracy] = useState(100);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [lockError, setLockError] = useState<string | null>(null);
+  const [pauseSecondsLeft, setPauseSecondsLeft] = useState(MAX_PAUSE_MS / 1000);
 
   useEffect(() => {
     if (!canvasRef.current || !containerRef.current) return;
@@ -40,74 +42,64 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
     const canvas = canvasRef.current;
     const container = containerRef.current;
     let animationFrameId: number | null = null;
+    const renderer = createAimRenderer();
 
-    // Handle resizing & DPR dynamically
     const handleResize = () => {
       const width = container.clientWidth || 1280;
       const height = container.clientHeight || 720;
-      const dpr =
-        typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+      const dpr = window.devicePixelRatio || 1;
 
       canvas.width = Math.floor(width * dpr);
       canvas.height = Math.floor(height * dpr);
       canvas.style.width = `${width}px`;
       canvas.style.height = `${height}px`;
 
-      const viewport = createViewportTransform({
-        canvasWidth: canvas.width,
-        canvasHeight: canvas.height,
-        dpr,
-        scaleMode: "fit",
-      });
-
-      renderer.initialize(canvas, viewport);
+      renderer.initialize(
+        canvas,
+        createViewportTransform({
+          canvasWidth: canvas.width,
+          canvasHeight: canvas.height,
+          dpr,
+          scaleMode: "fit",
+        }),
+      );
     };
 
-    const renderer = createAimRenderer();
     handleResize();
-
-    const resizeObserver = new ResizeObserver(() => {
-      handleResize();
-    });
+    const resizeObserver = new ResizeObserver(handleResize);
     resizeObserver.observe(container);
 
     const controller = new PracticeRunController(
       {
         onStateChange: (newState) => {
           setGameState(newState);
+          if (newState === "paused") {
+            pauseDeadlineRef.current = Date.now() + MAX_PAUSE_MS;
+            setPauseSecondsLeft(MAX_PAUSE_MS / 1000);
+          } else if (newState === "playing") {
+            pauseDeadlineRef.current = null;
+          }
           if (newState === "completed") {
-            setTimeout(() => {
-              router.push(`/app/train/${mode}/results`);
-            }, 600);
+            window.setTimeout(() => router.push(`/app/train/${mode}/results`), 600);
           }
         },
         onTickProgress: (currentTick, totalTicks) => {
-          const remaining = Math.max(
-            0,
-            Math.ceil((totalTicks - currentTick) / 128),
-          );
-          setRemainingSeconds(remaining);
+          setRemainingSeconds(Math.max(0, Math.ceil((totalTicks - currentTick) / 128)));
         },
         onScoreUpdate: (newScore, newHits, newMisses) => {
           setScore(newScore);
           setHits(newHits);
           setMisses(newMisses);
           const totalShots = newHits + newMisses;
-          setAccuracy(
-            totalShots > 0 ? Math.round((newHits / totalShots) * 100) : 100,
-          );
+          setAccuracy(totalShots > 0 ? Math.round((newHits / totalShots) * 100) : 100);
         },
-        onComplete: () => {
-          // Handled via onStateChange
-        },
+        onComplete: () => {},
       },
       renderer,
-      60 * 128, // 60 seconds at 128 Hz
+      60 * 128,
     );
 
     controllerRef.current = controller;
-
-    // Attach input listener to window / canvas
     const preferredInputSource = detectInputCapabilities().preferredSource;
     const detachInput = attachInputListener(
       window,
@@ -115,56 +107,60 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
       preferredInputSource,
     );
 
-    // Animation frame loop
     const loop = (now: number) => {
       controller.onAnimationFrame(now);
       animationFrameId = requestAnimationFrame(loop);
     };
     animationFrameId = requestAnimationFrame(loop);
 
-    // Pointer Lock change listener
     const onPointerLockChange = () => {
-      const isCurrentlyLocked = Boolean(document.pointerLockElement);
-      setLocked(isCurrentlyLocked);
-      if (!isCurrentlyLocked && controller.getState() === "playing") {
+      if (!document.pointerLockElement && controller.getState() === "playing") {
         controller.pause();
       }
     };
-
     document.addEventListener("pointerlockchange", onPointerLockChange);
 
     return () => {
       resizeObserver.disconnect();
       detachInput();
       document.removeEventListener("pointerlockchange", onPointerLockChange);
-      if (animationFrameId !== null) {
-        cancelAnimationFrame(animationFrameId);
-      }
+      if (animationFrameId !== null) cancelAnimationFrame(animationFrameId);
       controller.abort();
     };
   }, [mode, router]);
+
+  useEffect(() => {
+    if (gameState !== "paused") return;
+    const update = () => {
+      const deadline = pauseDeadlineRef.current;
+      if (deadline === null) return;
+      const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      setPauseSecondsLeft(remaining);
+      if (remaining === 0) router.replace("/app");
+    };
+    update();
+    const interval = window.setInterval(update, 1000);
+    return () => window.clearInterval(interval);
+  }, [gameState, router]);
 
   const startCountdownAndLock = async () => {
     if (!canvasRef.current) return;
     setLockError(null);
     const locked = await acquirePointerLock(canvasRef.current);
     if (!locked) {
-      setLockError(
-        "Mouse lock was not granted. Click Start again and allow pointer lock in your browser.",
-      );
+      setLockError("Mouse lock was not granted. Click again and allow Pointer Lock in your browser.");
       return;
     }
 
     setCountdown(3);
-    const interval = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev === null || prev <= 1) {
-          clearInterval(interval);
-          setCountdown(null);
+    const interval = window.setInterval(() => {
+      setCountdown((previous) => {
+        if (previous === null || previous <= 1) {
+          window.clearInterval(interval);
           controllerRef.current?.start();
           return null;
         }
-        return prev - 1;
+        return previous - 1;
       });
     }, 1000);
   };
@@ -174,175 +170,89 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
     setLockError(null);
     const locked = await acquirePointerLock(canvasRef.current);
     if (!locked) {
-      setLockError("Mouse lock was not granted. The session remains paused.");
+      setLockError("Mouse lock was not granted. The run remains paused.");
       return;
     }
     controllerRef.current?.resume();
   };
 
+  const openSettings = () => {
+    window.open("/app/settings", "fms-settings", "noopener,noreferrer");
+  };
+
   return (
-    <div
-      ref={containerRef}
-      className="relative w-full h-screen bg-zinc-950 overflow-hidden select-none touch-none flex items-center justify-center font-sans"
-    >
-      {/* Simulation Canvas */}
-      <canvas
-        ref={canvasRef}
-        id="simulation-canvas"
-        className="block cursor-crosshair focus:outline-none"
-        tabIndex={0}
-        aria-label="FindMySensi Aim Simulation Canvas"
-      />
+    <div ref={containerRef} className="relative flex h-screen w-full select-none items-center justify-center overflow-hidden bg-zinc-950 font-sans touch-none">
+      <canvas ref={canvasRef} id="simulation-canvas" className="block cursor-crosshair focus:outline-none" tabIndex={0} aria-label="FindMySensi Gridshot simulation" />
 
-      {/* In-Game HUD */}
-      {gameState === "playing" && (
-        <div className="absolute top-6 left-0 right-0 px-8 flex justify-between items-start pointer-events-none z-10 font-mono">
-          <div className="bg-black/60 backdrop-blur-md border border-zinc-800/80 px-4 py-2.5 rounded-lg flex items-center gap-6">
-            <div>
-              <span className="text-[10px] text-zinc-500 block">TIME</span>
-              <span className="text-xl font-bold text-white tracking-tight">
-                {remainingSeconds}s
-              </span>
-            </div>
-            <div className="h-8 w-px bg-zinc-800" />
-            <div>
-              <span className="text-[10px] text-zinc-500 block">SCORE</span>
-              <span className="text-xl font-bold text-emerald-400">
-                {score.toLocaleString()}
-              </span>
-            </div>
-          </div>
+      {gameState === "playing" ? (
+        <div className="pointer-events-none absolute left-0 right-0 top-6 z-10 flex items-start justify-between px-8 font-mono">
+          <HudGroup items={[['TIME', `${remainingSeconds}s`], ['SCORE', score.toLocaleString()]]} />
+          <HudGroup items={[['ACCURACY', `${accuracy}%`], ['HITS / MISS', `${hits} / ${misses}`]]} />
+        </div>
+      ) : null}
 
-          <div className="bg-black/60 backdrop-blur-md border border-zinc-800/80 px-4 py-2.5 rounded-lg flex items-center gap-6">
+      {countdown !== null ? (
+        <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="text-center"><span className="block font-mono text-8xl font-black text-emerald-400">{countdown}</span><p className="mt-4 font-mono text-sm uppercase tracking-widest text-zinc-400">GET READY</p></div>
+        </div>
+      ) : null}
+
+      {gameState === "ready" && countdown === null ? (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/80 p-6 backdrop-blur-md">
+          <div className="w-full max-w-md space-y-6 rounded-2xl border border-zinc-800 bg-zinc-900 p-8 text-center shadow-2xl">
             <div>
-              <span className="text-[10px] text-zinc-500 block">ACCURACY</span>
-              <span className="text-xl font-bold text-cyan-400">
-                {accuracy}%
-              </span>
+              <span className="rounded border border-emerald-500/30 bg-emerald-950 px-2.5 py-1 font-mono text-xs font-bold uppercase tracking-wider text-emerald-400">GRIDSHOT</span>
+              <h1 className="mt-3 text-3xl font-black tracking-tight text-white">Gridshot</h1>
+              <p className="mt-2 text-sm leading-relaxed text-zinc-400">Click start to capture the mouse and begin the 60-second run.</p>
             </div>
-            <div className="h-8 w-px bg-zinc-800" />
-            <div>
-              <span className="text-[10px] text-zinc-500 block">
-                HITS / MISS
-              </span>
-              <span className="text-xl font-bold text-zinc-200">
-                {hits} <span className="text-zinc-600">/</span>{" "}
-                <span className="text-red-400">{misses}</span>
-              </span>
-            </div>
+            <button onClick={startCountdownAndLock} className="w-full rounded-xl bg-emerald-400 py-4 text-lg font-black text-zinc-950 hover:bg-emerald-300">START GRIDSHOT</button>
+            {lockError ? <p role="alert" className="text-sm text-red-300">{lockError}</p> : null}
+            <p className="font-mono text-[11px] text-zinc-500">Esc releases mouse capture and pauses the run.</p>
           </div>
         </div>
-      )}
+      ) : null}
 
-      {/* Countdown Overlay */}
-      {countdown !== null && (
-        <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-20 pointer-events-none">
-          <div className="text-center">
-            <span className="text-8xl font-black text-emerald-400 font-mono animate-ping block">
-              {countdown}
-            </span>
-            <p className="text-sm font-mono text-zinc-400 mt-4 tracking-widest uppercase">
-              GET READY • LOCKING SENSOR
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Ready / Start Overlay */}
-      {gameState === "ready" && countdown === null && (
-        <div className="absolute inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-20 p-6">
-          <div className="max-w-md w-full bg-zinc-900 border border-zinc-800 rounded-2xl p-8 text-center shadow-2xl space-y-6">
+      {gameState === "paused" && countdown === null ? (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/80 p-6 backdrop-blur-md">
+          <div className="w-full max-w-sm space-y-6 rounded-2xl border border-zinc-800 bg-zinc-900 p-8 text-center shadow-2xl">
             <div>
-              <span className="px-2.5 py-1 rounded bg-emerald-950 text-emerald-400 border border-emerald-500/30 text-xs font-mono font-bold tracking-wider uppercase">
-                SCENARIO: {mode.toUpperCase()}
-              </span>
-              <h1 className="text-3xl font-black text-white tracking-tight mt-3">
-                Grid Practice
-              </h1>
-              <p className="text-sm text-zinc-400 mt-2 leading-relaxed">
-                Click start to capture the pointer and begin the 60-second
-                deterministic aiming scenario.
-              </p>
+              <span className="font-mono text-xs font-bold uppercase tracking-widest text-amber-400">PAUSED</span>
+              <h2 className="mt-1 text-2xl font-bold text-white">Gridshot paused</h2>
+              <p className="mt-2 text-xs text-zinc-500">Pause time does not advance simulation time. This run closes after 10 minutes paused.</p>
+              <p className="mt-2 font-mono text-sm text-zinc-300">{formatPauseTime(pauseSecondsLeft)} remaining</p>
             </div>
-
-            <div className="bg-black/50 border border-zinc-800/80 rounded-xl p-4 text-xs text-zinc-400 font-mono space-y-2 text-left">
-              <div className="flex justify-between">
-                <span>Targets:</span>
-                <span className="text-zinc-200">3 Non-overlapping</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Mode:</span>
-                <span className="text-zinc-200">Local practice</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Controls:</span>
-                <span className="text-zinc-200">
-                  Left Click (Shoot) • Esc (Pause)
-                </span>
-              </div>
-            </div>
-
-            <button
-              onClick={startCountdownAndLock}
-              className="w-full py-4 bg-emerald-400 hover:bg-emerald-300 text-zinc-950 font-black text-lg rounded-xl transition-all shadow-lg shadow-emerald-950/50 hover:scale-[1.02] active:scale-[0.98]"
-            >
-              START PRACTICE (CLICK TO LOCK)
-            </button>
-
-            {lockError ? (
-              <p role="alert" className="text-sm text-red-300">
-                {lockError}
-              </p>
-            ) : null}
-
-            <p className="text-[11px] text-zinc-500 font-mono">
-              Press{" "}
-              <kbd className="px-1.5 py-0.5 bg-zinc-800 rounded text-zinc-300">
-                Esc
-              </kbd>{" "}
-              at any time during practice to release mouse capture.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Paused Overlay */}
-      {gameState === "paused" && (
-        <div className="absolute inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-20 p-6">
-          <div className="max-w-sm w-full bg-zinc-900 border border-zinc-800 rounded-2xl p-8 text-center shadow-2xl space-y-6">
-            <div>
-              <span className="text-xs font-mono uppercase tracking-widest text-amber-400 font-bold">
-                SIMULATION PAUSED
-              </span>
-              <h2 className="text-2xl font-bold text-white mt-1">
-                Pointer Lock Released
-              </h2>
-            </div>
-
             <div className="space-y-3">
-              <button
-                onClick={handleResume}
-                className="w-full py-3 bg-emerald-400 hover:bg-emerald-300 text-zinc-950 font-bold rounded-lg transition-colors"
-              >
-                Resume Session
-              </button>
-              {lockError ? (
-                <p role="alert" className="text-sm text-red-300">
-                  {lockError}
-                </p>
-              ) : null}
-              <button
-                onClick={() => router.push("/app")}
-                className="w-full py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-semibold rounded-lg transition-colors"
-              >
-                Exit to Hub
-              </button>
+              <button onClick={handleResume} className="w-full rounded-lg bg-emerald-400 py-3 font-bold text-zinc-950 hover:bg-emerald-300">Resume</button>
+              <button onClick={openSettings} className="w-full rounded-lg border border-zinc-700 bg-zinc-800 py-3 font-semibold text-zinc-200 hover:bg-zinc-700">Settings</button>
+              <button onClick={startCountdownAndLock} className="w-full rounded-lg border border-zinc-700 bg-zinc-800 py-3 font-semibold text-zinc-200 hover:bg-zinc-700">Restart</button>
+              <button onClick={() => router.push("/app")} className="w-full rounded-lg border border-zinc-800 py-3 font-semibold text-zinc-400 hover:bg-zinc-800">Exit to Home</button>
+              {lockError ? <p role="alert" className="text-sm text-red-300">{lockError}</p> : null}
             </div>
+            <p className="text-[11px] text-zinc-500">Settings opens separately so this paused run stays in memory. Saved presentation/input settings are applied by the trainer integration as they become supported.</p>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
+}
+
+function HudGroup({ items }: { items: [string, string][] }) {
+  return (
+    <div className="flex items-center gap-6 rounded-lg border border-zinc-800/80 bg-black/60 px-4 py-2.5">
+      {items.map(([label, value], index) => (
+        <React.Fragment key={label}>
+          {index > 0 ? <div className="h-8 w-px bg-zinc-800" /> : null}
+          <div><span className="block text-[10px] text-zinc-500">{label}</span><span className="text-xl font-bold text-white">{value}</span></div>
+        </React.Fragment>
+      ))}
+    </div>
+  );
+}
+
+function formatPauseTime(seconds: number): string {
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds % 60;
+  return `${minutes}:${rest.toString().padStart(2, "0")}`;
 }
 
 async function acquirePointerLock(canvas: HTMLCanvasElement): Promise<boolean> {
