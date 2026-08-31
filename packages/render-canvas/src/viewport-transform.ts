@@ -2,6 +2,7 @@ import {
   AngleUnits,
   createAngleUnits,
   degreesToAngleUnits,
+  wrapYaw,
 } from "@findmysensi/aim-core";
 
 export type ScaleMode = "fit" | "stretch" | "black-bars";
@@ -115,8 +116,8 @@ export class CanonicalViewportTransform implements ViewportTransform {
     const yaw = Math.round((x - this.centerX) / this.pxPerAngleUnitX);
     const pitch = Math.round((this.centerY - y) / this.pxPerAngleUnitY);
     return {
-      yaw: createAngleUnits(yaw),
-      pitch: createAngleUnits(pitch),
+      yaw: wrapYaw(yaw),
+      pitch: wrapYaw(pitch),
     };
   }
 }
