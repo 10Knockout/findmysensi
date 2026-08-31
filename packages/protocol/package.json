@@ -2,6 +2,9 @@
   "name": "@findmysensi/protocol",
   "version": "0.1.0",
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -14,5 +17,8 @@
     "build": "tsc -b",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "4.5.4"
   }
 }

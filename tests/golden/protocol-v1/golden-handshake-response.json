@@ -1,0 +1,9 @@
+{
+  "ticketId": "00000000-0000-0000-0000-000000000000",
+  "expiresAt": "2026-08-31T00:00:00Z",
+  "claims": {
+    "userId": "user-1",
+    "scenarioId": "tracking-1"
+  },
+  "signature": "mock-signature"
+}

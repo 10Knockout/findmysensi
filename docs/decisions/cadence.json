@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Cadence Decision Record",
+  "status": "provisional",
+  "decisions": {
+    "simulationHz": 128,
+    "maxTickComputeUs": 3000,
+    "inputBounds": {
+      "maxDeltaPerTick": 1000,
+      "maxInputsPerTick": 10
+    }
+  },
+  "evidence": [
+    {
+      "environment": "node-v22-synthetic",
+      "cadenceHz": 128,
+      "tickIntervalMs": 7.812,
+      "p99TickComputeUs": 15.2,
+      "maxTickComputeUs": 45.1
+    }
+  ],
+  "approvals": []
+}

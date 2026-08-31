@@ -20,15 +20,19 @@
     "test:watch": "vitest",
     "build": "npm run build --workspaces --if-present",
     "clean": "npm run clean --workspaces --if-present",
-    "check:boundaries": "node tools/architecture/check-boundaries.mjs"
+    "check:boundaries": "node tools/architecture/check-boundaries.mjs",
+    "decisions:check": "tsx tools/decisions/validator.ts",
+    "protocol:freeze:check": "tsx tools/protocol/freeze-validator.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.20.0",
     "eslint": "^9.20.0",
     "fast-check": "^3.23.2",
     "prettier": "^3.5.1",
+    "tsx": "4.23.13",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.24.0",
-    "vitest": "^3.0.5"
+    "vitest": "^3.0.5",
+    "zod": "4.5.4"
   }
 }
