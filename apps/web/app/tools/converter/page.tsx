@@ -8,7 +8,10 @@ import {
   type SupportedGameId,
 } from "@findmysensi/sensitivity";
 
-const PUBLIC_GAME_IDS = ["valorant", "cs2"] as const satisfies readonly SupportedGameId[];
+const PUBLIC_GAME_IDS = [
+  "valorant",
+  "cs2",
+] as const satisfies readonly SupportedGameId[];
 
 export default function SensitivityConverterPage() {
   const [sourceGame, setSourceGame] = useState<SupportedGameId>("valorant");
@@ -45,15 +48,22 @@ export default function SensitivityConverterPage() {
     }
   }, [sourceDpi, sourceGame, sourceSensitivity, targetDpi, targetGame]);
 
-  const sourceEdpi = result ? Number(sourceSensitivity) * Number(sourceDpi) : null;
-  const targetEdpi = result ? result.targetSensitivity * Number(targetDpi) : null;
+  const sourceEdpi = result
+    ? Number(sourceSensitivity) * Number(sourceDpi)
+    : null;
+  const targetEdpi = result
+    ? result.targetSensitivity * Number(targetDpi)
+    : null;
 
   return (
     <main className="min-h-screen bg-zinc-950 px-6 py-10 text-zinc-100">
       <div className="mx-auto max-w-4xl">
         <header className="mb-10 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <Link href="/" className="text-sm font-semibold text-emerald-400 hover:underline">
+            <Link
+              href="/"
+              className="text-sm font-semibold text-emerald-400 hover:underline"
+            >
               ← FindMySensi
             </Link>
             <h1 className="mt-2 text-3xl font-black text-white sm:text-4xl">
@@ -66,7 +76,10 @@ export default function SensitivityConverterPage() {
         </header>
 
         <div className="mb-6 rounded-xl border border-amber-900/60 bg-amber-950/20 p-4 text-sm leading-6 text-amber-100">
-          This first public release exposes Valorant and CS2 hipfire definitions only. Results use the configured yaw definitions and the DPI you enter. cm/360 is therefore a nominal physical calculation; ADS, scopes and monitor-distance matching are not included yet.
+          This first public release exposes Valorant and CS2 hipfire definitions
+          only. Results use the configured yaw definitions and the DPI you
+          enter. cm/360 is therefore a nominal physical calculation; ADS, scopes
+          and monitor-distance matching are not included yet.
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
@@ -74,7 +87,9 @@ export default function SensitivityConverterPage() {
             <Field label="Game">
               <select
                 value={sourceGame}
-                onChange={(event) => setSourceGame(event.target.value as SupportedGameId)}
+                onChange={(event) =>
+                  setSourceGame(event.target.value as SupportedGameId)
+                }
                 className={inputClass}
               >
                 {PUBLIC_GAME_IDS.map((id) => (
@@ -111,7 +126,9 @@ export default function SensitivityConverterPage() {
             <Field label="Game">
               <select
                 value={targetGame}
-                onChange={(event) => setTargetGame(event.target.value as SupportedGameId)}
+                onChange={(event) =>
+                  setTargetGame(event.target.value as SupportedGameId)
+                }
                 className={inputClass}
               >
                 {PUBLIC_GAME_IDS.map((id) => (
@@ -151,17 +168,32 @@ export default function SensitivityConverterPage() {
             </div>
 
             <div className="mt-7 grid gap-3 sm:grid-cols-3">
-              <Metric label="cm / 360" value={`${result.formattedCmPer360} cm`} />
-              <Metric label={`${GAME_ADAPTERS[sourceGame].name} eDPI`} value={sourceEdpi?.toFixed(2) ?? "—"} />
-              <Metric label={`${GAME_ADAPTERS[targetGame].name} eDPI`} value={targetEdpi?.toFixed(2) ?? "—"} />
+              <Metric
+                label="cm / 360"
+                value={`${result.formattedCmPer360} cm`}
+              />
+              <Metric
+                label={`${GAME_ADAPTERS[sourceGame].name} eDPI`}
+                value={sourceEdpi?.toFixed(2) ?? "—"}
+              />
+              <Metric
+                label={`${GAME_ADAPTERS[targetGame].name} eDPI`}
+                value={targetEdpi?.toFixed(2) ?? "—"}
+              />
             </div>
 
             <p className="mt-5 text-xs leading-5 text-zinc-500">
-              eDPI is sensitivity × DPI and is useful inside a single game. Do not compare eDPI numbers across games as though they share the same sensitivity scale. FOV is a separate camera setting and is not silently used to rewrite this hipfire cm/360 conversion.
+              eDPI is sensitivity × DPI and is useful inside a single game. Do
+              not compare eDPI numbers across games as though they share the
+              same sensitivity scale. FOV is a separate camera setting and is
+              not silently used to rewrite this hipfire cm/360 conversion.
             </p>
           </section>
         ) : (
-          <div role="alert" className="mt-6 rounded-xl border border-red-900 bg-red-950/30 p-5 text-sm text-red-200">
+          <div
+            role="alert"
+            className="mt-6 rounded-xl border border-red-900 bg-red-950/30 p-5 text-sm text-red-200"
+          >
             Enter positive sensitivity and DPI values to calculate a conversion.
           </div>
         )}
@@ -170,7 +202,13 @@ export default function SensitivityConverterPage() {
   );
 }
 
-function ConverterPanel({ title, children }: { title: string; children: React.ReactNode }) {
+function ConverterPanel({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <section className="space-y-4 rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
       <h2 className="text-lg font-black text-white">{title}</h2>
@@ -179,7 +217,13 @@ function ConverterPanel({ title, children }: { title: string; children: React.Re
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <label className="block">
       <span className="mb-2 block text-xs font-semibold uppercase tracking-wider text-zinc-400">
