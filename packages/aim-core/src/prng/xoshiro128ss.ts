@@ -76,8 +76,8 @@ export function createPrngV1(
     }
 
     const rangeSize = maxExclusive - minInclusive;
-    // Rejection sampling bound to avoid modulo bias
-    const threshold = (0x100000000 - (0x100000000 % rangeSize)) % 0x100000000;
+    // Rejection sampling bound to avoid modulo bias (threshold in [1, 0x100000000])
+    const threshold = 0x100000000 - (0x100000000 % rangeSize);
 
     while (true) {
       const raw = nextU32();
