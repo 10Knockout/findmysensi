@@ -3,7 +3,7 @@ import { z } from "zod";
 export const UsernameSchema = z
   .string()
   .trim()
-  .regex(/^[A-Za-z0-9_\-]+$/)
+  .regex(/^[A-Za-z0-9_-]+$/)
   .min(3)
   .max(24);
 
