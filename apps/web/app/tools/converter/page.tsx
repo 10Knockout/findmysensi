@@ -1,204 +1,203 @@
 "use client";
 
-import React, { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   GAME_ADAPTERS,
-  SupportedGameId,
   convertSensitivity,
+  type SupportedGameId,
 } from "@findmysensi/sensitivity";
 
-export default function SensitivityConverterPage() {
-  const [sourceGame, setSourceGame] = useState<SupportedGameId>("cs2");
-  const [targetGame, setTargetGame] = useState<SupportedGameId>("valorant");
-  const [sourceSens, setSourceSens] = useState<number>(2.0);
-  const [sourceDpi, setSourceDpi] = useState<number>(800);
-  const [targetDpi, setTargetDpi] = useState<number>(800);
+const PUBLIC_GAME_IDS = ["valorant", "cs2"] as const satisfies readonly SupportedGameId[];
 
-  const result = convertSensitivity({
-    sourceGame,
-    targetGame,
-    sourceSensitivity: Math.max(0.0001, sourceSens),
-    sourceDpi: Math.max(1, sourceDpi),
-    targetDpi: Math.max(1, targetDpi),
-  });
+export default function SensitivityConverterPage() {
+  const [sourceGame, setSourceGame] = useState<SupportedGameId>("valorant");
+  const [targetGame, setTargetGame] = useState<SupportedGameId>("cs2");
+  const [sourceSensitivity, setSourceSensitivity] = useState("0.125");
+  const [sourceDpi, setSourceDpi] = useState("800");
+  const [targetDpi, setTargetDpi] = useState("800");
+
+  const result = useMemo(() => {
+    const sensitivity = Number(sourceSensitivity);
+    const sourceDpiNumber = Number(sourceDpi);
+    const targetDpiNumber = Number(targetDpi);
+    if (
+      !Number.isFinite(sensitivity) ||
+      sensitivity <= 0 ||
+      !Number.isFinite(sourceDpiNumber) ||
+      sourceDpiNumber <= 0 ||
+      !Number.isFinite(targetDpiNumber) ||
+      targetDpiNumber <= 0
+    ) {
+      return null;
+    }
+
+    try {
+      return convertSensitivity({
+        sourceGame,
+        targetGame,
+        sourceSensitivity: sensitivity,
+        sourceDpi: sourceDpiNumber,
+        targetDpi: targetDpiNumber,
+      });
+    } catch {
+      return null;
+    }
+  }, [sourceDpi, sourceGame, sourceSensitivity, targetDpi, targetGame]);
+
+  const sourceEdpi = result ? Number(sourceSensitivity) * Number(sourceDpi) : null;
+  const targetEdpi = result ? result.targetSensitivity * Number(targetDpi) : null;
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-zinc-100 p-6 md:p-12">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <Link
-            href="/app"
-            className="text-sm font-semibold text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-1"
-          >
-            ← Back to Hub
-          </Link>
-          <div className="text-xs font-mono text-zinc-500 uppercase tracking-widest">
-            FINDMYSENSI TOOLKIT
+    <main className="min-h-screen bg-zinc-950 px-6 py-10 text-zinc-100">
+      <div className="mx-auto max-w-4xl">
+        <header className="mb-10 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <Link href="/" className="text-sm font-semibold text-emerald-400 hover:underline">
+              ← FindMySensi
+            </Link>
+            <h1 className="mt-2 text-3xl font-black text-white sm:text-4xl">
+              Sensitivity Converter
+            </h1>
           </div>
+          <div className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 font-mono text-xs text-zinc-400">
+            HIPFIRE • NOMINAL DPI
+          </div>
+        </header>
+
+        <div className="mb-6 rounded-xl border border-amber-900/60 bg-amber-950/20 p-4 text-sm leading-6 text-amber-100">
+          This first public release exposes Valorant and CS2 hipfire definitions only. Results use the configured yaw definitions and the DPI you enter. cm/360 is therefore a nominal physical calculation; ADS, scopes and monitor-distance matching are not included yet.
         </div>
 
-        <div className="mb-10 text-center">
-          <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white mb-2">
-            Universal Sensitivity Converter
-          </h1>
-          <p className="text-zinc-400 text-sm md:text-base">
-            Exact physical 360° distance matching across competitive FPS engines
-            with DPI preservation.
-          </p>
+        <div className="grid gap-6 md:grid-cols-2">
+          <ConverterPanel title="From">
+            <Field label="Game">
+              <select
+                value={sourceGame}
+                onChange={(event) => setSourceGame(event.target.value as SupportedGameId)}
+                className={inputClass}
+              >
+                {PUBLIC_GAME_IDS.map((id) => (
+                  <option key={id} value={id}>
+                    {GAME_ADAPTERS[id].name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Sensitivity">
+              <input
+                value={sourceSensitivity}
+                onChange={(event) => setSourceSensitivity(event.target.value)}
+                type="number"
+                min="0.0001"
+                step="0.001"
+                inputMode="decimal"
+                className={inputClass}
+              />
+            </Field>
+            <Field label="DPI / CPI">
+              <input
+                value={sourceDpi}
+                onChange={(event) => setSourceDpi(event.target.value)}
+                type="number"
+                min="1"
+                step="1"
+                className={inputClass}
+              />
+            </Field>
+          </ConverterPanel>
+
+          <ConverterPanel title="To">
+            <Field label="Game">
+              <select
+                value={targetGame}
+                onChange={(event) => setTargetGame(event.target.value as SupportedGameId)}
+                className={inputClass}
+              >
+                {PUBLIC_GAME_IDS.map((id) => (
+                  <option key={id} value={id}>
+                    {GAME_ADAPTERS[id].name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Target DPI / CPI">
+              <input
+                value={targetDpi}
+                onChange={(event) => setTargetDpi(event.target.value)}
+                type="number"
+                min="1"
+                step="1"
+                className={inputClass}
+              />
+            </Field>
+            <button
+              type="button"
+              onClick={() => setTargetDpi(sourceDpi)}
+              className="rounded-lg border border-zinc-700 px-4 py-2 text-left text-sm font-semibold text-zinc-300 hover:bg-zinc-800"
+            >
+              Use same DPI as source
+            </button>
+          </ConverterPanel>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-          {/* Source Game */}
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-xl">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-emerald-400 mb-4">
-              1. Source Configuration
-            </h2>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
-                  Source Game
-                </label>
-                <select
-                  value={sourceGame}
-                  onChange={(e) =>
-                    setSourceGame(e.target.value as SupportedGameId)
-                  }
-                  className="w-full px-4 py-3 bg-black/60 border border-zinc-800 rounded-lg text-white font-medium focus:outline-none focus:border-emerald-400"
-                >
-                  {Object.values(GAME_ADAPTERS).map((game) => (
-                    <option key={game.id} value={game.id}>
-                      {game.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
-                  In-Game Sensitivity
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  value={sourceSens}
-                  onChange={(e) =>
-                    setSourceSens(parseFloat(e.target.value) || 0)
-                  }
-                  className="w-full px-4 py-3 bg-black/60 border border-zinc-800 rounded-lg text-white font-mono focus:outline-none focus:border-emerald-400"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
-                  Mouse DPI / CPI
-                </label>
-                <input
-                  type="number"
-                  step="50"
-                  min="100"
-                  value={sourceDpi}
-                  onChange={(e) =>
-                    setSourceDpi(parseInt(e.target.value, 10) || 800)
-                  }
-                  className="w-full px-4 py-3 bg-black/60 border border-zinc-800 rounded-lg text-white font-mono focus:outline-none focus:border-emerald-400"
-                />
-              </div>
+        {result ? (
+          <section className="mt-6 rounded-2xl border border-emerald-500/30 bg-zinc-900 p-6 sm:p-8">
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-zinc-500">
+              Converted {GAME_ADAPTERS[targetGame].name} sensitivity
+            </p>
+            <div className="mt-2 font-mono text-5xl font-black text-emerald-400 sm:text-6xl">
+              {result.formattedTargetSensitivity}
             </div>
+
+            <div className="mt-7 grid gap-3 sm:grid-cols-3">
+              <Metric label="cm / 360" value={`${result.formattedCmPer360} cm`} />
+              <Metric label={`${GAME_ADAPTERS[sourceGame].name} eDPI`} value={sourceEdpi?.toFixed(2) ?? "—"} />
+              <Metric label={`${GAME_ADAPTERS[targetGame].name} eDPI`} value={targetEdpi?.toFixed(2) ?? "—"} />
+            </div>
+
+            <p className="mt-5 text-xs leading-5 text-zinc-500">
+              eDPI is sensitivity × DPI and is useful inside a single game. Do not compare eDPI numbers across games as though they share the same sensitivity scale. FOV is a separate camera setting and is not silently used to rewrite this hipfire cm/360 conversion.
+            </p>
+          </section>
+        ) : (
+          <div role="alert" className="mt-6 rounded-xl border border-red-900 bg-red-950/30 p-5 text-sm text-red-200">
+            Enter positive sensitivity and DPI values to calculate a conversion.
           </div>
-
-          {/* Target Game */}
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-xl">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-cyan-400 mb-4">
-              2. Target Configuration
-            </h2>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
-                  Target Game
-                </label>
-                <select
-                  value={targetGame}
-                  onChange={(e) =>
-                    setTargetGame(e.target.value as SupportedGameId)
-                  }
-                  className="w-full px-4 py-3 bg-black/60 border border-zinc-800 rounded-lg text-white font-medium focus:outline-none focus:border-cyan-400"
-                >
-                  {Object.values(GAME_ADAPTERS).map((game) => (
-                    <option key={game.id} value={game.id}>
-                      {game.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
-                  Target Mouse DPI / CPI
-                </label>
-                <input
-                  type="number"
-                  step="50"
-                  min="100"
-                  value={targetDpi}
-                  onChange={(e) =>
-                    setTargetDpi(parseInt(e.target.value, 10) || 800)
-                  }
-                  className="w-full px-4 py-3 bg-black/60 border border-zinc-800 rounded-lg text-white font-mono focus:outline-none focus:border-cyan-400"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Results Card */}
-        <div className="bg-gradient-to-r from-emerald-950/40 via-zinc-900 to-cyan-950/40 border border-zinc-700/60 rounded-xl p-8 text-center shadow-2xl">
-          <div className="text-xs uppercase font-mono tracking-widest text-zinc-400 mb-2">
-            Converted Sensitivity for {GAME_ADAPTERS[targetGame].name}
-          </div>
-          <div className="text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400 font-mono my-4">
-            {result.formattedTargetSensitivity}
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-zinc-800 text-left">
-            <div className="bg-black/40 p-4 rounded-lg">
-              <div className="text-xs font-mono text-zinc-500 uppercase">
-                Physical 360°
-              </div>
-              <div className="text-lg font-bold text-white font-mono mt-1">
-                {result.formattedCmPer360} cm
-              </div>
-            </div>
-            <div className="bg-black/40 p-4 rounded-lg">
-              <div className="text-xs font-mono text-zinc-500 uppercase">
-                Inches / 360°
-              </div>
-              <div className="text-lg font-bold text-white font-mono mt-1">
-                {result.inPer360.toFixed(2)} in
-              </div>
-            </div>
-            <div className="bg-black/40 p-4 rounded-lg">
-              <div className="text-xs font-mono text-zinc-500 uppercase">
-                Yaw per Count
-              </div>
-              <div className="text-lg font-bold text-white font-mono mt-1">
-                {result.yawDegreesPerCount.toFixed(5)}°
-              </div>
-            </div>
-            <div className="bg-black/40 p-4 rounded-lg">
-              <div className="text-xs font-mono text-zinc-500 uppercase">
-                Engine Adapter
-              </div>
-              <div className="text-lg font-bold text-white font-mono mt-1">
-                {targetGame.toUpperCase()}
-              </div>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
     </main>
   );
 }
+
+function ConverterPanel({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="space-y-4 rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
+      <h2 className="text-lg font-black text-white">{title}</h2>
+      {children}
+    </section>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-xs font-semibold uppercase tracking-wider text-zinc-400">
+        {label}
+      </span>
+      {children}
+    </label>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-zinc-800 bg-black/30 p-4">
+      <div className="text-xs text-zinc-500">{label}</div>
+      <div className="mt-1 font-mono text-lg font-bold text-white">{value}</div>
+    </div>
+  );
+}
+
+const inputClass =
+  "w-full rounded-lg border border-zinc-700 bg-black/50 px-4 py-3 text-white outline-none focus:border-emerald-400";
