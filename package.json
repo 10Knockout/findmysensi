@@ -18,7 +18,7 @@
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run",
     "test:watch": "vitest",
-    "build": "npm run build --workspaces --if-present",
+    "build": "tsc -b && npm run build --workspace @findmysensi/web",
     "clean": "npm run clean --workspaces --if-present",
     "check:boundaries": "node tools/architecture/check-boundaries.mjs",
     "decisions:check": "tsx tools/decisions/validator.ts",
