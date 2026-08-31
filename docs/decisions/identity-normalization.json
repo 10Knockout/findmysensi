@@ -1,0 +1,29 @@
+{
+  "status": "proposed",
+  "topic": "Username and Email Normalization Rules",
+  "rules": {
+    "email": {
+      "case": "lowercase",
+      "trim": true,
+      "subaddressing": "remove_plus_tags (e.g. user+tag@gmail.com -> user@gmail.com)",
+      "gmail_specific": "remove_dots (e.g. u.s.e.r@gmail.com -> user@gmail.com)"
+    },
+    "username": {
+      "case": "preserve_display_case",
+      "normalized_column": "lowercase",
+      "allowed_characters": "^[a-zA-Z0-9_]+$",
+      "length": {
+        "min": 3,
+        "max": 20
+      },
+      "trim": true,
+      "reserved_words": ["admin", "root", "system", "findmysensi", "support"]
+    }
+  },
+  "rationale": "Enforce strict normalization at the database level to prevent impersonation, duplicate accounts via subaddressing/dot-tricks, and ensure deterministic lookups.",
+  "approval": {
+    "required": true,
+    "signed_by": null,
+    "timestamp": null
+  }
+}
