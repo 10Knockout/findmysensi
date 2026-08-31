@@ -1,7 +1,12 @@
 /** @type {import('next').NextConfig} */
+if (process.env.NODE_ENV === "production" && process.env.USE_MOCK_API) {
+  throw new Error("USE_MOCK_API must never be enabled in production.");
+}
+
 const nextConfig = {
   async rewrites() {
-    // In development, proxy relative /api/* requests to backend or mock
+    // Development can point to the private API or the explicit local test mock.
+    // Production is structurally forbidden from enabling the mock above.
     const apiTarget =
       process.env.API_URL ||
       (process.env.USE_MOCK_API
