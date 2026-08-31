@@ -1,12 +1,21 @@
 import type {
-  LoginRequest,
-  RegisterRequest,
   ForgotPasswordRequest,
-  ResetPasswordRequest,
-  SessionResponse,
   HandshakeRequest,
   HandshakeResponse,
+  LeaderboardResponse,
+  LoginRequest,
+  ProfileSettings,
+  RegisterRequest,
+  ResetPasswordRequest,
+  SessionResponse,
+  TrainerSettings,
 } from "@findmysensi/protocol";
+
+export interface ApiResult<T> {
+  ok: boolean;
+  data?: T;
+  error?: string;
+}
 
 export class BrowserApiClient {
   private baseUrl: string;
@@ -15,180 +24,156 @@ export class BrowserApiClient {
     this.baseUrl = baseUrl;
   }
 
-  async getSession(): Promise<SessionResponse | null> {
+  private async requestJson<T>(
+    path: string,
+    init?: RequestInit,
+  ): Promise<ApiResult<T>> {
     try {
-      const res = await fetch(`${this.baseUrl}/api/auth/get-session`, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch(`${this.baseUrl}${path}`, {
+        ...init,
+        headers: {
+          "Content-Type": "application/json",
+          ...(init?.headers ?? {}),
+        },
         credentials: "include",
       });
       if (!res.ok) {
-        return null;
+        const body = (await res.json().catch(() => null)) as {
+          message?: string;
+          error?: string;
+        } | null;
+        return {
+          ok: false,
+          error: body?.message ?? body?.error ?? `Request failed (${res.status}).`,
+        };
       }
-      return (await res.json()) as SessionResponse;
-    } catch {
-      return null;
-    }
-  }
-
-  async login(data: LoginRequest): Promise<{ ok: boolean; error?: string }> {
-    try {
-      const res = await fetch(`${this.baseUrl}/api/auth/sign-in/email`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) {
-        const err = await res
-          .json()
-          .catch(() => ({ message: "Invalid credentials" }));
-        return { ok: false, error: err.message || "Invalid credentials" };
-      }
-      return { ok: true };
+      return { ok: true, data: (await res.json()) as T };
     } catch {
       return { ok: false, error: "Network error. Please try again." };
     }
+  }
+
+  async getSession(): Promise<SessionResponse | null> {
+    const result = await this.requestJson<SessionResponse>("/api/auth/get-session", {
+      method: "GET",
+    });
+    return result.ok ? (result.data ?? null) : null;
+  }
+
+  async login(data: LoginRequest): Promise<{ ok: boolean; error?: string }> {
+    const result = await this.requestJson<unknown>("/api/auth/sign-in/email", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return { ok: result.ok, ...(result.error ? { error: result.error } : {}) };
   }
 
   async register(
     data: RegisterRequest,
   ): Promise<{ ok: boolean; error?: string }> {
-    try {
-      const res = await fetch(`${this.baseUrl}/api/v1/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) {
-        const err = await res
-          .json()
-          .catch(() => ({ message: "Registration failed" }));
-        return { ok: false, error: err.message || "Registration failed" };
-      }
-      return { ok: true };
-    } catch {
-      return { ok: false, error: "Network error. Please try again." };
-    }
+    const result = await this.requestJson<unknown>("/api/v1/register", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return { ok: result.ok, ...(result.error ? { error: result.error } : {}) };
   }
 
   async getDevelopmentVerificationOtp(email: string): Promise<string | null> {
-    try {
-      const res = await fetch(`${this.baseUrl}/api/v1/dev/verification-otp`, {
+    const result = await this.requestJson<{ otp?: unknown }>(
+      "/api/v1/dev/verification-otp",
+      {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ email }),
-      });
-      if (!res.ok) return null;
-      const data = (await res.json()) as { otp?: unknown };
-      return typeof data.otp === "string" ? data.otp : null;
-    } catch {
-      return null;
-    }
+      },
+    );
+    return result.ok && typeof result.data?.otp === "string" ? result.data.otp : null;
   }
 
   async verifyEmailOtp(
     email: string,
     otp: string,
   ): Promise<{ ok: boolean; error?: string }> {
-    try {
-      const res = await fetch(
-        `${this.baseUrl}/api/auth/email-otp/verify-email`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ email, otp }),
-        },
-      );
-      if (!res.ok) {
-        const data = (await res.json().catch(() => null)) as {
-          message?: string;
-        } | null;
-        return {
-          ok: false,
-          error: data?.message ?? "Invalid or expired code.",
-        };
-      }
-      return { ok: true };
-    } catch {
-      return { ok: false, error: "Network error. Please try again." };
-    }
+    const result = await this.requestJson<unknown>("/api/auth/email-otp/verify-email", {
+      method: "POST",
+      body: JSON.stringify({ email, otp }),
+    });
+    return { ok: result.ok, ...(result.error ? { error: result.error } : {}) };
   }
 
   async logout(): Promise<void> {
-    try {
-      await fetch(`${this.baseUrl}/api/auth/sign-out`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      });
-    } catch {
-      // Ignore logout failure
-    }
+    await this.requestJson<unknown>("/api/auth/sign-out", { method: "POST" });
   }
 
   async forgotPassword(
     data: ForgotPasswordRequest,
   ): Promise<{ ok: boolean; error?: string }> {
-    try {
-      const res = await fetch(
-        `${this.baseUrl}/api/auth/request-password-reset`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            ...data,
-            redirectTo:
-              typeof window === "undefined"
-                ? "/reset-password"
-                : `${window.location.origin}/reset-password`,
-          }),
-        },
-      );
-      if (!res.ok) {
-        return { ok: false, error: "Failed to send reset email." };
-      }
-      return { ok: true };
-    } catch {
-      return { ok: false, error: "Network error. Please try again." };
-    }
+    const result = await this.requestJson<unknown>("/api/auth/request-password-reset", {
+      method: "POST",
+      body: JSON.stringify({
+        ...data,
+        redirectTo:
+          typeof window === "undefined"
+            ? "/reset-password"
+            : `${window.location.origin}/reset-password`,
+      }),
+    });
+    return { ok: result.ok, ...(result.error ? { error: result.error } : {}) };
   }
 
   async resetPassword(
     data: ResetPasswordRequest,
   ): Promise<{ ok: boolean; error?: string }> {
-    try {
-      const res = await fetch(`${this.baseUrl}/api/auth/reset-password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) {
-        return { ok: false, error: "Failed to reset password." };
-      }
-      return { ok: true };
-    } catch {
-      return { ok: false, error: "Network error. Please try again." };
-    }
+    const result = await this.requestJson<unknown>("/api/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return { ok: result.ok, ...(result.error ? { error: result.error } : {}) };
+  }
+
+  async getLeaderboard(modeId: string): Promise<ApiResult<LeaderboardResponse>> {
+    return this.requestJson<LeaderboardResponse>(
+      `/api/v1/leaderboards/${encodeURIComponent(modeId)}`,
+      { method: "GET", cache: "no-store" },
+    );
+  }
+
+  async getTrainerSettings(): Promise<ApiResult<TrainerSettings>> {
+    return this.requestJson<TrainerSettings>("/api/v1/me/settings", {
+      method: "GET",
+      cache: "no-store",
+    });
+  }
+
+  async saveTrainerSettings(
+    settings: TrainerSettings,
+  ): Promise<ApiResult<TrainerSettings>> {
+    return this.requestJson<TrainerSettings>("/api/v1/me/settings", {
+      method: "PUT",
+      body: JSON.stringify(settings),
+    });
+  }
+
+  async getProfileSettings(): Promise<ApiResult<ProfileSettings>> {
+    return this.requestJson<ProfileSettings>("/api/v1/me/profile", {
+      method: "GET",
+      cache: "no-store",
+    });
+  }
+
+  async saveProfileSettings(
+    profile: ProfileSettings,
+  ): Promise<ApiResult<ProfileSettings>> {
+    return this.requestJson<ProfileSettings>("/api/v1/me/profile", {
+      method: "PUT",
+      body: JSON.stringify(profile),
+    });
   }
 
   async handshakeA(data: HandshakeRequest): Promise<HandshakeResponse | null> {
-    try {
-      const res = await fetch(`${this.baseUrl}/api/v1/handshake-a`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) return null;
-      return (await res.json()) as HandshakeResponse;
-    } catch {
-      return null;
-    }
+    const result = await this.requestJson<HandshakeResponse>("/api/v1/handshake-a", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return result.ok ? (result.data ?? null) : null;
   }
 }
