@@ -14,6 +14,8 @@
     { "path": "./packages/analytics" },
     { "path": "./packages/scoring" },
     { "path": "./packages/api-client" },
+    { "path": "./packages/sensitivity" },
+    { "path": "./packages/crosshair" },
     { "path": "./apps/mock-api" }
   ]
 }
