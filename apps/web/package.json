@@ -13,6 +13,7 @@
   "dependencies": {
     "@findmysensi/aim-core": "0.1.0",
     "@findmysensi/analytics": "0.1.0",
+    "@findmysensi/api-client": "0.1.0",
     "@findmysensi/input-browser": "0.1.0",
     "@findmysensi/protocol": "0.1.0",
     "@findmysensi/render-canvas": "0.1.0",
