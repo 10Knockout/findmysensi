@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { SettingsClient } from "../../../src/features/settings/SettingsClient.js";
 
 export default function SettingsPage() {
-  redirect("/app");
+  return <SettingsClient />;
 }
