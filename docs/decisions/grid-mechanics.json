@@ -1,0 +1,11 @@
+{
+  "id": "grid-mechanics-v1",
+  "title": "Grid V1 Mechanics and Dimensions",
+  "status": "proposed",
+  "context": "To establish a definitive ranked candidate for flicking (Grid), we must strictly define the bounds, target sizes, overlap rules, and limits.",
+  "decision": "Grid will run for 60 seconds. Targets have a radius of 50000 (fixed units). Maximum 3 targets on screen. Overlap is permitted but exact position must be deterministically seeded via PRNG.",
+  "consequences": [
+    "Clients must support a 60-second fixed timeline.",
+    "Score coefficients will assume 50000 radius targets."
+  ]
+}
