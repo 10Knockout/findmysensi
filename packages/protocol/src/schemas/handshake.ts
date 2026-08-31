@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const HandshakeRequestSchema = z.object({
-  scenario: z.enum(["tracking-1", "flicking-1"]),
+  scenario: z.enum(["grid", "tracking-1", "flicking-1"]),
   resolution: z.object({
     width: z.number().int().positive(),
     height: z.number().int().positive(),

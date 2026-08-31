@@ -12,6 +12,7 @@
     { "path": "./packages/render-canvas" },
     { "path": "./packages/scenarios" },
     { "path": "./packages/analytics" },
-    { "path": "./packages/scoring" }
+    { "path": "./packages/scoring" },
+    { "path": "./apps/mock-api" }
   ]
 }

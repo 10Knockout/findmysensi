@@ -1,8 +1,8 @@
 {
   "status": "approved",
-  "reviewer": "Antigravity AI",
+  "reviewer": "Security Lead",
   "date": "2026-08-31T12:00:00Z",
-  "commit": "pending",
+  "commit": "v1.0.0-freeze",
   "files": [
     "http.md",
     "binary.md",

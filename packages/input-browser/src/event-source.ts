@@ -71,7 +71,10 @@ export function attachInputListener(
 
   const onPointerDown = (ev: Event) => {
     const mEv = ev as MouseEvent;
-    ringBuffer.pushShot(mEv.button, mEv.timeStamp);
+    // Only primary left button (button index 0) triggers shots (FMS-024)
+    if (mEv.button === 0) {
+      ringBuffer.pushShot(0, mEv.timeStamp);
+    }
   };
 
   const onBlur = (ev: Event) => {

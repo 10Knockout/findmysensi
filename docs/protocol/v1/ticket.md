@@ -3,6 +3,7 @@
 This specifies the schema for secure session tickets issued by Handshake A.
 
 ## Ticket Schema (JSON)
+
 ```json
 {
   "ticketId": "string (UUID v4)",

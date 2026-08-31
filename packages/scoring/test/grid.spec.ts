@@ -7,7 +7,7 @@ describe("Grid Evaluator", () => {
     evaluator.processHit();
     evaluator.processHit();
     evaluator.processMiss();
-    
+
     // 2 hits, 1 miss -> 2000 points * 2/3 accuracy = 1333
     const score = evaluator.computeFinalScore();
     expect(score).toBe(1333);

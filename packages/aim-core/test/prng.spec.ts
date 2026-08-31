@@ -7,7 +7,7 @@ describe("Xoshiro128** PRNG", () => {
     // seed is all 0s, it should fallback to constants
     const rng = createPrngV1(seed);
     const vals = [rng.nextU32(), rng.nextU32(), rng.nextU32()];
-    
+
     // Create new rng with same seed
     const rng2 = createPrngV1(new Uint8Array(16));
     expect(rng2.nextU32()).toBe(vals[0]);
@@ -29,10 +29,10 @@ describe("Xoshiro128** PRNG", () => {
     const rng1 = createPrngV1([1, 2, 3, 4]);
     rng1.nextU32();
     rng1.nextU32();
-    
+
     const snap = rng1.snapshot();
     const rng2 = createPrngV1(snap);
-    
+
     expect(rng1.nextU32()).toBe(rng2.nextU32());
   });
 });

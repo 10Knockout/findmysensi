@@ -1,6 +1,6 @@
 import React from "react";
 import { notFound } from "next/navigation";
-import { TrainerBootstrap } from "../../../src/trainer/TrainerBootstrap.js";
+import { TrainerBootstrap } from "../../../../src/trainer/TrainerBootstrap.js";
 
 interface TrainPageProps {
   params: Promise<{
@@ -8,7 +8,7 @@ interface TrainPageProps {
   }>;
 }
 
-export default async function TrainPage({ params }: TrainPageProps) {
+export default async function AppTrainPage({ params }: TrainPageProps) {
   const { mode } = await params;
 
   if (mode !== "grid") {

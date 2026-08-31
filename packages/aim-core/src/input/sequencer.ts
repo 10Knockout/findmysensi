@@ -1,4 +1,10 @@
-import { CanonicalInputEvent, createMoveEvent, createShotEvent, createInvalidateEvent, InvalidationReason } from "./types.js";
+import {
+  CanonicalInputEvent,
+  createMoveEvent,
+  createShotEvent,
+  createInvalidateEvent,
+  InvalidationReason,
+} from "./types.js";
 import { createShotTracker, ShotStateTracker } from "./shot.js";
 import { toFixed } from "../fixed/range.js";
 
@@ -29,16 +35,18 @@ export class InputSequencer {
       this.pushInvalidate(this.currentTick, "buffer_overflow");
       return;
     }
-    
+
     // Discard 0,0 moves
     if (dxRaw === 0 && dyRaw === 0) return;
 
-    this.buffer.push(createMoveEvent(
-      this.currentTick,
-      this.currentOrder++,
-      toFixed(dxRaw),
-      toFixed(dyRaw)
-    ));
+    this.buffer.push(
+      createMoveEvent(
+        this.currentTick,
+        this.currentOrder++,
+        toFixed(dxRaw),
+        toFixed(dyRaw),
+      ),
+    );
   }
 
   public pushButton(isDown: boolean): void {

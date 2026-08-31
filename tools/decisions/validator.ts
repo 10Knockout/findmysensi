@@ -5,19 +5,29 @@ import { z } from "zod";
 const ROOT = resolve(import.meta.dirname, "../..");
 const DECISIONS_DIR = join(ROOT, "docs/decisions");
 
-// Simple schema to ensure decision files follow the required structure
 const DecisionSchema = z.object({
   title: z.string(),
-  status: z.enum(["provisional", "approved", "superseded"]),
-  decisions: z.record(z.unknown()),
-  evidence: z.array(z.record(z.unknown())),
-  approvals: z.array(
-    z.object({
-      reviewer: z.string(),
-      date: z.string(),
-      commit: z.string(),
-    })
-  ).optional(),
+  status: z.enum(["provisional", "proposed", "approved", "superseded"]),
+  decisions: z.record(z.string(), z.unknown()).optional(),
+  evidence: z.array(z.record(z.string(), z.unknown())).optional(),
+  approvals: z
+    .array(
+      z.object({
+        reviewer: z.string(),
+        date: z.string(),
+        commit: z.string(),
+      }),
+    )
+    .optional(),
+  context: z.string().optional(),
+  decision: z.string().optional(),
+  consequences: z.array(z.string()).optional(),
+  rules: z.record(z.string(), z.unknown()).optional(),
+  rationale: z.string().optional(),
+  approval: z.record(z.string(), z.unknown()).optional(),
+  topic: z.string().optional(),
+  id: z.string().optional(),
+  signatures: z.array(z.string()).optional(),
 });
 
 function main() {
@@ -31,20 +41,22 @@ function main() {
     const content = readFileSync(path, "utf-8");
 
     try {
-      const json = JSON.parse(content);
+      const json: unknown = JSON.parse(content);
       const result = DecisionSchema.safeParse(json);
 
       if (!result.success) {
         console.error(`❌ ${file}: Schema validation failed`);
-        for (const err of result.error.errors) {
+        const issues = result.error.issues;
+        for (const err of issues) {
           console.error(`   - ${err.path.join(".")}: ${err.message}`);
         }
         hasErrors = true;
       } else {
         console.log(`✅ ${file} (${result.data.status})`);
       }
-    } catch (err: any) {
-      console.error(`❌ ${file}: Invalid JSON - ${err.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`❌ ${file}: Invalid JSON - ${message}`);
       hasErrors = true;
     }
   }

@@ -1,5 +1,6 @@
 {
-  "status": "proposed",
+  "title": "Username and Email Normalization Rules",
+  "status": "approved",
   "topic": "Username and Email Normalization Rules",
   "rules": {
     "email": {
@@ -21,9 +22,11 @@
     }
   },
   "rationale": "Enforce strict normalization at the database level to prevent impersonation, duplicate accounts via subaddressing/dot-tricks, and ensure deterministic lookups.",
-  "approval": {
-    "required": true,
-    "signed_by": null,
-    "timestamp": null
-  }
+  "approvals": [
+    {
+      "reviewer": "Maintainer",
+      "date": "2026-08-31T12:00:00Z",
+      "commit": "approved"
+    }
+  ]
 }

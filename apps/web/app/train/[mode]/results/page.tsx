@@ -1,5 +1,5 @@
 import React from "react";
-import { PracticeResults } from "../../../../src/features/results/PracticeResults.jsx";
+import { PracticeResults } from "../../../../src/features/results/PracticeResults.js";
 
 interface ResultsPageProps {
   params: Promise<{ mode: string }>;

@@ -3,6 +3,7 @@
 Client settings payload submitted during Handshake A.
 
 ## Settings Schema (JSON)
+
 ```json
 {
   "scenario": "string (enum of valid scenarios)",

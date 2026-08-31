@@ -6,7 +6,12 @@ export const GRID_MAX_TARGETS = 3;
 export const GRID_DURATION_TICKS = 128 * 60; // 60 seconds at 128Hz
 
 export class GridMechanics {
-  public targets: Array<{ id: number; xAngleUnits: number; yAngleUnits: number; radiusAngleUnits: number }> = [];
+  public targets: Array<{
+    id: number;
+    xAngleUnits: number;
+    yAngleUnits: number;
+    radiusAngleUnits: number;
+  }> = [];
   private rng: PrngV1;
   private spawnCount = 0;
 
@@ -21,19 +26,19 @@ export class GridMechanics {
     // Generate within a sensible field of view, then wrap to valid AngleUnits
     const x = this.rng.nextRange(-2000000, 2000000);
     const y = this.rng.nextRange(-1000000, 1000000);
-    
+
     this.targets.push({
       id: this.spawnCount++,
       xAngleUnits: wrapYaw(x),
       yAngleUnits: wrapYaw(y),
-      radiusAngleUnits: GRID_TARGET_RADIUS
+      radiusAngleUnits: GRID_TARGET_RADIUS,
     });
   }
 
   public processShot(yaw: number, pitch: number): boolean {
     const hit = findHitTarget(wrapYaw(yaw), wrapYaw(pitch), this.targets);
     if (hit) {
-      this.targets = this.targets.filter(t => t.id !== hit.id);
+      this.targets = this.targets.filter((t) => t.id !== hit.id);
       this.spawnTarget();
       return true;
     }
@@ -44,5 +49,5 @@ export class GridMechanics {
 export const gridDescriptor = {
   id: "grid-v1-candidate",
   rankedEligible: false,
-  durationTicks: GRID_DURATION_TICKS
+  durationTicks: GRID_DURATION_TICKS,
 };

@@ -58,6 +58,8 @@ export class PracticeRunController {
   private totalDurationTicks: number;
   private playerYaw: number = 0;
   private playerPitch: number = 0;
+  private totalOverflowEvents: number = 0;
+  private highWaterMark: number = 0;
 
   constructor(
     callbacks: PracticeRunCallbacks,
@@ -92,6 +94,8 @@ export class PracticeRunController {
     this.shotTracker.reset();
     this.playerYaw = 0;
     this.playerPitch = 0;
+    this.totalOverflowEvents = 0;
+    this.highWaterMark = 0;
 
     const initialTargets = this.engine.initialize(this.prng);
     for (const t of initialTargets) {
@@ -152,8 +156,14 @@ export class PracticeRunController {
       return;
     }
 
-    // 1. Drain input
-    this.ringBuffer.drainInto(this.batchTarget);
+    // 1. Drain input with sticky overflow capture
+    const stats = this.ringBuffer.drainInto(this.batchTarget);
+    if (stats.overflowEvents > 0) {
+      this.totalOverflowEvents += stats.overflowEvents;
+    }
+    if (stats.highWaterMark > this.highWaterMark) {
+      this.highWaterMark = stats.highWaterMark;
+    }
 
     const clock = {
       timeToTick: (timeMs: number) =>

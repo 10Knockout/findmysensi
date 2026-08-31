@@ -36,7 +36,7 @@ export function clampPitch(
 
 /**
  * Deterministic fixed-point arithmetic using JS Numbers restricted to Safe Integers.
- * 
+ *
  * We use a multiplier of 10000 (4 decimal places), which fits well within MAX_SAFE_INTEGER
  * for standard 2D physics coordinates (1920x1080 -> 19200000x10800000).
  * MAX_SAFE_INTEGER is ~9x10^15, which allows squaring coordinate distances up to
@@ -67,9 +67,13 @@ export function toFloat(val: number): number {
  * Calculates squared distance between two fixed-point 2D points.
  * Returns BigInt to avoid safe integer overflow during squaring of large coordinates.
  */
-export function distSqBigInt(x1: number, y1: number, x2: number, y2: number): bigint {
+export function distSqBigInt(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+): bigint {
   const dx = BigInt(checkFixed(x2)) - BigInt(checkFixed(x1));
   const dy = BigInt(checkFixed(y2)) - BigInt(checkFixed(y1));
   return dx * dx + dy * dy;
 }
-

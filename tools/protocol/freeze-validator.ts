@@ -33,10 +33,14 @@ function main() {
   if (existsSync(approvalPath)) {
     const approval = JSON.parse(readFileSync(approvalPath, "utf-8"));
     if (approval.status !== "approved") {
-      console.error(`❌ Protocol is not approved. Status is: ${approval.status}`);
+      console.error(
+        `❌ Protocol is not approved. Status is: ${approval.status}`,
+      );
       hasErrors = true;
     } else {
-      console.log(`✅ Protocol approved by ${approval.reviewer} on ${approval.date}`);
+      console.log(
+        `✅ Protocol approved by ${approval.reviewer} on ${approval.date}`,
+      );
     }
   }
 

@@ -1,6 +1,5 @@
 import {
   AngleUnits,
-  createAngleUnits,
   degreesToAngleUnits,
   wrapYaw,
 } from "@findmysensi/aim-core";

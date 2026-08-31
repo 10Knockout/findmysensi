@@ -14,8 +14,14 @@ export function testAngularHit(
   pitch: AngleUnits,
   target: TargetCollisionGeometry,
 ): boolean {
-  const distSq = distSqBigInt(yaw as number, pitch as number, target.xAngleUnits, target.yAngleUnits);
-  const radiusSq = BigInt(target.radiusAngleUnits) * BigInt(target.radiusAngleUnits);
+  const distSq = distSqBigInt(
+    yaw as number,
+    pitch as number,
+    target.xAngleUnits,
+    target.yAngleUnits,
+  );
+  const radiusSq =
+    BigInt(target.radiusAngleUnits) * BigInt(target.radiusAngleUnits);
   return distSq <= radiusSq;
 }
 

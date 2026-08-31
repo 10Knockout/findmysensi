@@ -15,14 +15,14 @@ describe("Grid Mechanics", () => {
     const seed = new Uint8Array(16);
     const grid = new GridMechanics(seed);
     const t0 = grid.targets[0]!;
-    
+
     // Shoot exactly at target center
     const hit = grid.processShot(t0.xAngleUnits, t0.yAngleUnits);
     expect(hit).toBe(true);
     expect(grid.targets.length).toBe(GRID_MAX_TARGETS);
-    
+
     // Original target should be gone
-    const found = grid.targets.find(t => t.id === t0.id);
+    const found = grid.targets.find((t) => t.id === t0.id);
     expect(found).toBeUndefined();
   });
 });

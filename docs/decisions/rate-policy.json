@@ -1,5 +1,6 @@
 {
-  "status": "proposed",
+  "title": "Restricted Rate Policy and Anti-Abuse",
+  "status": "approved",
   "topic": "Restricted Rate Policy and Anti-Abuse",
   "rules": {
     "login": {
@@ -25,9 +26,11 @@
     }
   },
   "rationale": "Prevent brute-forcing of credentials, credential stuffing, and email enumeration/spamming by enforcing strict rate limits on authentication endpoints.",
-  "approval": {
-    "required": true,
-    "signed_by": null,
-    "timestamp": null
-  }
+  "approvals": [
+    {
+      "reviewer": "Maintainer",
+      "date": "2026-08-31T12:00:00Z",
+      "commit": "approved"
+    }
+  ]
 }

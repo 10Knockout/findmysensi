@@ -11,13 +11,13 @@ describe("Input Sequencer", () => {
 
     const events = sequencer.drain();
     expect(events.length).toBe(3);
-    
+
     expect(events[0]?.kind).toBe("move");
     expect(events[0]?.order).toBe(0);
-    
+
     expect(events[1]?.kind).toBe("shot");
     expect(events[1]?.order).toBe(1);
-    
+
     expect(events[2]?.kind).toBe("move");
     expect(events[2]?.order).toBe(2);
   });

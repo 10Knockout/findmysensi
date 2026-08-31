@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { HandshakeRequestSchema, HandshakeResponseSchema } from "../src/index.js";
+import {
+  HandshakeRequestSchema,
+  HandshakeResponseSchema,
+} from "../src/index.js";
 import { readFileSync } from "node:fs";
 import { resolve, join } from "node:path";
 
@@ -9,7 +12,7 @@ const GOLDEN_DIR = join(ROOT, "tests/golden/protocol-v1");
 describe("Handshake Schemas vs Goldens", () => {
   it("should validate golden handshake request", () => {
     const json = JSON.parse(
-      readFileSync(join(GOLDEN_DIR, "golden-handshake-request.json"), "utf-8")
+      readFileSync(join(GOLDEN_DIR, "golden-handshake-request.json"), "utf-8"),
     );
     const result = HandshakeRequestSchema.safeParse(json);
     expect(result.success).toBe(true);
@@ -17,7 +20,7 @@ describe("Handshake Schemas vs Goldens", () => {
 
   it("should validate golden handshake response", () => {
     const json = JSON.parse(
-      readFileSync(join(GOLDEN_DIR, "golden-handshake-response.json"), "utf-8")
+      readFileSync(join(GOLDEN_DIR, "golden-handshake-response.json"), "utf-8"),
     );
     const result = HandshakeResponseSchema.safeParse(json);
     expect(result.success).toBe(true);

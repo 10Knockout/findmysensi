@@ -21,16 +21,24 @@ class InternalSnapshotSlot {
   public readonly targetX: Int32Array;
   public readonly targetY: Int32Array;
   public readonly targetRadius: Int32Array;
+  public readonly preallocatedView: {
+    tick: Tick;
+    playerYaw: AngleUnits;
+    playerPitch: AngleUnits;
+    targetCount: number;
+    readonly targetId: Int32Array;
+    readonly targetX: Int32Array;
+    readonly targetY: Int32Array;
+    readonly targetRadius: Int32Array;
+  };
 
   constructor(capacity: number) {
     this.targetId = new Int32Array(capacity);
     this.targetX = new Int32Array(capacity);
     this.targetY = new Int32Array(capacity);
     this.targetRadius = new Int32Array(capacity);
-  }
 
-  public toView(): RenderSnapshotView {
-    return {
+    this.preallocatedView = {
       tick: this.tick,
       playerYaw: this.playerYaw,
       playerPitch: this.playerPitch,
@@ -40,6 +48,14 @@ class InternalSnapshotSlot {
       targetY: this.targetY,
       targetRadius: this.targetRadius,
     };
+  }
+
+  public toView(): RenderSnapshotView {
+    this.preallocatedView.tick = this.tick;
+    this.preallocatedView.playerYaw = this.playerYaw;
+    this.preallocatedView.playerPitch = this.playerPitch;
+    this.preallocatedView.targetCount = this.targetCount;
+    return this.preallocatedView;
   }
 }
 
