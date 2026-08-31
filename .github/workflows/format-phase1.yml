@@ -4,13 +4,14 @@ on:
   push:
     branches:
       - feat/phase1-product-shell
+    paths:
+      - .github/format-trigger.txt
 
 permissions:
   contents: write
 
 jobs:
   format:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout branch
@@ -19,7 +20,7 @@ jobs:
           ref: feat/phase1-product-shell
 
       - name: Setup Node.js
-        uses: actions/setup-node@1d0ff469b7ecb3cb9d8673fde0c81c44821de2a
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version-file: .nvmrc
           cache: npm
