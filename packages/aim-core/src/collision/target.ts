@@ -7,15 +7,15 @@ export interface TargetCollisionGeometry {
   readonly radiusAngleUnits: number;
 }
 
+import { distSqBigInt } from "../fixed/range.js";
+
 export function testAngularHit(
   yaw: AngleUnits,
   pitch: AngleUnits,
   target: TargetCollisionGeometry,
 ): boolean {
-  const dx = (yaw as number) - target.xAngleUnits;
-  const dy = (pitch as number) - target.yAngleUnits;
-  const distSq = dx * dx + dy * dy;
-  const radiusSq = target.radiusAngleUnits * target.radiusAngleUnits;
+  const distSq = distSqBigInt(yaw as number, pitch as number, target.xAngleUnits, target.yAngleUnits);
+  const radiusSq = BigInt(target.radiusAngleUnits) * BigInt(target.radiusAngleUnits);
   return distSq <= radiusSq;
 }
 
