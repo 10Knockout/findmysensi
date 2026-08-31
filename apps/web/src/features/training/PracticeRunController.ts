@@ -158,8 +158,8 @@ export class PracticeRunController {
 
     // 1. Drain input with sticky overflow capture
     const stats = this.ringBuffer.drainInto(this.batchTarget);
-    if (stats.overflowEvents > 0) {
-      this.totalOverflowEvents += stats.overflowEvents;
+    if (stats.overflowCount > 0) {
+      this.totalOverflowEvents += stats.overflowCount;
     }
     if (stats.highWaterMark > this.highWaterMark) {
       this.highWaterMark = stats.highWaterMark;

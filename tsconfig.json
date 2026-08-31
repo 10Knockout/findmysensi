@@ -13,6 +13,7 @@
     { "path": "./packages/scenarios" },
     { "path": "./packages/analytics" },
     { "path": "./packages/scoring" },
+    { "path": "./packages/api-client" },
     { "path": "./apps/mock-api" }
   ]
 }

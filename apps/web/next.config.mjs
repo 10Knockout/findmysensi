@@ -57,6 +57,7 @@ const nextConfig = {
     "@findmysensi/scenarios",
     "@findmysensi/analytics",
     "@findmysensi/scoring",
+    "@findmysensi/api-client",
   ],
   webpack: (config) => {
     config.resolve.extensionAlias = {
