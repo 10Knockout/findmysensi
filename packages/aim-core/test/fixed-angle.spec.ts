@@ -10,6 +10,7 @@ import {
   createAngleUnits,
   degreesToAngleDeltaUnits,
   degreesToAngleUnits,
+  shortestSignedAngleDelta,
   wrapYaw,
 } from "../src/fixed/angle.js";
 import {
@@ -35,11 +36,10 @@ describe("Deterministic Fixed-Angle Representation", () => {
       expect(wrapYaw(FULL_TURN_UNITS)).toBe(0);
       expect(wrapYaw(FULL_TURN_UNITS + 500)).toBe(500);
 
-      // Negative values wrap from top
       expect(wrapYaw(-1)).toBe(FULL_TURN_UNITS - 1);
       expect(wrapYaw(-FULL_TURN_UNITS)).toBe(0);
       expect(wrapYaw(-FULL_TURN_UNITS - 10)).toBe(FULL_TURN_UNITS - 10);
-      expect(wrapYaw(-167772160)).toBe(0); // -10 full turns
+      expect(wrapYaw(-167772160)).toBe(0);
     });
 
     it("rejects non-integer and non-safe values", () => {
@@ -48,6 +48,25 @@ describe("Deterministic Fixed-Angle Representation", () => {
       expect(() => wrapYaw(Infinity)).toThrow(RangeError);
       expect(() => wrapYaw(-Infinity)).toThrow(RangeError);
       expect(() => wrapYaw(Number.MAX_SAFE_INTEGER + 10)).toThrow(RangeError);
+    });
+  });
+
+  describe("shortestSignedAngleDelta", () => {
+    it("returns the shortest signed yaw delta across the wrap seam", () => {
+      const nearEnd = createAngleUnits(FULL_TURN_UNITS - 10_000);
+      const nearStart = createAngleUnits(5_000);
+
+      expect(shortestSignedAngleDelta(nearEnd, nearStart)).toBe(15_000);
+      expect(shortestSignedAngleDelta(nearStart, nearEnd)).toBe(-15_000);
+    });
+
+    it("freezes the exact half-turn tie as negative half-turn", () => {
+      expect(
+        shortestSignedAngleDelta(
+          createAngleUnits(0),
+          createAngleUnits(HALF_TURN_UNITS),
+        ),
+      ).toBe(-HALF_TURN_UNITS);
     });
   });
 
@@ -68,7 +87,6 @@ describe("Deterministic Fixed-Angle Representation", () => {
       expect(clampPitch(1000)).toBe(1000);
       expect(clampPitch(-1000)).toBe(-1000);
 
-      // Exceeding bounds clamps strictly to limit
       expect(clampPitch(FULL_TURN_UNITS)).toBe(DEFAULT_MAX_PITCH_UNITS);
       expect(clampPitch(-FULL_TURN_UNITS)).toBe(DEFAULT_MIN_PITCH_UNITS);
     });
