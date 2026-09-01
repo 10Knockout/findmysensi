@@ -18,15 +18,15 @@ test("public home renders in a real browser without runtime errors", async ({
 }) => {
   const browserErrors = captureBrowserErrors(page);
   const response = await page.goto("/");
+  const hero = page.getByRole("heading", {
+    level: 1,
+    name: "Find the sensitivity you actually perform with.",
+  });
+  const startTraining = page.getByRole("link", { name: "START TRAINING" });
 
   expect(response?.ok()).toBe(true);
-  await expect(
-    page.getByRole("heading", {
-      level: 1,
-      name: "Find the sensitivity you actually perform with.",
-    }),
-  ).toBeVisible();
-  await expect(page.getByRole("link", { name: "START TRAINING" })).toBeVisible();
+  await expect(hero).toBeVisible();
+  await expect(startTraining).toBeVisible();
   expect(browserErrors).toEqual([]);
 });
 
@@ -37,10 +37,8 @@ test("registration requires and submits the 18+ attestation without DOB", async 
   let registrationPayload: Record<string, unknown> | null = null;
 
   await page.route("**/api/v1/register", async (route) => {
-    registrationPayload = route.request().postDataJSON() as Record<
-      string,
-      unknown
-    >;
+    const payload = route.request().postDataJSON();
+    registrationPayload = payload as Record<string, unknown>;
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -69,7 +67,10 @@ test("registration requires and submits the 18+ attestation without DOB", async 
   await ageAttestation.check();
   await page.getByRole("button", { name: "Create Account" }).click();
 
-  await expect(page.getByRole("heading", { name: "Verify your email" })).toBeVisible();
+  const verifyHeading = page.getByRole("heading", {
+    name: "Verify your email",
+  });
+  await expect(verifyHeading).toBeVisible();
   expect(registrationPayload).toMatchObject({
     username: "BrowserAudit",
     email: "browser-audit@example.com",
@@ -84,9 +85,10 @@ test("login continuation route renders safely", async ({ page }) => {
   const response = await page.goto(
     "/login?next=%2Fapp%2Ftrain%2Fgrid%2Fresults",
   );
+  const heading = page.getByRole("heading", { name: "Sign In" });
 
   expect(response?.ok()).toBe(true);
-  await expect(page.getByRole("heading", { name: "Sign In" })).toBeVisible();
+  await expect(heading).toBeVisible();
 });
 
 test("unfinished public ticket result URLs fail closed", async ({ page }) => {
