@@ -1,4 +1,8 @@
-import { RenderSnapshotView, degreesToAngleUnits } from "@findmysensi/aim-core";
+import {
+  createAngleUnits,
+  RenderSnapshotView,
+  shortestSignedAngleDelta,
+} from "@findmysensi/aim-core";
 import {
   AimRenderer,
   CrosshairConfig,
@@ -17,12 +21,12 @@ const DEFAULT_CROSSHAIR: CrosshairConfig = {
 
 const DEFAULT_TARGET: TargetRenderConfig = {
   bodyColor: "#ff3366",
+  opacity: 1,
   borderColor: "#ffffff",
   borderWidth: 2,
 };
 
 const DEFAULT_BACKGROUND = "#0f1117";
-const DEFAULT_HFOV_UNITS = degreesToAngleUnits(103);
 
 export class Canvas2DPotatoRenderer implements AimRenderer {
   private canvas: HTMLCanvasElement | null = null;
@@ -60,55 +64,49 @@ export class Canvas2DPotatoRenderer implements AimRenderer {
     const vp = this.viewport;
     const canvas = this.canvas;
 
-    if (!ctx || !vp || !canvas) {
-      return;
-    }
+    if (!ctx || !vp || !canvas) return;
 
     const { width: canvasWidth, height: canvasHeight } = canvas;
     const { x: rectX, y: rectY, width: rectW, height: rectH } = vp.displayRect;
 
-    // 1. Fill entire canvas with true black (for letterbox/pillarbox margins)
+    ctx.globalAlpha = 1;
     ctx.fillStyle = "#000000";
     ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-    // 2. Fill active 16:9 training viewport area
     ctx.fillStyle = this.backgroundColor;
     ctx.fillRect(rectX, rectY, rectW, rectH);
 
-    // 3. Render active targets relative to player view angle
     const targetCount = snapshot.targetCount;
     const playerYaw = snapshot.playerYaw;
     const playerPitch = snapshot.playerPitch;
-
-    const pxPerAngleUnit = rectW / DEFAULT_HFOV_UNITS;
 
     for (let i = 0; i < targetCount; i++) {
       const rawTargetX = snapshot.targetX[i] ?? 0;
       const rawTargetY = snapshot.targetY[i] ?? 0;
       const rawRadius = snapshot.targetRadius[i] ?? 0;
 
-      // Relative angular offset from player view center
-      const relYaw = rawTargetX - playerYaw;
+      const relYaw = shortestSignedAngleDelta(
+        playerYaw,
+        createAngleUnits(rawTargetX),
+      );
       const relPitch = rawTargetY - playerPitch;
-
       const screenPos = vp.simToDisplay(relYaw, relPitch);
-      const radiusPx = Math.max(2, rawRadius * pxPerAngleUnit);
+      const radiusPx = Math.max(2, vp.angleRadiusToPixels(rawRadius));
 
-      // Draw flat circle body
+      ctx.globalAlpha = this.target.opacity;
       ctx.beginPath();
       ctx.arc(screenPos.x, screenPos.y, radiusPx, 0, Math.PI * 2);
       ctx.fillStyle = this.target.bodyColor;
       ctx.fill();
 
-      // Draw target border
       if (this.target.borderWidth > 0) {
         ctx.lineWidth = this.target.borderWidth;
         ctx.strokeStyle = this.target.borderColor;
         ctx.stroke();
       }
+      ctx.globalAlpha = 1;
     }
 
-    // 4. Render center crosshair
     const centerX = rectX + rectW / 2;
     const centerY = rectY + rectH / 2;
     const { color, size, thickness, gap, dot } = this.crosshair;
@@ -117,25 +115,19 @@ export class Canvas2DPotatoRenderer implements AimRenderer {
     ctx.strokeStyle = color;
     ctx.lineWidth = thickness;
 
-    // Center dot
     if (dot) {
       ctx.beginPath();
       ctx.arc(centerX, centerY, thickness / 2, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    // Crosshair arms
     ctx.beginPath();
-    // Top
     ctx.moveTo(centerX, centerY - gap);
     ctx.lineTo(centerX, centerY - gap - size);
-    // Bottom
     ctx.moveTo(centerX, centerY + gap);
     ctx.lineTo(centerX, centerY + gap + size);
-    // Left
     ctx.moveTo(centerX - gap, centerY);
     ctx.lineTo(centerX - gap - size, centerY);
-    // Right
     ctx.moveTo(centerX + gap, centerY);
     ctx.lineTo(centerX + gap + size, centerY);
     ctx.stroke();
