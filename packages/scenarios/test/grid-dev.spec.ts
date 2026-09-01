@@ -1,6 +1,9 @@
-import { createPrngV1 } from "@findmysensi/aim-core";
+import { createPrngV1, FULL_TURN_UNITS } from "@findmysensi/aim-core";
 import { describe, expect, it } from "vitest";
-import { GridScenarioEngine } from "../src/grid/dev-v0.js";
+import {
+  GRID_DEV_V0_DEFINITION,
+  GridScenarioEngine,
+} from "../src/grid/dev-v0.js";
 
 describe("Grid Shot Development Scenario (dev-v0)", () => {
   it("initializes with exactly 3 non-overlapping targets on the grid", () => {
@@ -10,11 +13,26 @@ describe("Grid Shot Development Scenario (dev-v0)", () => {
     const initialTargets = engine.initialize(prng);
     expect(initialTargets.length).toBe(3);
 
-    // Verify all 3 have distinct positions
     const posKeys = new Set(
       initialTargets.map((t) => `${t.xAngleUnits},${t.yAngleUnits}`),
     );
     expect(posKeys.size).toBe(3);
+  });
+
+  it("uses the Phase 2 medium target radius and canonical wrapped yaw", () => {
+    const engine = new GridScenarioEngine();
+    const prng = createPrngV1([101, 202, 303, 404]);
+    const targets = engine.initialize(prng);
+
+    expect(GRID_DEV_V0_DEFINITION.simulation.targetRadiusAngleUnits).toBe(
+      50_000,
+    );
+    expect(targets).toHaveLength(3);
+    for (const target of targets) {
+      expect(target.radiusAngleUnits).toBe(50_000);
+      expect(target.xAngleUnits).toBeGreaterThanOrEqual(0);
+      expect(target.xAngleUnits).toBeLessThan(FULL_TURN_UNITS);
+    }
   });
 
   it("replaces a hit target with a new target in a distinct slot with recent-location exclusion", () => {
@@ -26,13 +44,12 @@ describe("Grid Shot Development Scenario (dev-v0)", () => {
 
     const replacement = engine.onTargetHit(targetToHit.id, prng);
     expect(replacement).toBeDefined();
-    expect(replacement?.id).toBe(4); // Incremented ID
+    expect(replacement?.id).toBe(4);
 
     const activeAfterHit = engine.getActiveTargets();
     expect(activeAfterHit.length).toBe(3);
     expect(activeAfterHit.find((t) => t.id === targetToHit.id)).toBeUndefined();
 
-    // Replacement must not be at the exact slot that was just hit
     expect(
       replacement?.xAngleUnits === targetToHit.xAngleUnits &&
         replacement?.yAngleUnits === targetToHit.yAngleUnits,
@@ -54,7 +71,6 @@ describe("Grid Shot Development Scenario (dev-v0)", () => {
 
     expect(targets1).toEqual(targets2);
 
-    // Simulate 20 successive target hits
     for (let i = 0; i < 20; i++) {
       const active1 = engine1.getActiveTargets();
       const active2 = engine2.getActiveTargets();
@@ -64,6 +80,22 @@ describe("Grid Shot Development Scenario (dev-v0)", () => {
       const rep1 = engine1.onTargetHit(hitTargetId, prng1);
       const rep2 = engine2.onTargetHit(hitTargetId, prng2);
       expect(rep1).toEqual(rep2);
+    }
+  });
+
+  it("keeps exactly three unique active targets through rapid deterministic hits", () => {
+    const engine = new GridScenarioEngine();
+    const prng = createPrngV1([11, 22, 33, 44]);
+    engine.initialize(prng);
+
+    for (let i = 0; i < 100; i++) {
+      const before = engine.getActiveTargets();
+      expect(before).toHaveLength(3);
+      expect(new Set(before.map((target) => target.id)).size).toBe(3);
+
+      const replacement = engine.onTargetHit(before[0]!.id, prng);
+      expect(replacement).not.toBeNull();
+      expect(engine.getActiveTargets()).toHaveLength(3);
     }
   });
 });
