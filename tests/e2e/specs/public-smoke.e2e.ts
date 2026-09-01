@@ -33,13 +33,14 @@ test("public home renders and shows a real-data error state when leaderboard is 
     name: "Find the sensitivity you actually perform with.",
   });
   const startTraining = page.getByRole("link", { name: "START TRAINING" });
+  const leaderboardError = page
+    .getByRole("alert")
+    .filter({ hasText: "Could not load the live Gridshot leaderboard" });
 
   expect(response?.ok()).toBe(true);
   await expect(hero).toBeVisible();
   await expect(startTraining).toBeVisible();
-  await expect(page.getByRole("alert")).toContainText(
-    "Could not load the live Gridshot leaderboard",
-  );
+  await expect(leaderboardError).toBeVisible();
   expect(browserErrors).toEqual([]);
 });
 
