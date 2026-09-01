@@ -1,4 +1,10 @@
-import { AngleUnits } from "../fixed/angle.js";
+import {
+  AngleUnits,
+  createAngleUnits,
+  PitchUnits,
+  shortestSignedAngleDelta,
+} from "../fixed/angle.js";
+import { checkFixed } from "../fixed/range.js";
 
 export interface TargetCollisionGeometry {
   readonly id: number;
@@ -7,27 +13,26 @@ export interface TargetCollisionGeometry {
   readonly radiusAngleUnits: number;
 }
 
-import { distSqBigInt } from "../fixed/range.js";
-
 export function testAngularHit(
   yaw: AngleUnits,
-  pitch: AngleUnits,
+  pitch: PitchUnits,
   target: TargetCollisionGeometry,
 ): boolean {
-  const distSq = distSqBigInt(
-    yaw as number,
-    pitch as number,
-    target.xAngleUnits,
-    target.yAngleUnits,
+  const dx = shortestSignedAngleDelta(
+    yaw,
+    createAngleUnits(target.xAngleUnits),
   );
-  const radiusSq =
-    BigInt(target.radiusAngleUnits) * BigInt(target.radiusAngleUnits);
+  const dy = checkFixed(target.yAngleUnits) - checkFixed(pitch);
+  const radius = checkFixed(target.radiusAngleUnits);
+
+  const distSq = BigInt(dx) * BigInt(dx) + BigInt(dy) * BigInt(dy);
+  const radiusSq = BigInt(radius) * BigInt(radius);
   return distSq <= radiusSq;
 }
 
 export function findHitTarget(
   yaw: AngleUnits,
-  pitch: AngleUnits,
+  pitch: PitchUnits,
   targets: readonly TargetCollisionGeometry[],
 ): TargetCollisionGeometry | null {
   for (let i = 0; i < targets.length; i++) {
