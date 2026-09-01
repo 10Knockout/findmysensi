@@ -32,6 +32,16 @@ export function resolveGridshotRuntimeConfig(
   settings: TrainerSettings,
   observedInputRateHz: number = 1000,
 ): GridshotRuntimeConfig {
+  if (
+    settings.resolution === "custom" &&
+    (settings.customResolutionWidth === null ||
+      settings.customResolutionHeight === null)
+  ) {
+    throw new RangeError(
+      "Custom resolution requires both a width and a height.",
+    );
+  }
+
   const preset = toProcessingPreset(settings.inputProcessing);
   const processingPolicy = createDefaultProcessingPolicy();
 
