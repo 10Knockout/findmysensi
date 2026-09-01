@@ -9,6 +9,10 @@ export interface EventSourceCapability {
   readonly supportsUnadjustedMovement: boolean;
 }
 
+export interface InputListenerOptions {
+  readonly shouldCaptureGameplayInput?: () => boolean;
+}
+
 export function detectInputCapabilities(
   globalObj: Window | unknown = typeof window !== "undefined"
     ? window
@@ -38,7 +42,7 @@ export function detectInputCapabilities(
       : "pointermove",
     supportsPointerRawUpdate,
     supportsCoalescedEvents,
-    supportsUnadjustedMovement: true, // evaluated dynamically during lock request
+    supportsUnadjustedMovement: true,
   };
 }
 
@@ -46,8 +50,14 @@ export function attachInputListener(
   target: EventTarget,
   ringBuffer: InputRingBuffer,
   source: InputSource = "pointermove",
+  options: InputListenerOptions = {},
 ): () => void {
+  const shouldCaptureGameplayInput =
+    options.shouldCaptureGameplayInput ?? (() => true);
+
   const onPointerMove = (ev: Event) => {
+    if (!shouldCaptureGameplayInput()) return;
+
     const pEv = ev as PointerEvent & {
       getCoalescedEvents?: () => PointerEvent[];
     };
@@ -70,8 +80,9 @@ export function attachInputListener(
   };
 
   const onPointerDown = (ev: Event) => {
+    if (!shouldCaptureGameplayInput()) return;
+
     const mEv = ev as MouseEvent;
-    // Only primary left button (button index 0) triggers shots (FMS-024)
     if (mEv.button === 0) {
       ringBuffer.pushShot(0, mEv.timeStamp);
     }
