@@ -46,6 +46,7 @@ The current code already shows concrete reasons for the reported Gridshot behavi
 ### Task 1: Make yaw/pitch domains explicit and wrap-safe
 
 **Files:**
+
 - Modify: `packages/aim-core/src/fixed/angle.ts`
 - Modify: `packages/aim-core/src/fixed/range.ts`
 - Modify: `packages/aim-core/src/collision/target.ts`
@@ -56,6 +57,7 @@ The current code already shows concrete reasons for the reported Gridshot behavi
 - Test: `packages/aim-core/test/render-snapshot.spec.ts`
 
 **Interfaces:**
+
 - Produces `PitchUnits` for signed/clamped pitch.
 - Produces `shortestSignedAngleDelta(from: AngleUnits, to: AngleUnits): AngleDeltaUnits`.
 - Collision consumes canonical wrapped target yaw and signed target pitch.
@@ -75,7 +77,10 @@ it("returns the shortest signed yaw delta across the wrap seam", () => {
 
 it("freezes the exact half-turn tie as negative half-turn", () => {
   expect(
-    shortestSignedAngleDelta(createAngleUnits(0), createAngleUnits(HALF_TURN_UNITS)),
+    shortestSignedAngleDelta(
+      createAngleUnits(0),
+      createAngleUnits(HALF_TURN_UNITS),
+    ),
   ).toBe(-HALF_TURN_UNITS);
 });
 ```
@@ -97,7 +102,9 @@ export type PitchUnits = number & { readonly __brand: "PitchUnits" };
 
 export function createPitchUnits(value: number): PitchUnits {
   if (!Number.isSafeInteger(value)) {
-    throw new RangeError(`Invalid PitchUnits: ${value}. Must be a safe integer.`);
+    throw new RangeError(
+      `Invalid PitchUnits: ${value}. Must be a safe integer.`,
+    );
   }
   return (value === 0 ? 0 : value) as PitchUnits;
 }
@@ -106,7 +113,8 @@ export function shortestSignedAngleDelta(
   from: AngleUnits,
   to: AngleUnits,
 ): AngleDeltaUnits {
-  const raw = ((to - from) % FULL_TURN_UNITS + FULL_TURN_UNITS) % FULL_TURN_UNITS;
+  const raw =
+    (((to - from) % FULL_TURN_UNITS) + FULL_TURN_UNITS) % FULL_TURN_UNITS;
   const signed = raw >= HALF_TURN_UNITS ? raw - FULL_TURN_UNITS : raw;
   return createAngleDeltaUnits(signed);
 }
@@ -184,6 +192,7 @@ git commit -m "fix(aim-core): make angular deltas wrap-safe"
 ### Task 2: Consolidate Gridshot onto one canonical scenario engine and enlarge targets
 
 **Files:**
+
 - Modify: `packages/scenarios/src/grid/dev-v0.ts`
 - Delete: `packages/scenarios/src/grid/mechanics.ts`
 - Modify: `packages/scenarios/src/index.ts`
@@ -191,6 +200,7 @@ git commit -m "fix(aim-core): make angular deltas wrap-safe"
 - Delete: `packages/scenarios/test/grid.spec.ts`
 
 **Interfaces:**
+
 - `GridScenarioEngine` remains the only runtime Gridshot engine.
 - `GRID_DEV_V0_DEFINITION.simulation.targetRadiusAngleUnits` becomes exactly `50_000`.
 - Every target yaw returned by the engine is canonical `[0, FULL_TURN_UNITS)`; pitch remains signed.
@@ -263,6 +273,7 @@ git commit -m "fix(gridshot): canonicalize target geometry"
 ### Task 3: Define an explicit deterministic FindMySensi browser gain
 
 **Files:**
+
 - Create: `packages/sensitivity/src/browser-gain.ts`
 - Modify: `packages/sensitivity/src/index.ts`
 - Create: `packages/sensitivity/test/browser-gain.spec.ts`
@@ -353,6 +364,7 @@ git commit -m "feat(sensitivity): define browser input gain"
 ### Task 4: Apply gain and correct vertical direction inside the deterministic controller
 
 **Files:**
+
 - Modify: `apps/web/src/features/training/PracticeRunController.ts`
 - Modify: `tests/browser/grid-practice.spec.ts`
 - Modify: `packages/input-browser/src/reducer.ts`
@@ -447,6 +459,7 @@ git commit -m "fix(gridshot): map browser input into angular movement"
 ### Task 5: Make Canvas rendering use the exact same yaw math and active FOV as collision
 
 **Files:**
+
 - Modify: `packages/render-canvas/src/viewport-transform.ts`
 - Modify: `packages/render-canvas/src/types.ts`
 - Modify: `packages/render-canvas/src/renderer.ts`
@@ -522,6 +535,7 @@ git commit -m "fix(renderer): align Gridshot projection with collision"
 ### Task 6: Resolve saved trainer settings into one immutable run configuration
 
 **Files:**
+
 - Create: `apps/web/src/trainer/runtime-config.ts`
 - Create: `apps/web/src/trainer/runtime-config.spec.ts`
 - Modify: `apps/web/src/trainer/TrainerBootstrap.tsx`
@@ -552,17 +566,25 @@ export function resolveGridshotRuntimeConfig(
 Test exact mappings:
 
 ```ts
-expect(resolveGridshotRuntimeConfig({ ...defaults, fmsSensitivity: "1.5" })
-  .inputGainAngleUnitsPerUnit).toBe(3_750);
+expect(
+  resolveGridshotRuntimeConfig({ ...defaults, fmsSensitivity: "1.5" })
+    .inputGainAngleUnitsPerUnit,
+).toBe(3_750);
 
-expect(resolveGridshotRuntimeConfig({ ...defaults, inputProcessing: "1000" })
-  .inputBufferCapacity).toBe(2_048);
+expect(
+  resolveGridshotRuntimeConfig({ ...defaults, inputProcessing: "1000" })
+    .inputBufferCapacity,
+).toBe(2_048);
 
-expect(resolveGridshotRuntimeConfig({ ...defaults, inputProcessing: "8000" })
-  .inputBufferCapacity).toBe(16_384);
+expect(
+  resolveGridshotRuntimeConfig({ ...defaults, inputProcessing: "8000" })
+    .inputBufferCapacity,
+).toBe(16_384);
 
-expect(resolveGridshotRuntimeConfig({ ...defaults, inputProcessing: "maximum" })
-  .inputBufferCapacity).toBe(32_768);
+expect(
+  resolveGridshotRuntimeConfig({ ...defaults, inputProcessing: "maximum" })
+    .inputBufferCapacity,
+).toBe(32_768);
 ```
 
 Also assert changing only `inputProcessing` does not change `inputGainAngleUnitsPerUnit`.
@@ -633,12 +655,14 @@ git commit -m "feat(gridshot): apply saved runtime settings"
 ### Task 7: Prove 125–8000 Hz input equivalence and buffer safety
 
 **Files:**
+
 - Modify: `tests/performance/input-harness.spec.ts`
 - Modify: `packages/input-browser/test/ring-buffer.spec.ts`
 - Modify: `packages/input-browser/test/processing-policy.spec.ts`
 - Modify: `apps/web/src/trainer/fixed-tick-runner.spec.ts`
 
 **Interfaces:**
+
 - Synthetic input harness produces identical canonical movement totals and shot ordering regardless of source event frequency.
 - Polling/processing presets may affect buffering granularity/capacity only, never final aim gain.
 
@@ -692,6 +716,7 @@ git commit -m "test(input): stress Gridshot across polling rates"
 ### Task 8: Add direct Gridshot regression coverage for the reported gameplay bugs
 
 **Files:**
+
 - Modify: `tests/browser/grid-practice.spec.ts`
 - Modify: `packages/render-canvas/test/renderer.spec.ts`
 - Modify: `packages/aim-core/test/shot-collision.spec.ts`
@@ -742,6 +767,7 @@ git commit -m "test(gridshot): lock gameplay regressions"
 ### Task 9: Real-browser acceptance before declaring Gridshot stabilized
 
 **Files:**
+
 - No product-code file is required unless a reproducible browser failure is found.
 - If a browser-only bug is found, add its regression test to the nearest Task 1–8 test file before fixing it.
 
@@ -791,6 +817,7 @@ If no browser-only defect is found, no commit is required for this task.
 ### Task 10: Final Phase 2 verification and PR gate
 
 **Files:**
+
 - Update this plan's checkboxes during execution.
 - No private-repository change.
 
