@@ -35,7 +35,9 @@ function createEquivalentIntentStream(rate: number): SyntheticInputEvent[] {
     const timeMs = moveCount === 1 ? 0 : (index * 999) / (moveCount - 1);
     for (const shotTime of shotTimes) {
       const previousTime =
-        index === 0 ? Number.NEGATIVE_INFINITY : ((index - 1) * 999) / (moveCount - 1);
+        index === 0
+          ? Number.NEGATIVE_INFINITY
+          : ((index - 1) * 999) / (moveCount - 1);
       if (previousTime < shotTime && timeMs >= shotTime) {
         events.push({ kind: "shot", button: 0, timeMs: shotTime });
       }

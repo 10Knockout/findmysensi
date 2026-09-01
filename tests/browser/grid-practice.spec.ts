@@ -150,7 +150,9 @@ describe("Grid Practice Run Flow & Lifecycle", () => {
     expect(yawDelta % gain).toBe(0);
     expect(targetPitch % gain).toBe(0);
 
-    controller.getRingBuffer().pushMove(yawDelta / gain, -targetPitch / gain, 1);
+    controller
+      .getRingBuffer()
+      .pushMove(yawDelta / gain, -targetPitch / gain, 1);
     controller.getRingBuffer().pushShot(0, 2);
     controller.getRingBuffer().pushMove(-40, 0, 3);
     controller.onAnimationFrame(8);

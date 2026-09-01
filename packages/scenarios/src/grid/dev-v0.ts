@@ -127,7 +127,9 @@ export class GridScenarioEngine {
   }
 
   public onTargetHit(targetId: number, prng: PrngV1): TargetSpawnSpec | null {
-    const hitIdx = this.activeTargets.findIndex((target) => target.id === targetId);
+    const hitIdx = this.activeTargets.findIndex(
+      (target) => target.id === targetId,
+    );
     if (hitIdx === -1) return null;
 
     const hitTarget = this.activeTargets[hitIdx]!;
@@ -150,11 +152,14 @@ export class GridScenarioEngine {
     const candidates = this.slots.filter(
       (slot) =>
         !this.activeSlotIndices.has(slot.index) &&
-        (this.lastHitSlotIndex === null || slot.index !== this.lastHitSlotIndex),
+        (this.lastHitSlotIndex === null ||
+          slot.index !== this.lastHitSlotIndex),
     );
 
     if (candidates.length === 0) {
-      throw new Error("No candidate slots available for Gridshot target spawn.");
+      throw new Error(
+        "No candidate slots available for Gridshot target spawn.",
+      );
     }
 
     const chosenIdx = prng.nextRange(0, candidates.length);

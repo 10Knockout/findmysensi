@@ -1,8 +1,4 @@
-import {
-  createPitchUnits,
-  FULL_TURN_UNITS,
-  PitchUnits,
-} from "./angle.js";
+import { createPitchUnits, FULL_TURN_UNITS, PitchUnits } from "./angle.js";
 
 // Default pitch vertical limit ~89.9 degrees to prevent vertical gimbal lock
 export const DEFAULT_MAX_PITCH_UNITS = Math.round(

@@ -1,9 +1,6 @@
 import { createTick } from "@findmysensi/protocol";
 import { describe, expect, it } from "vitest";
-import {
-  createAngleUnits,
-  createPitchUnits,
-} from "../src/fixed/angle.js";
+import { createAngleUnits, createPitchUnits } from "../src/fixed/angle.js";
 import {
   createSnapshotBuffer,
   SnapshotBuffer,

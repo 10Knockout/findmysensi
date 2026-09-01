@@ -50,7 +50,7 @@ export function shortestSignedAngleDelta(
   to: AngleUnits,
 ): AngleDeltaUnits {
   const raw =
-    ((to - from) % FULL_TURN_UNITS + FULL_TURN_UNITS) % FULL_TURN_UNITS;
+    (((to - from) % FULL_TURN_UNITS) + FULL_TURN_UNITS) % FULL_TURN_UNITS;
   const signed = raw >= HALF_TURN_UNITS ? raw - FULL_TURN_UNITS : raw;
   return createAngleDeltaUnits(signed);
 }

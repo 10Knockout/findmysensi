@@ -36,16 +36,16 @@ function divideRoundHalfUp(numerator: bigint, denominator: bigint): bigint {
 export function resolveBrowserGainAngleUnits(
   fmsSensitivity: string | null,
 ): BrowserGainAngleUnitsPerInputUnit {
-  const ratio = parsePositiveDecimal(
-    fmsSensitivity ?? DEFAULT_FMS_SENSITIVITY,
-  );
+  const ratio = parsePositiveDecimal(fmsSensitivity ?? DEFAULT_FMS_SENSITIVITY);
   const resolved = divideRoundHalfUp(
     BigInt(BASE_BROWSER_GAIN_ANGLE_UNITS) * ratio.numerator,
     ratio.denominator,
   );
 
   if (resolved <= 0n || resolved > BigInt(Number.MAX_SAFE_INTEGER)) {
-    throw new RangeError("Resolved browser input gain is outside the safe range.");
+    throw new RangeError(
+      "Resolved browser input gain is outside the safe range.",
+    );
   }
 
   return Number(resolved) as BrowserGainAngleUnitsPerInputUnit;

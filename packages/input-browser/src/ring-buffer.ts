@@ -37,14 +37,18 @@ function toSafeInt32Movement(value: number): number {
   }
   const rounded = Math.round(value);
   if (rounded < INT32_MIN || rounded > INT32_MAX) {
-    throw new RangeError("Pointer movement is outside the supported Int32 range.");
+    throw new RangeError(
+      "Pointer movement is outside the supported Int32 range.",
+    );
   }
   return rounded;
 }
 
 function assertFiniteTimeIndex(timeIndex: number): void {
   if (!Number.isFinite(timeIndex) || timeIndex < 0) {
-    throw new RangeError("Input timestamp must be a non-negative finite value.");
+    throw new RangeError(
+      "Input timestamp must be a non-negative finite value.",
+    );
   }
 }
 
@@ -177,7 +181,9 @@ export class PreallocatedInputRingBuffer implements InputRingBuffer {
   public drainInto(target: RawInputBatchTarget): DrainStats {
     const countToDrain = this.size;
     if (countToDrain > target.kinds.length) {
-      throw new RangeError("Drain target capacity is smaller than buffered input.");
+      throw new RangeError(
+        "Drain target capacity is smaller than buffered input.",
+      );
     }
     target.count = 0;
 

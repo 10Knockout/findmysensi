@@ -29,35 +29,19 @@ describe("Authoritative Shot & Collision Semantics", () => {
     };
 
     expect(
-      testAngularHit(
-        createAngleUnits(100000),
-        createPitchUnits(50000),
-        target,
-      ),
+      testAngularHit(createAngleUnits(100000), createPitchUnits(50000), target),
     ).toBe(true);
 
     expect(
-      testAngularHit(
-        createAngleUnits(125000),
-        createPitchUnits(50000),
-        target,
-      ),
+      testAngularHit(createAngleUnits(125000), createPitchUnits(50000), target),
     ).toBe(true);
 
     expect(
-      testAngularHit(
-        createAngleUnits(120000),
-        createPitchUnits(65000),
-        target,
-      ),
+      testAngularHit(createAngleUnits(120000), createPitchUnits(65000), target),
     ).toBe(true);
 
     expect(
-      testAngularHit(
-        createAngleUnits(120001),
-        createPitchUnits(65000),
-        target,
-      ),
+      testAngularHit(createAngleUnits(120001), createPitchUnits(65000), target),
     ).toBe(false);
   });
 

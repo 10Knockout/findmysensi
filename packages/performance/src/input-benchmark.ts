@@ -56,12 +56,20 @@ function bytesToHex(bytes: Uint8Array): string {
 }
 
 function safeScale(value: number, gain: number): number {
-  if (!Number.isSafeInteger(value) || !Number.isSafeInteger(gain) || gain <= 0) {
-    throw new RangeError(`Unsafe benchmark input conversion: ${value} x ${gain}`);
+  if (
+    !Number.isSafeInteger(value) ||
+    !Number.isSafeInteger(gain) ||
+    gain <= 0
+  ) {
+    throw new RangeError(
+      `Unsafe benchmark input conversion: ${value} x ${gain}`,
+    );
   }
   const result = value * gain;
   if (!Number.isSafeInteger(result)) {
-    throw new RangeError("Benchmark input conversion exceeds safe integer precision.");
+    throw new RangeError(
+      "Benchmark input conversion exceeds safe integer precision.",
+    );
   }
   return result;
 }

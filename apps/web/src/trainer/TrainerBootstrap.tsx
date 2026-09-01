@@ -65,7 +65,9 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
       const session = await client.getSession();
       if (!active) return;
       if (!session?.user) {
-        router.replace(`/login?next=${encodeURIComponent(`/app/train/${mode}`)}`);
+        router.replace(
+          `/login?next=${encodeURIComponent(`/app/train/${mode}`)}`,
+        );
         return;
       }
 
@@ -242,7 +244,8 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
         <div className="max-w-lg rounded-xl border border-zinc-800 bg-zinc-900 p-6 text-center">
           <h1 className="text-xl font-bold">Mode not available yet</h1>
           <p className="mt-2 text-sm text-zinc-400">
-            Phase 2 is stabilizing Gridshot before any additional training mode is exposed.
+            Phase 2 is stabilizing Gridshot before any additional training mode
+            is exposed.
           </p>
           <button
             onClick={() => router.replace("/app")}
@@ -388,7 +391,8 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
                 Gridshot
               </h1>
               <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                Three medium static targets. Click start to capture the mouse and begin the 60-second run.
+                Three medium static targets. Click start to capture the mouse
+                and begin the 60-second run.
               </p>
             </div>
             <button
@@ -420,7 +424,8 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
                 Gridshot paused
               </h2>
               <p className="mt-2 text-xs text-zinc-500">
-                Pause time does not advance simulation time. This run closes after 10 minutes paused.
+                Pause time does not advance simulation time. This run closes
+                after 10 minutes paused.
               </p>
               <p className="mt-2 font-mono text-sm text-zinc-300">
                 {formatPauseTime(pauseSecondsLeft)} remaining
@@ -458,7 +463,8 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
               ) : null}
             </div>
             <p className="text-[11px] text-zinc-500">
-              Resume keeps this run's settings frozen. Restart reloads your latest saved settings.
+              Resume keeps this run's settings frozen. Restart reloads your
+              latest saved settings.
             </p>
           </div>
         </div>
@@ -499,7 +505,12 @@ function resolveBackingResolution(
   }
 
   const [width, height] = config.resolution.split("x").map(Number);
-  if (!Number.isInteger(width) || !Number.isInteger(height) || !width || !height) {
+  if (
+    !Number.isInteger(width) ||
+    !Number.isInteger(height) ||
+    !width ||
+    !height
+  ) {
     throw new Error("Saved resolution is invalid.");
   }
   return { width, height };

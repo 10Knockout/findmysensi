@@ -28,7 +28,10 @@ export interface ViewportTransform {
     yawDelta: AngleDeltaUnits | number,
     pitch: PitchUnits | number,
   ): { x: number; y: number };
-  displayToSim(x: number, y: number): {
+  displayToSim(
+    x: number,
+    y: number,
+  ): {
     yaw: AngleDeltaUnits;
     pitch: PitchUnits;
   };
@@ -129,7 +132,9 @@ export class CanonicalViewportTransform implements ViewportTransform {
 
   public angleRadiusToPixels(radiusAngleUnits: number): number {
     if (!Number.isSafeInteger(radiusAngleUnits) || radiusAngleUnits < 0) {
-      throw new RangeError("Target radius must be a non-negative safe integer.");
+      throw new RangeError(
+        "Target radius must be a non-negative safe integer.",
+      );
     }
     return radiusAngleUnits * this.pxPerAngleUnitX;
   }

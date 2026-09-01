@@ -54,14 +54,20 @@ export interface PracticeRunOptions {
 }
 
 function safeScaledInputDelta(rawDelta: number, gain: number): number {
-  if (!Number.isSafeInteger(rawDelta) || !Number.isSafeInteger(gain) || gain <= 0) {
+  if (
+    !Number.isSafeInteger(rawDelta) ||
+    !Number.isSafeInteger(gain) ||
+    gain <= 0
+  ) {
     throw new RangeError(
       `Unsafe Gridshot input conversion: raw=${rawDelta}, gain=${gain}`,
     );
   }
   const scaled = rawDelta * gain;
   if (!Number.isSafeInteger(scaled)) {
-    throw new RangeError("Gridshot input delta exceeds safe integer precision.");
+    throw new RangeError(
+      "Gridshot input delta exceeds safe integer precision.",
+    );
   }
   return scaled;
 }

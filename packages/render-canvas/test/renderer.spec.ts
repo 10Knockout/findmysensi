@@ -47,11 +47,7 @@ describe("Canvas2D Potato Aim Renderer", () => {
     });
 
     const buffer = createSnapshotBuffer(16);
-    buffer.beginWrite(
-      createTick(1),
-      createAngleUnits(0),
-      createPitchUnits(0),
-    );
+    buffer.beginWrite(createTick(1), createAngleUnits(0), createPitchUnits(0));
     buffer.writeTarget(1, 0, 0, 50_000);
     buffer.writeTarget(2, 50_000, 30_000, 50_000);
     buffer.endWrite();
