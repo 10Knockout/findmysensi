@@ -1,0 +1,13 @@
+{
+  "name": "@findmysensi/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "browsers:install": "playwright install --with-deps chromium",
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.62.1"
+  }
+}

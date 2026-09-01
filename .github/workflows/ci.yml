@@ -40,3 +40,32 @@ jobs:
 
       - name: Production Build
         run: npm run build
+
+  e2e:
+    name: Chromium Browser E2E
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+
+      - name: Install application dependencies
+        run: npm ci
+
+      - name: Install pinned Playwright test harness
+        run: npm install --prefix tests/e2e --ignore-scripts --no-package-lock
+
+      - name: Build production web app
+        run: npm run build
+
+      - name: Install Chromium
+        run: npm run browsers:install --prefix tests/e2e
+
+      - name: Run real-browser smoke tests
+        run: npm test --prefix tests/e2e
