@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   format:
-    if: github.event.head_commit.message != 'style: format Phase 2'
+    if: github.event.head_commit.message != 'phase2-format-auto'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -38,5 +38,5 @@ jobs:
             echo "No formatting changes required."
             exit 0
           fi
-          git commit -m "style: format Phase 2"
+          git commit -m "phase2-format-auto"
           git push origin HEAD:feat/phase2-gridshot-stabilization
