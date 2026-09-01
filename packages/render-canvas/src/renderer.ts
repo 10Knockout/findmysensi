@@ -12,11 +12,17 @@ import {
 import { ViewportTransform } from "./viewport-transform.js";
 
 const DEFAULT_CROSSHAIR: CrosshairConfig = {
+  style: "cross",
   color: "#00ff88",
   size: 6,
   thickness: 2,
   gap: 3,
   dot: false,
+  dotSize: 2,
+  outline: true,
+  outlineThickness: 1,
+  outlineColor: "#000000",
+  opacity: 1,
 };
 
 const DEFAULT_TARGET: TargetRenderConfig = {
@@ -107,29 +113,77 @@ export class Canvas2DPotatoRenderer implements AimRenderer {
       ctx.globalAlpha = 1;
     }
 
-    const centerX = rectX + rectW / 2;
-    const centerY = rectY + rectH / 2;
-    const { color, size, thickness, gap, dot } = this.crosshair;
+    this.renderCrosshair(ctx, rectX + rectW / 2, rectY + rectH / 2);
+  }
 
-    ctx.fillStyle = color;
-    ctx.strokeStyle = color;
-    ctx.lineWidth = thickness;
+  private renderCrosshair(
+    ctx: CanvasRenderingContext2D,
+    centerX: number,
+    centerY: number,
+  ): void {
+    const config = this.crosshair;
+    ctx.globalAlpha = config.opacity;
 
-    if (dot) {
+    if (config.style === "circle") {
       ctx.beginPath();
-      ctx.arc(centerX, centerY, thickness / 2, 0, Math.PI * 2);
+      ctx.arc(centerX, centerY, config.size, 0, Math.PI * 2);
+      this.strokeCrosshairPath(ctx, config);
+    } else if (config.style !== "dot") {
+      this.buildCrosshairArms(ctx, centerX, centerY, config);
+      this.strokeCrosshairPath(ctx, config);
+    }
+
+    if (config.dot || config.style === "dot") {
+      const dotRadius = Math.max(1, config.dotSize / 2);
+      if (config.outline) {
+        ctx.beginPath();
+        ctx.arc(
+          centerX,
+          centerY,
+          dotRadius + config.outlineThickness,
+          0,
+          Math.PI * 2,
+        );
+        ctx.fillStyle = config.outlineColor;
+        ctx.fill();
+      }
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, dotRadius, 0, Math.PI * 2);
+      ctx.fillStyle = config.color;
       ctx.fill();
     }
 
+    ctx.globalAlpha = 1;
+  }
+
+  private buildCrosshairArms(
+    ctx: CanvasRenderingContext2D,
+    centerX: number,
+    centerY: number,
+    config: CrosshairConfig,
+  ): void {
     ctx.beginPath();
-    ctx.moveTo(centerX, centerY - gap);
-    ctx.lineTo(centerX, centerY - gap - size);
-    ctx.moveTo(centerX, centerY + gap);
-    ctx.lineTo(centerX, centerY + gap + size);
-    ctx.moveTo(centerX - gap, centerY);
-    ctx.lineTo(centerX - gap - size, centerY);
-    ctx.moveTo(centerX + gap, centerY);
-    ctx.lineTo(centerX + gap + size, centerY);
+    ctx.moveTo(centerX, centerY - config.gap);
+    ctx.lineTo(centerX, centerY - config.gap - config.size);
+    ctx.moveTo(centerX, centerY + config.gap);
+    ctx.lineTo(centerX, centerY + config.gap + config.size);
+    ctx.moveTo(centerX - config.gap, centerY);
+    ctx.lineTo(centerX - config.gap - config.size, centerY);
+    ctx.moveTo(centerX + config.gap, centerY);
+    ctx.lineTo(centerX + config.gap + config.size, centerY);
+  }
+
+  private strokeCrosshairPath(
+    ctx: CanvasRenderingContext2D,
+    config: CrosshairConfig,
+  ): void {
+    if (config.outline) {
+      ctx.lineWidth = config.thickness + config.outlineThickness * 2;
+      ctx.strokeStyle = config.outlineColor;
+      ctx.stroke();
+    }
+    ctx.lineWidth = config.thickness;
+    ctx.strokeStyle = config.color;
     ctx.stroke();
   }
 
