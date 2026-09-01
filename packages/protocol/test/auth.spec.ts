@@ -9,21 +9,22 @@ const validRegistration = {
 
 describe("registration age attestation contract", () => {
   it("requires explicit 18+ attestation", () => {
-    expect(RegisterRequestSchema.safeParse(validRegistration).success).toBe(false);
-    expect(
-      RegisterRequestSchema.safeParse({
-        ...validRegistration,
-        ageAttested: false,
-      }).success,
-    ).toBe(false);
+    const missing = RegisterRequestSchema.safeParse(validRegistration);
+    const declined = RegisterRequestSchema.safeParse({
+      ...validRegistration,
+      ageAttested: false,
+    });
+
+    expect(missing.success).toBe(false);
+    expect(declined.success).toBe(false);
   });
 
   it("accepts registration only when age attestation is true", () => {
-    expect(
-      RegisterRequestSchema.safeParse({
-        ...validRegistration,
-        ageAttested: true,
-      }).success,
-    ).toBe(true);
+    const accepted = RegisterRequestSchema.safeParse({
+      ...validRegistration,
+      ageAttested: true,
+    });
+
+    expect(accepted.success).toBe(true);
   });
 });
