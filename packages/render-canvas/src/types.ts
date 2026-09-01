@@ -11,6 +11,7 @@ export interface CrosshairConfig {
 
 export interface TargetRenderConfig {
   readonly bodyColor: string;
+  readonly opacity: number;
   readonly borderColor: string;
   readonly borderWidth: number;
 }
