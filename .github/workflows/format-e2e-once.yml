@@ -38,3 +38,5 @@ jobs:
           fi
           git commit -m "style(e2e): apply Prettier"
           git push
+
+# one-shot trigger
