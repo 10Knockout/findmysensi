@@ -15,9 +15,7 @@ describe("login continuation", () => {
     expect(resolveSafeLoginDestination("?next=https%3A%2F%2Fevil.example")).toBe(
       "/app",
     );
-    expect(resolveSafeLoginDestination("?next=%2F%2Fevil.example")).toBe(
-      "/app",
-    );
+    expect(resolveSafeLoginDestination("?next=%2F%2Fevil.example")).toBe("/app");
     expect(resolveSafeLoginDestination("?next=%2Fregister")).toBe("/app");
   });
 });
