@@ -39,4 +39,4 @@ jobs:
           git commit -m "style(e2e): apply Prettier"
           git push
 
-# one-shot trigger
+# one-shot trigger current head
