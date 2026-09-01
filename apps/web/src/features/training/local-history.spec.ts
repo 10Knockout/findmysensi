@@ -1,8 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   LocalPracticeHistory,
   PracticeSummaryRecord,
 } from "./local-history.js";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("Privacy-Safe Local Practice History", () => {
   it("saves and retrieves practice summary records without persisting raw inputs", () => {
@@ -46,7 +50,7 @@ describe("Privacy-Safe Local Practice History", () => {
 
     const all = history.getAll();
     expect(all.length).toBe(2);
-    expect(all[0]?.id).toBe("run-2"); // Most recent first
+    expect(all[0]?.id).toBe("run-2");
 
     const gridOnly = history.getAll("grid");
     expect(gridOnly.length).toBe(1);
@@ -54,5 +58,19 @@ describe("Privacy-Safe Local Practice History", () => {
 
     history.clear();
     expect(history.getAll().length).toBe(0);
+  });
+
+  it("treats corrupted or wrong-shaped persisted history as empty instead of crashing results", () => {
+    const localStorage = {
+      getItem: vi.fn(() => JSON.stringify({ not: "an array" })),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+    };
+    vi.stubGlobal("window", { localStorage });
+
+    const history = new LocalPracticeHistory();
+
+    expect(() => history.getAll("grid")).not.toThrow();
+    expect(history.getAll("grid")).toEqual([]);
   });
 });
