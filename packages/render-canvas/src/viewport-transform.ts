@@ -1,7 +1,9 @@
 import {
-  AngleUnits,
-  degreesToAngleUnits,
-  wrapYaw,
+  AngleDeltaUnits,
+  createAngleDeltaUnits,
+  createPitchUnits,
+  degreesToAngleDeltaUnits,
+  PitchUnits,
 } from "@findmysensi/aim-core";
 
 export type ScaleMode = "fit" | "stretch" | "black-bars";
@@ -23,13 +25,18 @@ export interface DisplayRect {
 
 export interface ViewportTransform {
   simToDisplay(
-    yaw: AngleUnits | number,
-    pitch: AngleUnits | number,
+    yawDelta: AngleDeltaUnits | number,
+    pitch: PitchUnits | number,
   ): { x: number; y: number };
-  displayToSim(x: number, y: number): { yaw: AngleUnits; pitch: AngleUnits };
+  displayToSim(x: number, y: number): {
+    yaw: AngleDeltaUnits;
+    pitch: PitchUnits;
+  };
+  angleRadiusToPixels(radiusAngleUnits: number): number;
   readonly displayRect: DisplayRect;
   readonly scaleFactor: number;
   readonly dpr: number;
+  readonly horizontalFovUnits: number;
 }
 
 const CANONICAL_ASPECT = 16 / 9;
@@ -39,8 +46,8 @@ export class CanonicalViewportTransform implements ViewportTransform {
   public readonly displayRect: DisplayRect;
   public readonly scaleFactor: number;
   public readonly dpr: number;
+  public readonly horizontalFovUnits: number;
 
-  private readonly hFovUnits: number;
   private readonly vFovUnits: number;
   private readonly pxPerAngleUnitX: number;
   private readonly pxPerAngleUnitY: number;
@@ -57,8 +64,8 @@ export class CanonicalViewportTransform implements ViewportTransform {
     } = config;
 
     this.dpr = dpr;
-    this.hFovUnits = degreesToAngleUnits(horizontalFovDegrees);
-    this.vFovUnits = Math.round(this.hFovUnits / CANONICAL_ASPECT);
+    this.horizontalFovUnits = degreesToAngleDeltaUnits(horizontalFovDegrees);
+    this.vFovUnits = Math.round(this.horizontalFovUnits / CANONICAL_ASPECT);
 
     if (scaleMode === "stretch") {
       this.displayRect = {
@@ -68,11 +75,9 @@ export class CanonicalViewportTransform implements ViewportTransform {
         height: canvasHeight,
       };
     } else {
-      // "fit" or "black-bars": preserve 16:9 aspect ratio centered within canvas
       const currentAspect = canvasWidth / Math.max(1, canvasHeight);
 
       if (currentAspect > CANONICAL_ASPECT) {
-        // Canvas is wider than 16:9 (pillarbox)
         const width = canvasHeight * CANONICAL_ASPECT;
         const x = (canvasWidth - width) / 2;
         this.displayRect = {
@@ -82,7 +87,6 @@ export class CanonicalViewportTransform implements ViewportTransform {
           height: canvasHeight,
         };
       } else {
-        // Canvas is taller than 16:9 (letterbox)
         const height = canvasWidth / CANONICAL_ASPECT;
         const y = (canvasHeight - height) / 2;
         this.displayRect = {
@@ -98,15 +102,15 @@ export class CanonicalViewportTransform implements ViewportTransform {
     this.centerX = this.displayRect.x + this.displayRect.width / 2;
     this.centerY = this.displayRect.y + this.displayRect.height / 2;
 
-    this.pxPerAngleUnitX = this.displayRect.width / this.hFovUnits;
+    this.pxPerAngleUnitX = this.displayRect.width / this.horizontalFovUnits;
     this.pxPerAngleUnitY = this.displayRect.height / this.vFovUnits;
   }
 
   public simToDisplay(
-    yaw: AngleUnits | number,
-    pitch: AngleUnits | number,
+    yawDelta: AngleDeltaUnits | number,
+    pitch: PitchUnits | number,
   ): { x: number; y: number } {
-    const x = this.centerX + yaw * this.pxPerAngleUnitX;
+    const x = this.centerX + yawDelta * this.pxPerAngleUnitX;
     const y = this.centerY - pitch * this.pxPerAngleUnitY;
     return { x, y };
   }
@@ -114,13 +118,20 @@ export class CanonicalViewportTransform implements ViewportTransform {
   public displayToSim(
     x: number,
     y: number,
-  ): { yaw: AngleUnits; pitch: AngleUnits } {
+  ): { yaw: AngleDeltaUnits; pitch: PitchUnits } {
     const yaw = Math.round((x - this.centerX) / this.pxPerAngleUnitX);
     const pitch = Math.round((this.centerY - y) / this.pxPerAngleUnitY);
     return {
-      yaw: wrapYaw(yaw),
-      pitch: wrapYaw(pitch),
+      yaw: createAngleDeltaUnits(yaw),
+      pitch: createPitchUnits(pitch),
     };
+  }
+
+  public angleRadiusToPixels(radiusAngleUnits: number): number {
+    if (!Number.isSafeInteger(radiusAngleUnits) || radiusAngleUnits < 0) {
+      throw new RangeError("Target radius must be a non-negative safe integer.");
+    }
+    return radiusAngleUnits * this.pxPerAngleUnitX;
   }
 }
 
