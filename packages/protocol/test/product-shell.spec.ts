@@ -6,11 +6,12 @@ import {
 } from "../src/index.js";
 
 describe("phase 1 product shell protocol", () => {
-  it("registers with username, email and password only", () => {
+  it("registers with credentials and explicit 18+ attestation", () => {
     const parsed = RegisterRequestSchema.safeParse({
       username: "Knockout",
       email: "ko@example.com",
       password: "Strong!Pass1",
+      ageAttested: true,
     });
 
     expect(parsed.success).toBe(true);
@@ -23,6 +24,7 @@ describe("phase 1 product shell protocol", () => {
       username: "Knockout",
       email: "ko@example.com",
       password: "Strong!Pass1",
+      ageAttested: true,
     });
 
     expect(parsed.success).toBe(false);
