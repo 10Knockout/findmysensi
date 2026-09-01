@@ -3,11 +3,11 @@ import { resolveSafeLoginDestination } from "./login-next.js";
 
 describe("login continuation", () => {
   it("returns an authenticated app destination from the next query", () => {
-    expect(
-      resolveSafeLoginDestination(
-        "?next=%2Fapp%2Ftrain%2Fgrid%2Fresults",
-      ),
-    ).toBe("/app/train/grid/results");
+    const destination = resolveSafeLoginDestination(
+      "?next=%2Fapp%2Ftrain%2Fgrid%2Fresults",
+    );
+
+    expect(destination).toBe("/app/train/grid/results");
   });
 
   it("falls back to the app hub for missing or unsafe destinations", () => {
