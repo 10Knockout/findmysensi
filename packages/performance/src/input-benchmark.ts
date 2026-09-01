@@ -1,4 +1,6 @@
 import {
+  CanonicalInputEvent,
+  createMoveEvent,
   createInitialSimulationState,
   stepSimulation,
 } from "@findmysensi/aim-core";
@@ -30,6 +32,7 @@ export interface BenchmarkResult {
   readonly totalEventsProcessed: number;
   readonly totalSegments: number;
   readonly totalShots: number;
+  readonly shotTicks: readonly number[];
   readonly finalYaw: number;
   readonly finalPitch: number;
 }
@@ -52,10 +55,45 @@ function bytesToHex(bytes: Uint8Array): string {
     .join("");
 }
 
+function safeScale(value: number, gain: number): number {
+  if (
+    !Number.isSafeInteger(value) ||
+    !Number.isSafeInteger(gain) ||
+    gain <= 0
+  ) {
+    throw new RangeError(
+      `Unsafe benchmark input conversion: ${value} x ${gain}`,
+    );
+  }
+  const result = value * gain;
+  if (!Number.isSafeInteger(result)) {
+    throw new RangeError(
+      "Benchmark input conversion exceeds safe integer precision.",
+    );
+  }
+  return result;
+}
+
+function convertBrowserEventsToAngular(
+  events: readonly CanonicalInputEvent[],
+  gain: number,
+): CanonicalInputEvent[] {
+  return events.map((event) => {
+    if (event.kind !== "move") return event;
+    return createMoveEvent(
+      event.tick,
+      event.order,
+      safeScale(event.dx, gain),
+      safeScale(-event.dy, gain),
+    );
+  });
+}
+
 export async function runInputPipelineBenchmark(
   events: readonly SyntheticInputEvent[],
   preset: InputProcessingPreset = 1000,
   tickRateHz: number = 128,
+  inputGainAngleUnitsPerUnit: number = 2_500,
 ): Promise<BenchmarkResult> {
   const policy: InputProcessingPolicy = createDefaultProcessingPolicy();
   const capacity = policy.getEffectiveCapacity(preset);
@@ -73,14 +111,11 @@ export async function runInputPipelineBenchmark(
 
   const tickIntervalMs = 1000 / tickRateHz;
   let currentSimTime = 0;
-
-  // Group synthetic events into frame/tick slices
   let eventIdx = 0;
 
   while (eventIdx < events.length || ringBuffer.getHighWaterMark() > 0) {
     currentSimTime += tickIntervalMs;
 
-    // Push all events occurring up to currentSimTime into the ring buffer
     while (
       eventIdx < events.length &&
       (events[eventIdx]?.timeMs ?? 0) <= currentSimTime
@@ -100,7 +135,6 @@ export async function runInputPipelineBenchmark(
       eventIdx++;
     }
 
-    // Drain from ring buffer into batch target
     const stats = ringBuffer.drainInto(batchTarget);
     totalDrained += stats.drainedCount;
     if (stats.highWaterMark > maxHighWaterMark) {
@@ -114,19 +148,21 @@ export async function runInputPipelineBenchmark(
     }
 
     if (batchTarget.count > 0) {
-      // Reduce raw events into causal segments
       const segments = reduceRawEvents(batchTarget, clock);
       totalSegments += segments.length;
 
-      // Step authoritative simulation state
-      for (const seg of segments) {
-        simulationState = stepSimulation(simulationState, seg.events);
+      for (const segment of segments) {
+        simulationState = stepSimulation(
+          simulationState,
+          convertBrowserEventsToAngular(
+            segment.events,
+            inputGainAngleUnitsPerUnit,
+          ),
+        );
       }
     }
 
-    if (eventIdx >= events.length) {
-      break;
-    }
+    if (eventIdx >= events.length) break;
   }
 
   const finalDrainStats = {
@@ -152,10 +188,9 @@ export async function runInputPipelineBenchmark(
   };
 
   const hashBytes = await hashCanonicalStateV1(canonicalState);
-  const stateHashHex = bytesToHex(hashBytes);
 
   return {
-    stateHashHex,
+    stateHashHex: bytesToHex(hashBytes),
     highWaterMark: maxHighWaterMark,
     overflowCount: totalOverflowCount,
     lostTemporalPrecision: anyLostPrecision,
@@ -163,6 +198,7 @@ export async function runInputPipelineBenchmark(
     totalEventsProcessed: totalDrained,
     totalSegments,
     totalShots: simulationState.shots.length,
+    shotTicks: simulationState.shots.map((shot) => shot.tick),
     finalYaw: simulationState.yaw,
     finalPitch: simulationState.pitch,
   };

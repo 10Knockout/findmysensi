@@ -1,5 +1,10 @@
 import { createTick, Tick } from "@findmysensi/protocol";
-import { AngleUnits, createAngleUnits } from "../fixed/angle.js";
+import {
+  AngleUnits,
+  createAngleUnits,
+  createPitchUnits,
+  PitchUnits,
+} from "../fixed/angle.js";
 
 export interface RenderSnapshotView {
   readonly tick: Tick;
@@ -9,13 +14,13 @@ export interface RenderSnapshotView {
   readonly targetY: Int32Array;
   readonly targetRadius: Int32Array;
   readonly playerYaw: AngleUnits;
-  readonly playerPitch: AngleUnits;
+  readonly playerPitch: PitchUnits;
 }
 
 class InternalSnapshotSlot {
   public tick: Tick = createTick(0);
   public playerYaw: AngleUnits = createAngleUnits(0);
-  public playerPitch: AngleUnits = createAngleUnits(0);
+  public playerPitch: PitchUnits = createPitchUnits(0);
   public targetCount: number = 0;
   public readonly targetId: Int32Array;
   public readonly targetX: Int32Array;
@@ -24,7 +29,7 @@ class InternalSnapshotSlot {
   public readonly preallocatedView: {
     tick: Tick;
     playerYaw: AngleUnits;
-    playerPitch: AngleUnits;
+    playerPitch: PitchUnits;
     targetCount: number;
     readonly targetId: Int32Array;
     readonly targetX: Int32Array;
@@ -60,7 +65,7 @@ class InternalSnapshotSlot {
 }
 
 export interface SnapshotBuffer {
-  beginWrite(tick: Tick, playerYaw: AngleUnits, playerPitch: AngleUnits): void;
+  beginWrite(tick: Tick, playerYaw: AngleUnits, playerPitch: PitchUnits): void;
   writeTarget(id: number, x: number, y: number, radius: number): void;
   endWrite(): void;
   swap(): RenderSnapshotView;
@@ -86,7 +91,7 @@ export class DoubleBufferedSnapshotManager implements SnapshotBuffer {
   public beginWrite(
     tick: Tick,
     playerYaw: AngleUnits,
-    playerPitch: AngleUnits,
+    playerPitch: PitchUnits,
   ): void {
     this.isWriting = true;
     this.writeBuffer.tick = tick;
@@ -103,7 +108,7 @@ export class DoubleBufferedSnapshotManager implements SnapshotBuffer {
     }
     const idx = this.writeBuffer.targetCount;
     if (idx >= this.maxCapacity) {
-      return; // Capacity limit reached for frame
+      return;
     }
     this.writeBuffer.targetId[idx] = id;
     this.writeBuffer.targetX[idx] = x;

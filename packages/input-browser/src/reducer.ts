@@ -22,11 +22,6 @@ export interface TickBucketer {
   timeToTick(timeIndex: number): Tick;
 }
 
-export interface ReducerOptions {
-  sensitivityYawMultiplier?: number;
-  sensitivityPitchMultiplier?: number;
-}
-
 function mapReasonCode(code: number): InvalidationReason {
   switch (code) {
     case 1:
@@ -47,14 +42,10 @@ function mapReasonCode(code: number): InvalidationReason {
 export function reduceRawEvents(
   input: RawInputBatchTarget,
   clock: TickBucketer,
-  options?: ReducerOptions,
 ): ReducedSegment[] {
   if (input.count === 0) {
     return [];
   }
-
-  const yawMult = options?.sensitivityYawMultiplier ?? 1.0;
-  const pitchMult = options?.sensitivityPitchMultiplier ?? 1.0;
 
   const segments: ReducedSegment[] = [];
   let currentSegmentTick: Tick | null = null;
@@ -93,7 +84,6 @@ export function reduceRawEvents(
     const timeIndex = input.timeIndices[i] ?? 0;
     const tick = clock.timeToTick(timeIndex);
 
-    // If we transition to a new tick, flush the previous segment
     if (currentSegmentTick === null || tick !== currentSegmentTick) {
       flushSegment();
       currentSegmentTick = tick;
@@ -101,10 +91,8 @@ export function reduceRawEvents(
 
     switch (kind) {
       case EVENT_KIND_MOVE: {
-        const rawDx = input.dx[i] ?? 0;
-        const rawDy = input.dy[i] ?? 0;
-        accumDx += Math.round(rawDx * yawMult);
-        accumDy += Math.round(rawDy * pitchMult);
+        accumDx += input.dx[i] ?? 0;
+        accumDy += input.dy[i] ?? 0;
         break;
       }
 
@@ -126,8 +114,6 @@ export function reduceRawEvents(
     }
   }
 
-  // Flush the final active segment
   flushSegment();
-
   return segments;
 }

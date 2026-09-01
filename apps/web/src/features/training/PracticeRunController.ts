@@ -1,9 +1,13 @@
 import {
+  AngleUnits,
   clampPitch,
+  createAngleUnits,
+  createPitchUnits,
   createPrngV1,
   createShotTracker,
   createSnapshotBuffer,
   findHitTarget,
+  PitchUnits,
   PrngV1,
   SnapshotBuffer,
   wrapYaw,
@@ -25,6 +29,7 @@ import {
   GRID_DEV_V0_DEFINITION,
   GridScenarioEngine,
 } from "@findmysensi/scenarios";
+import { BASE_BROWSER_GAIN_ANGLE_UNITS } from "@findmysensi/sensitivity";
 import { computeGridDevScore, ScoreResult } from "@findmysensi/scoring";
 import {
   createFixedTickRunner,
@@ -42,6 +47,31 @@ export interface PracticeRunCallbacks {
   onComplete: (result: ScoreResult) => void;
 }
 
+export interface PracticeRunOptions {
+  readonly durationTicks?: number;
+  readonly inputGainAngleUnitsPerUnit?: number;
+  readonly inputBufferCapacity?: number;
+}
+
+function safeScaledInputDelta(rawDelta: number, gain: number): number {
+  if (
+    !Number.isSafeInteger(rawDelta) ||
+    !Number.isSafeInteger(gain) ||
+    gain <= 0
+  ) {
+    throw new RangeError(
+      `Unsafe Gridshot input conversion: raw=${rawDelta}, gain=${gain}`,
+    );
+  }
+  const scaled = rawDelta * gain;
+  if (!Number.isSafeInteger(scaled)) {
+    throw new RangeError(
+      "Gridshot input delta exceeds safe integer precision.",
+    );
+  }
+  return scaled;
+}
+
 export class PracticeRunController {
   private state: PracticeRunState = "ready";
   private runner: FixedTickRunner | null = null;
@@ -55,9 +85,10 @@ export class PracticeRunController {
   private renderer: AimRenderer | null = null;
   private callbacks: PracticeRunCallbacks;
 
-  private totalDurationTicks: number;
-  private playerYaw: number = 0;
-  private playerPitch: number = 0;
+  private readonly totalDurationTicks: number;
+  private readonly inputGainAngleUnitsPerUnit: number;
+  private playerYaw: AngleUnits = createAngleUnits(0);
+  private playerPitch: PitchUnits = createPitchUnits(0);
   private totalOverflowEvents: number = 0;
   private highWaterMark: number = 0;
   private exactReplayPreserved: boolean = true;
@@ -65,15 +96,32 @@ export class PracticeRunController {
   constructor(
     callbacks: PracticeRunCallbacks,
     renderer?: AimRenderer,
-    durationTicks: number = GRID_DEV_V0_DEFINITION.durationTicks,
+    optionsOrDuration: PracticeRunOptions | number = {},
   ) {
+    const options: PracticeRunOptions =
+      typeof optionsOrDuration === "number"
+        ? { durationTicks: optionsOrDuration }
+        : optionsOrDuration;
+    const capacity = options.inputBufferCapacity ?? 4096;
+    const gain =
+      options.inputGainAngleUnitsPerUnit ?? BASE_BROWSER_GAIN_ANGLE_UNITS;
+
+    if (!Number.isSafeInteger(capacity) || capacity < 2) {
+      throw new RangeError("Input buffer capacity must be an integer >= 2.");
+    }
+    if (!Number.isSafeInteger(gain) || gain <= 0) {
+      throw new RangeError("Input gain must be a positive safe integer.");
+    }
+
     this.callbacks = callbacks;
     this.renderer = renderer ?? null;
-    this.totalDurationTicks = durationTicks;
+    this.totalDurationTicks =
+      options.durationTicks ?? GRID_DEV_V0_DEFINITION.durationTicks;
+    this.inputGainAngleUnitsPerUnit = gain;
     this.engine = new GridScenarioEngine(GRID_DEV_V0_DEFINITION);
     this.metricsTracker = createGridMetricsTracker();
-    this.ringBuffer = createInputRingBuffer(4096);
-    this.batchTarget = createRawInputBatchTarget(4096);
+    this.ringBuffer = createInputRingBuffer(capacity);
+    this.batchTarget = createRawInputBatchTarget(capacity);
     this.snapshotBuffer = createSnapshotBuffer(32);
   }
 
@@ -93,16 +141,16 @@ export class PracticeRunController {
     this.prng = createPrngV1(seed);
     this.metricsTracker = createGridMetricsTracker();
     this.shotTracker.reset();
-    this.playerYaw = 0;
-    this.playerPitch = 0;
+    this.playerYaw = createAngleUnits(0);
+    this.playerPitch = createPitchUnits(0);
     this.totalOverflowEvents = 0;
     this.highWaterMark = 0;
     this.exactReplayPreserved = true;
     this.ringBuffer.reset();
 
     const initialTargets = this.engine.initialize(this.prng);
-    for (const t of initialTargets) {
-      this.metricsTracker.recordTargetSpawn(t.id, 0);
+    for (const target of initialTargets) {
+      this.metricsTracker.recordTargetSpawn(target.id, 0);
     }
 
     this.writeSnapshot(0);
@@ -159,7 +207,6 @@ export class PracticeRunController {
       return;
     }
 
-    // 1. Drain input with sticky overflow capture
     const stats = this.ringBuffer.drainInto(this.batchTarget);
     if (stats.overflowCount > 0) {
       this.totalOverflowEvents += stats.overflowCount;
@@ -178,33 +225,41 @@ export class PracticeRunController {
 
     if (this.batchTarget.count > 0) {
       const segments = reduceRawEvents(this.batchTarget, clock);
-      for (const seg of segments) {
-        for (const ev of seg.events) {
-          if (ev.kind === "move") {
-            this.playerYaw += ev.dx;
-            this.playerPitch += ev.dy;
-          } else if (ev.kind === "shot") {
+      for (const segment of segments) {
+        for (const event of segment.events) {
+          if (event.kind === "move") {
+            const yawDelta = safeScaledInputDelta(
+              event.dx,
+              this.inputGainAngleUnitsPerUnit,
+            );
+            const pitchDelta = safeScaledInputDelta(
+              event.dy,
+              this.inputGainAngleUnitsPerUnit,
+            );
+            this.playerYaw = wrapYaw(this.playerYaw + yawDelta);
+            this.playerPitch = clampPitch(this.playerPitch - pitchDelta);
+          } else if (event.kind === "shot") {
             this.handlePlayerShot(tick);
+          } else if (event.kind === "invalidate") {
+            this.exactReplayPreserved = false;
           }
         }
       }
     }
 
-    // 2. Report progress
     this.callbacks.onTickProgress(tick, this.totalDurationTicks);
-
-    // 3. Write snapshot
     this.writeSnapshot(tick);
   }
 
   public handlePlayerShot(currentTick: number): void {
     if (!this.prng) return;
 
-    const yawUnits = wrapYaw(this.playerYaw);
-    const pitchUnits = clampPitch(this.playerPitch);
-
     const activeTargets = this.engine.getActiveTargets();
-    const hitTarget = findHitTarget(yawUnits, pitchUnits, activeTargets);
+    const hitTarget = findHitTarget(
+      this.playerYaw,
+      this.playerPitch,
+      activeTargets,
+    );
 
     if (hitTarget) {
       this.metricsTracker.recordShot(currentTick, hitTarget.id);
@@ -226,18 +281,19 @@ export class PracticeRunController {
   }
 
   private writeSnapshot(tick: number): void {
-    const yawUnits = wrapYaw(this.playerYaw);
-    const pitchUnits = clampPitch(this.playerPitch);
-
-    this.snapshotBuffer.beginWrite(createTick(tick), yawUnits, pitchUnits);
+    this.snapshotBuffer.beginWrite(
+      createTick(tick),
+      this.playerYaw,
+      this.playerPitch,
+    );
 
     const active = this.engine.getActiveTargets();
-    for (const t of active) {
+    for (const target of active) {
       this.snapshotBuffer.writeTarget(
-        t.id,
-        t.xAngleUnits,
-        t.yAngleUnits,
-        t.radiusAngleUnits,
+        target.id,
+        target.xAngleUnits,
+        target.yAngleUnits,
+        target.radiusAngleUnits,
       );
     }
 
@@ -257,7 +313,6 @@ export class PracticeRunController {
     );
     const finalScore = computeGridDevScore(finalMetrics);
 
-    // Save to privacy-safe local practice history
     localPracticeHistory.save({
       id: `practice-${Date.now()}`,
       modeId: "grid",

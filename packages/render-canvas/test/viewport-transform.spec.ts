@@ -1,4 +1,8 @@
-import { createAngleUnits, degreesToAngleUnits } from "@findmysensi/aim-core";
+import {
+  createAngleDeltaUnits,
+  createPitchUnits,
+  degreesToAngleDeltaUnits,
+} from "@findmysensi/aim-core";
 import { describe, expect, it } from "vitest";
 import {
   createViewportTransform,
@@ -21,8 +25,8 @@ describe("Canonical Ranked Angular Viewport Transform", () => {
     });
 
     const displayCenter = transform.simToDisplay(
-      createAngleUnits(0),
-      createAngleUnits(0),
+      createAngleDeltaUnits(0),
+      createPitchUnits(0),
     );
     expect(displayCenter.x).toBe(960);
     expect(displayCenter.y).toBe(540);
@@ -32,8 +36,7 @@ describe("Canonical Ranked Angular Viewport Transform", () => {
     expect(simCenter.pitch).toBe(0);
   });
 
-  it("letterboxes and pillarboxes non-16:9 aspect ratios (16:10, 4:3, 5:4) to protect authoritative 16:9 geometry", () => {
-    // 16:10 (1920 x 1200) -> Letterboxed with black bars top/bottom (1920 x 1080 content centered vertically at y=60)
+  it("letterboxes and pillarboxes non-16:9 aspect ratios to protect authoritative geometry", () => {
     const t1610 = createViewportTransform({
       canvasWidth: 1920,
       canvasHeight: 1200,
@@ -45,14 +48,12 @@ describe("Canonical Ranked Angular Viewport Transform", () => {
     expect(t1610.displayRect.y).toBe(60);
 
     const center1610 = t1610.simToDisplay(
-      createAngleUnits(0),
-      createAngleUnits(0),
+      createAngleDeltaUnits(0),
+      createPitchUnits(0),
     );
     expect(center1610.x).toBe(960);
-    expect(center1610.y).toBe(600); // 60 + 540
+    expect(center1610.y).toBe(600);
 
-    // 4:3 (1024 x 768) -> Pillarboxed with black bars left/right
-    // For 1024 width, 16:9 height is 1024 * 9 / 16 = 576, centered vertically at (768 - 576)/2 = 96
     const t43 = createViewportTransform({
       canvasWidth: 1024,
       canvasHeight: 768,
@@ -63,7 +64,7 @@ describe("Canonical Ranked Angular Viewport Transform", () => {
     expect(t43.displayRect.y).toBe(96);
   });
 
-  it("handles DPR scaling proportionally", () => {
+  it("handles DPR scaling proportionally without changing simulation angles", () => {
     const tDpr1 = createViewportTransform({
       canvasWidth: 1280,
       canvasHeight: 720,
@@ -75,11 +76,10 @@ describe("Canonical Ranked Angular Viewport Transform", () => {
       dpr: 2,
     });
 
-    const angle = degreesToAngleUnits(10);
-    const p1 = tDpr1.simToDisplay(angle, createAngleUnits(0));
-    const p2 = tDpr2.simToDisplay(angle, createAngleUnits(0));
+    const angle = degreesToAngleDeltaUnits(10);
+    const p1 = tDpr1.simToDisplay(angle, createPitchUnits(0));
+    const p2 = tDpr2.simToDisplay(angle, createPitchUnits(0));
 
-    // In DPR 2, physical pixel coordinate offset from center is exactly 2x
     const offset1 = p1.x - tDpr1.displayRect.x - tDpr1.displayRect.width / 2;
     const offset2 = p2.x - tDpr2.displayRect.x - tDpr2.displayRect.width / 2;
     expect(Math.round(offset2 / offset1)).toBe(2);
@@ -99,14 +99,30 @@ describe("Canonical Ranked Angular Viewport Transform", () => {
       height: 768,
     });
 
-    const angleX = degreesToAngleUnits(15);
-    const angleY = degreesToAngleUnits(-10);
+    const angleX = degreesToAngleDeltaUnits(15);
+    const angleY = createPitchUnits(degreesToAngleDeltaUnits(-10));
 
     const screenPos = tStretch.simToDisplay(angleX, angleY);
     const backToSim = tStretch.displayToSim(screenPos.x, screenPos.y);
 
-    // Invertibility test
     expect(backToSim.yaw).toBe(angleX);
     expect(backToSim.pitch).toBe(angleY);
+  });
+
+  it("derives target pixel radius from the active FOV", () => {
+    const fov103 = createViewportTransform({
+      canvasWidth: 1920,
+      canvasHeight: 1080,
+      horizontalFovDegrees: 103,
+    });
+    const fov90 = createViewportTransform({
+      canvasWidth: 1920,
+      canvasHeight: 1080,
+      horizontalFovDegrees: 90,
+    });
+
+    expect(fov90.angleRadiusToPixels(50_000)).toBeGreaterThan(
+      fov103.angleRadiusToPixels(50_000),
+    );
   });
 });

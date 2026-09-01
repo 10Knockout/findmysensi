@@ -5,6 +5,7 @@ export const FULL_TURN_MASK = FULL_TURN_UNITS - 1; // 0x00FFFFFF
 
 export type AngleUnits = number & { readonly __brand: "AngleUnits" };
 export type AngleDeltaUnits = number & { readonly __brand: "AngleDeltaUnits" };
+export type PitchUnits = number & { readonly __brand: "PitchUnits" };
 
 export function createAngleUnits(value: number): AngleUnits {
   if (!Number.isSafeInteger(value) || value < 0 || value >= FULL_TURN_UNITS) {
@@ -24,6 +25,15 @@ export function createAngleDeltaUnits(value: number): AngleDeltaUnits {
   return (value === 0 ? 0 : value) as AngleDeltaUnits;
 }
 
+export function createPitchUnits(value: number): PitchUnits {
+  if (!Number.isSafeInteger(value)) {
+    throw new RangeError(
+      `Invalid PitchUnits: ${value}. Must be a safe integer.`,
+    );
+  }
+  return (value === 0 ? 0 : value) as PitchUnits;
+}
+
 export function wrapYaw(value: number): AngleUnits {
   if (!Number.isSafeInteger(value)) {
     throw new RangeError(
@@ -33,6 +43,16 @@ export function wrapYaw(value: number): AngleUnits {
   const remainder = value % FULL_TURN_UNITS;
   const wrapped = remainder < 0 ? remainder + FULL_TURN_UNITS : remainder;
   return (wrapped === 0 ? 0 : wrapped) as AngleUnits;
+}
+
+export function shortestSignedAngleDelta(
+  from: AngleUnits,
+  to: AngleUnits,
+): AngleDeltaUnits {
+  const raw =
+    (((to - from) % FULL_TURN_UNITS) + FULL_TURN_UNITS) % FULL_TURN_UNITS;
+  const signed = raw >= HALF_TURN_UNITS ? raw - FULL_TURN_UNITS : raw;
+  return createAngleDeltaUnits(signed);
 }
 
 export function addAngle(base: AngleUnits, delta: AngleDeltaUnits): AngleUnits {

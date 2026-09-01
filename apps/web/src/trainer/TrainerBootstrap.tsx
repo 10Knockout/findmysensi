@@ -2,19 +2,30 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { BrowserApiClient } from "@findmysensi/api-client";
 import {
-  createAimRenderer,
-  createViewportTransform,
-} from "@findmysensi/render-canvas";
+  CROSSHAIR_PRESETS,
+  decodeCrosshairShareCode,
+  type CrosshairConfig as SavedCrosshairConfig,
+} from "@findmysensi/crosshair";
 import {
   attachInputListener,
   createPointerLockController,
   detectInputCapabilities,
 } from "@findmysensi/input-browser";
+import { TrainerSettingsSchema } from "@findmysensi/protocol";
+import {
+  createAimRenderer,
+  createViewportTransform,
+} from "@findmysensi/render-canvas";
 import {
   PracticeRunController,
   PracticeRunState,
 } from "../features/training/PracticeRunController.js";
+import {
+  GridshotRuntimeConfig,
+  resolveGridshotRuntimeConfig,
+} from "./runtime-config.js";
 
 interface TrainerBootstrapProps {
   mode: string;
@@ -29,6 +40,10 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
   const controllerRef = useRef<PracticeRunController | null>(null);
   const pauseDeadlineRef = useRef<number | null>(null);
 
+  const [runtimeConfig, setRuntimeConfig] =
+    useState<GridshotRuntimeConfig | null>(null);
+  const [settingsError, setSettingsError] = useState<string | null>(null);
+  const [settingsAttempt, setSettingsAttempt] = useState(0);
   const [gameState, setGameState] = useState<PracticeRunState>("ready");
   const [remainingSeconds, setRemainingSeconds] = useState(60);
   const [score, setScore] = useState(0);
@@ -40,32 +55,96 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
   const [pauseSecondsLeft, setPauseSecondsLeft] = useState(MAX_PAUSE_MS / 1000);
 
   useEffect(() => {
-    if (!canvasRef.current || !containerRef.current) return;
+    let active = true;
+    const client = new BrowserApiClient();
+
+    void (async () => {
+      setSettingsError(null);
+      setRuntimeConfig(null);
+
+      const session = await client.getSession();
+      if (!active) return;
+      if (!session?.user) {
+        router.replace(
+          `/login?next=${encodeURIComponent(`/app/train/${mode}`)}`,
+        );
+        return;
+      }
+
+      const result = await client.getTrainerSettings();
+      if (!active) return;
+      if (!result.ok || !result.data) {
+        setSettingsError(
+          result.error ?? "Trainer settings could not be loaded. Try again.",
+        );
+        return;
+      }
+
+      try {
+        const settings = TrainerSettingsSchema.parse(result.data);
+        const resolved = resolveGridshotRuntimeConfig(settings);
+        resolveSavedCrosshair(resolved.crosshairCode);
+        setRuntimeConfig(resolved);
+      } catch {
+        setSettingsError(
+          "Saved trainer settings are invalid. Open Settings and save valid values before starting Gridshot.",
+        );
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [mode, router, settingsAttempt]);
+
+  useEffect(() => {
+    if (!runtimeConfig || !canvasRef.current || !containerRef.current) return;
 
     const canvas = canvasRef.current;
     const container = containerRef.current;
-    let animationFrameId: number | null = null;
     const renderer = createAimRenderer();
+    const savedCrosshair = resolveSavedCrosshair(runtimeConfig.crosshairCode);
+    let animationFrameId: number | null = null;
+    let rendererInitialized = false;
 
     const handleResize = () => {
-      const width = container.clientWidth || 1280;
-      const height = container.clientHeight || 720;
+      const cssWidth = container.clientWidth || 1280;
+      const cssHeight = container.clientHeight || 720;
       const dpr = window.devicePixelRatio || 1;
-
-      canvas.width = Math.floor(width * dpr);
-      canvas.height = Math.floor(height * dpr);
-      canvas.style.width = `${width}px`;
-      canvas.style.height = `${height}px`;
-
-      renderer.initialize(
-        canvas,
-        createViewportTransform({
-          canvasWidth: canvas.width,
-          canvasHeight: canvas.height,
-          dpr,
-          scaleMode: "fit",
-        }),
+      const backing = resolveBackingResolution(
+        runtimeConfig,
+        cssWidth,
+        cssHeight,
+        dpr,
       );
+
+      canvas.width = backing.width;
+      canvas.height = backing.height;
+      canvas.style.width = `${cssWidth}px`;
+      canvas.style.height = `${cssHeight}px`;
+
+      const viewport = createViewportTransform({
+        canvasWidth: backing.width,
+        canvasHeight: backing.height,
+        dpr: runtimeConfig.resolution === "native" ? dpr : 1,
+        scaleMode: runtimeConfig.scalingMode,
+        horizontalFovDegrees: runtimeConfig.fovDegrees,
+      });
+
+      if (!rendererInitialized) {
+        renderer.initialize(canvas, viewport, {
+          crosshair: savedCrosshair,
+          target: {
+            bodyColor: runtimeConfig.targetColor,
+            opacity: runtimeConfig.targetOpacity,
+            borderWidth: runtimeConfig.targetOutline ? 2 : 0,
+            borderColor: "#ffffff",
+          },
+        });
+        rendererInitialized = true;
+      } else {
+        renderer.resize(viewport);
+      }
     };
 
     handleResize();
@@ -106,7 +185,11 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
         onComplete: () => {},
       },
       renderer,
-      60 * 128,
+      {
+        durationTicks: 60 * 128,
+        inputGainAngleUnitsPerUnit: runtimeConfig.inputGainAngleUnitsPerUnit,
+        inputBufferCapacity: runtimeConfig.inputBufferCapacity,
+      },
     );
 
     controllerRef.current = controller;
@@ -136,8 +219,10 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
       document.removeEventListener("pointerlockchange", onPointerLockChange);
       if (animationFrameId !== null) cancelAnimationFrame(animationFrameId);
       controller.abort();
+      renderer.dispose();
+      if (controllerRef.current === controller) controllerRef.current = null;
     };
-  }, [mode, router]);
+  }, [mode, router, runtimeConfig]);
 
   useEffect(() => {
     if (gameState !== "paused") return;
@@ -152,6 +237,62 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
     const interval = window.setInterval(update, 1000);
     return () => window.clearInterval(interval);
   }, [gameState, router]);
+
+  if (mode !== "grid") {
+    return (
+      <main className="grid min-h-screen place-items-center bg-zinc-950 p-6 text-zinc-100">
+        <div className="max-w-lg rounded-xl border border-zinc-800 bg-zinc-900 p-6 text-center">
+          <h1 className="text-xl font-bold">Mode not available yet</h1>
+          <p className="mt-2 text-sm text-zinc-400">
+            Phase 2 is stabilizing Gridshot before any additional training mode
+            is exposed.
+          </p>
+          <button
+            onClick={() => router.replace("/app")}
+            className="mt-5 rounded-lg bg-emerald-400 px-4 py-2 font-bold text-zinc-950"
+          >
+            Back to Trainer Home
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  if (settingsError) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-zinc-950 p-6 text-zinc-100">
+        <div
+          role="alert"
+          className="max-w-lg rounded-xl border border-red-900 bg-red-950/30 p-6"
+        >
+          <h1 className="font-bold text-red-100">Gridshot cannot start</h1>
+          <p className="mt-2 text-sm text-red-200">{settingsError}</p>
+          <div className="mt-5 flex gap-3">
+            <button
+              onClick={() => setSettingsAttempt((value) => value + 1)}
+              className="rounded-lg bg-red-200 px-4 py-2 font-bold text-red-950"
+            >
+              Retry
+            </button>
+            <button
+              onClick={() => router.replace("/app/settings")}
+              className="rounded-lg border border-red-800 px-4 py-2 font-bold text-red-100"
+            >
+              Settings
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (!runtimeConfig) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-zinc-950 text-zinc-300">
+        <p className="font-mono text-sm">Loading Gridshot settings…</p>
+      </main>
+    );
+  }
 
   const startCountdownAndLock = async () => {
     if (!canvasRef.current) return;
@@ -190,6 +331,10 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
 
   const openSettings = () => {
     window.open("/app/settings", "fms-settings", "noopener,noreferrer");
+  };
+
+  const restartWithLatestSettings = () => {
+    window.location.assign(`/app/train/${mode}`);
   };
 
   return (
@@ -246,7 +391,8 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
                 Gridshot
               </h1>
               <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                Click start to capture the mouse and begin the 60-second run.
+                Three medium static targets. Click start to capture the mouse
+                and begin the 60-second run.
               </p>
             </div>
             <button
@@ -299,7 +445,7 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
                 Settings
               </button>
               <button
-                onClick={startCountdownAndLock}
+                onClick={restartWithLatestSettings}
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 py-3 font-semibold text-zinc-200 hover:bg-zinc-700"
               >
                 Restart
@@ -317,15 +463,57 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
               ) : null}
             </div>
             <p className="text-[11px] text-zinc-500">
-              Settings opens separately so this paused run stays in memory.
-              Saved presentation/input settings are applied by the trainer
-              integration as they become supported.
+              Resume keeps this run's settings frozen. Restart reloads your
+              latest saved settings.
             </p>
           </div>
         </div>
       ) : null}
     </div>
   );
+}
+
+function resolveSavedCrosshair(code: string | null): SavedCrosshairConfig {
+  if (code === null) return CROSSHAIR_PRESETS[0]!.config;
+  return decodeCrosshairShareCode(code);
+}
+
+function resolveBackingResolution(
+  config: GridshotRuntimeConfig,
+  cssWidth: number,
+  cssHeight: number,
+  dpr: number,
+): { width: number; height: number } {
+  if (config.resolution === "native") {
+    return {
+      width: Math.max(1, Math.floor(cssWidth * dpr)),
+      height: Math.max(1, Math.floor(cssHeight * dpr)),
+    };
+  }
+
+  if (config.resolution === "custom") {
+    if (
+      config.customResolutionWidth === null ||
+      config.customResolutionHeight === null
+    ) {
+      throw new Error("Custom resolution requires both width and height.");
+    }
+    return {
+      width: config.customResolutionWidth,
+      height: config.customResolutionHeight,
+    };
+  }
+
+  const [width, height] = config.resolution.split("x").map(Number);
+  if (
+    !Number.isInteger(width) ||
+    !Number.isInteger(height) ||
+    !width ||
+    !height
+  ) {
+    throw new Error("Saved resolution is invalid.");
+  }
+  return { width, height };
 }
 
 function HudGroup({ items }: { items: [string, string][] }) {
