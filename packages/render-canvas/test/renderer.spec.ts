@@ -1,26 +1,34 @@
-import { createAngleUnits, createSnapshotBuffer } from "@findmysensi/aim-core";
+import {
+  createAngleUnits,
+  createPitchUnits,
+  createSnapshotBuffer,
+  FULL_TURN_UNITS,
+} from "@findmysensi/aim-core";
 import { createTick } from "@findmysensi/protocol";
 import { describe, expect, it, vi } from "vitest";
 import { createAimRenderer } from "../src/renderer.js";
 import { createViewportTransform } from "../src/viewport-transform.js";
 
+function createMockContext() {
+  return {
+    fillRect: vi.fn(),
+    beginPath: vi.fn(),
+    arc: vi.fn(),
+    fill: vi.fn(),
+    stroke: vi.fn(),
+    moveTo: vi.fn(),
+    lineTo: vi.fn(),
+    fillStyle: "",
+    strokeStyle: "",
+    lineWidth: 1,
+    globalAlpha: 1,
+  };
+}
+
 describe("Canvas2D Potato Aim Renderer", () => {
   it("renders targets and center crosshair via Canvas2D context without mutating state", () => {
     const renderer = createAimRenderer();
-
-    const mockCtx = {
-      fillRect: vi.fn(),
-      beginPath: vi.fn(),
-      arc: vi.fn(),
-      fill: vi.fn(),
-      stroke: vi.fn(),
-      moveTo: vi.fn(),
-      lineTo: vi.fn(),
-      fillStyle: "",
-      strokeStyle: "",
-      lineWidth: 1,
-    };
-
+    const mockCtx = createMockContext();
     const mockCanvas = {
       width: 1920,
       height: 1080,
@@ -35,30 +43,94 @@ describe("Canvas2D Potato Aim Renderer", () => {
     renderer.initialize(mockCanvas as unknown as HTMLCanvasElement, viewport, {
       backgroundColor: "#0f1117",
       crosshair: { color: "#00ff88", dot: true },
+      target: { bodyColor: "#7CFF6B", opacity: 0.8, borderWidth: 0 },
     });
 
-    // Create a snapshot with 2 targets
     const buffer = createSnapshotBuffer(16);
-    buffer.beginWrite(createTick(1), createAngleUnits(0), createAngleUnits(0));
-    buffer.writeTarget(1, 0, 0, 20000); // Center target
-    buffer.writeTarget(2, 50000, 30000, 20000); // Offset target
+    buffer.beginWrite(
+      createTick(1),
+      createAngleUnits(0),
+      createPitchUnits(0),
+    );
+    buffer.writeTarget(1, 0, 0, 50_000);
+    buffer.writeTarget(2, 50_000, 30_000, 50_000);
     buffer.endWrite();
     const snapshot = buffer.swap();
 
     renderer.render(snapshot);
 
-    // Assert Canvas2D drawing calls
-    expect(mockCtx.fillRect).toHaveBeenCalled(); // Background clear + viewport fill
-    expect(mockCtx.arc).toHaveBeenCalled(); // Target arcs + center crosshair dot
+    expect(mockCtx.fillRect).toHaveBeenCalled();
+    expect(mockCtx.arc).toHaveBeenCalled();
     expect(mockCtx.fill).toHaveBeenCalled();
-    expect(mockCtx.stroke).toHaveBeenCalled();
-
-    // Verify snapshot was not mutated
+    expect(mockCtx.globalAlpha).toBe(1);
     expect(snapshot.targetCount).toBe(2);
     expect(snapshot.tick).toBe(1);
 
-    // Clean dispose
     renderer.dispose();
+  });
+
+  it("projects a target correctly across the yaw wrap seam", () => {
+    const renderer = createAimRenderer();
+    const mockCtx = createMockContext();
+    const mockCanvas = {
+      width: 1920,
+      height: 1080,
+      getContext: vi.fn(() => mockCtx),
+    };
+    const viewport = createViewportTransform({
+      canvasWidth: 1920,
+      canvasHeight: 1080,
+      horizontalFovDegrees: 103,
+    });
+    renderer.initialize(mockCanvas as unknown as HTMLCanvasElement, viewport);
+
+    const buffer = createSnapshotBuffer(8);
+    buffer.beginWrite(
+      createTick(1),
+      createAngleUnits(FULL_TURN_UNITS - 10_000),
+      createPitchUnits(0),
+    );
+    buffer.writeTarget(1, 5_000, 0, 50_000);
+    buffer.endWrite();
+    renderer.render(buffer.swap());
+
+    const firstTargetArc = mockCtx.arc.mock.calls[0];
+    expect(firstTargetArc).toBeDefined();
+    const targetX = firstTargetArc?.[0] as number;
+    expect(targetX).toBeGreaterThan(960);
+    expect(targetX).toBeLessThan(980);
+  });
+
+  it("uses the viewport FOV to derive target pixel radius", () => {
+    const renderRadius = (fov: number) => {
+      const renderer = createAimRenderer();
+      const mockCtx = createMockContext();
+      const mockCanvas = {
+        width: 1920,
+        height: 1080,
+        getContext: vi.fn(() => mockCtx),
+      };
+      renderer.initialize(
+        mockCanvas as unknown as HTMLCanvasElement,
+        createViewportTransform({
+          canvasWidth: 1920,
+          canvasHeight: 1080,
+          horizontalFovDegrees: fov,
+        }),
+      );
+      const buffer = createSnapshotBuffer(8);
+      buffer.beginWrite(
+        createTick(1),
+        createAngleUnits(0),
+        createPitchUnits(0),
+      );
+      buffer.writeTarget(1, 0, 0, 50_000);
+      buffer.endWrite();
+      renderer.render(buffer.swap());
+      return mockCtx.arc.mock.calls[0]?.[2] as number;
+    };
+
+    expect(renderRadius(90)).toBeGreaterThan(renderRadius(103));
   });
 
   it("handles resize without re-initialization errors", () => {
@@ -66,15 +138,7 @@ describe("Canvas2D Potato Aim Renderer", () => {
     const mockCanvas = {
       width: 1280,
       height: 720,
-      getContext: vi.fn(() => ({
-        fillRect: vi.fn(),
-        beginPath: vi.fn(),
-        arc: vi.fn(),
-        fill: vi.fn(),
-        stroke: vi.fn(),
-        moveTo: vi.fn(),
-        lineTo: vi.fn(),
-      })),
+      getContext: vi.fn(() => createMockContext()),
     };
 
     const v1 = createViewportTransform({
