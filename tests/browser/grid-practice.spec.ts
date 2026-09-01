@@ -147,8 +147,8 @@ describe("Grid Practice Run Flow & Lifecycle", () => {
     const targetPitch = initial!.targetY[0]!;
     const yawDelta = shortestSignedAngleDelta(createAngleUnits(0), targetYaw);
 
-    expect(yawDelta % gain).toBe(0);
-    expect(targetPitch % gain).toBe(0);
+    expect(Math.abs(yawDelta % gain)).toBe(0);
+    expect(Math.abs(targetPitch % gain)).toBe(0);
 
     controller
       .getRingBuffer()
