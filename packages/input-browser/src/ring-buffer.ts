@@ -2,6 +2,9 @@ export const EVENT_KIND_MOVE = 1;
 export const EVENT_KIND_SHOT = 2;
 export const EVENT_KIND_INVALIDATE = 3;
 
+const INT32_MIN = -2_147_483_648;
+const INT32_MAX = 2_147_483_647;
+
 export type EventKindCode =
   | typeof EVENT_KIND_MOVE
   | typeof EVENT_KIND_SHOT
@@ -26,6 +29,23 @@ export interface RawInputBatchTarget {
   readonly dy: Int32Array;
   readonly timeIndices: Float64Array;
   readonly buttons: Uint8Array;
+}
+
+function toSafeInt32Movement(value: number): number {
+  if (!Number.isFinite(value)) {
+    throw new RangeError("Pointer movement must be finite.");
+  }
+  const rounded = Math.round(value);
+  if (rounded < INT32_MIN || rounded > INT32_MAX) {
+    throw new RangeError("Pointer movement is outside the supported Int32 range.");
+  }
+  return rounded;
+}
+
+function assertFiniteTimeIndex(timeIndex: number): void {
+  if (!Number.isFinite(timeIndex) || timeIndex < 0) {
+    throw new RangeError("Input timestamp must be a non-negative finite value.");
+  }
 }
 
 export function createRawInputBatchTarget(
@@ -59,8 +79,8 @@ export class PreallocatedInputRingBuffer implements InputRingBuffer {
   private readonly timeIndices: Float64Array;
   private readonly buttons: Uint8Array;
 
-  private head: number = 0; // write index
-  private tail: number = 0; // read index
+  private head: number = 0;
+  private tail: number = 0;
   private size: number = 0;
   private highWaterMark: number = 0;
   private overflowCount: number = 0;
@@ -76,15 +96,20 @@ export class PreallocatedInputRingBuffer implements InputRingBuffer {
   }
 
   public pushMove(dx: number, dy: number, timeIndex: number): PushResult {
-    // If buffer is full, coalesce with last written move event if possible to preserve total delta
+    const moveX = toSafeInt32Movement(dx);
+    const moveY = toSafeInt32Movement(dy);
+    assertFiniteTimeIndex(timeIndex);
+
     if (this.size >= this.capacity) {
       this.overflowCount++;
       this.lostTemporalPrecision = true;
 
       const lastIdx = (this.head - 1 + this.capacity) % this.capacity;
       if (this.kinds[lastIdx] === EVENT_KIND_MOVE) {
-        this.dx[lastIdx] = (this.dx[lastIdx] ?? 0) + Math.round(dx);
-        this.dy[lastIdx] = (this.dy[lastIdx] ?? 0) + Math.round(dy);
+        const coalescedX = (this.dx[lastIdx] ?? 0) + moveX;
+        const coalescedY = (this.dy[lastIdx] ?? 0) + moveY;
+        this.dx[lastIdx] = toSafeInt32Movement(coalescedX);
+        this.dy[lastIdx] = toSafeInt32Movement(coalescedY);
         this.timeIndices[lastIdx] = timeIndex;
         return { accepted: true, overflow: true };
       }
@@ -93,21 +118,20 @@ export class PreallocatedInputRingBuffer implements InputRingBuffer {
 
     const idx = this.head;
     this.kinds[idx] = EVENT_KIND_MOVE;
-    this.dx[idx] = Math.round(dx);
-    this.dy[idx] = Math.round(dy);
+    this.dx[idx] = moveX;
+    this.dy[idx] = moveY;
     this.timeIndices[idx] = timeIndex;
     this.buttons[idx] = 0;
 
     this.head = (this.head + 1) % this.capacity;
     this.size++;
-    if (this.size > this.highWaterMark) {
-      this.highWaterMark = this.size;
-    }
+    if (this.size > this.highWaterMark) this.highWaterMark = this.size;
 
     return { accepted: true, overflow: false };
   }
 
   public pushShot(button: number, timeIndex: number): PushResult {
+    assertFiniteTimeIndex(timeIndex);
     if (this.size >= this.capacity) {
       this.overflowCount++;
       this.lostTemporalPrecision = true;
@@ -123,14 +147,13 @@ export class PreallocatedInputRingBuffer implements InputRingBuffer {
 
     this.head = (this.head + 1) % this.capacity;
     this.size++;
-    if (this.size > this.highWaterMark) {
-      this.highWaterMark = this.size;
-    }
+    if (this.size > this.highWaterMark) this.highWaterMark = this.size;
 
     return { accepted: true, overflow: false };
   }
 
   public pushInvalidate(reasonCode: number, timeIndex: number): PushResult {
+    assertFiniteTimeIndex(timeIndex);
     if (this.size >= this.capacity) {
       this.overflowCount++;
       this.lostTemporalPrecision = true;
@@ -146,27 +169,25 @@ export class PreallocatedInputRingBuffer implements InputRingBuffer {
 
     this.head = (this.head + 1) % this.capacity;
     this.size++;
-    if (this.size > this.highWaterMark) {
-      this.highWaterMark = this.size;
-    }
+    if (this.size > this.highWaterMark) this.highWaterMark = this.size;
 
     return { accepted: true, overflow: false };
   }
 
   public drainInto(target: RawInputBatchTarget): DrainStats {
     const countToDrain = this.size;
+    if (countToDrain > target.kinds.length) {
+      throw new RangeError("Drain target capacity is smaller than buffered input.");
+    }
     target.count = 0;
 
     for (let i = 0; i < countToDrain; i++) {
       const srcIdx = this.tail;
-      const dstIdx = i;
-
-      target.kinds[dstIdx] = this.kinds[srcIdx] ?? 0;
-      target.dx[dstIdx] = this.dx[srcIdx] ?? 0;
-      target.dy[dstIdx] = this.dy[srcIdx] ?? 0;
-      target.timeIndices[dstIdx] = this.timeIndices[srcIdx] ?? 0;
-      target.buttons[dstIdx] = this.buttons[srcIdx] ?? 0;
-
+      target.kinds[i] = this.kinds[srcIdx] ?? 0;
+      target.dx[i] = this.dx[srcIdx] ?? 0;
+      target.dy[i] = this.dy[srcIdx] ?? 0;
+      target.timeIndices[i] = this.timeIndices[srcIdx] ?? 0;
+      target.buttons[i] = this.buttons[srcIdx] ?? 0;
       this.tail = (this.tail + 1) % this.capacity;
     }
 
@@ -180,10 +201,8 @@ export class PreallocatedInputRingBuffer implements InputRingBuffer {
       lostTemporalPrecision: this.lostTemporalPrecision,
     };
 
-    // Reset transient overflow tracking for next drain cycle
     this.overflowCount = 0;
     this.lostTemporalPrecision = false;
-
     return stats;
   }
 
