@@ -5,11 +5,13 @@ import {
   localPracticeHistory,
   PracticeSummaryRecord,
 } from "../training/local-history.js";
+import { getPracticeResultsRoutes } from "./routes.js";
 
 export function PracticeResults({ mode = "grid" }: { mode?: string }) {
   const [latestRun, setLatestRun] = useState<PracticeSummaryRecord | null>(
     null,
   );
+  const routes = getPracticeResultsRoutes(mode);
 
   useEffect(() => {
     const history = localPracticeHistory.getAll(mode);
@@ -159,7 +161,7 @@ export function PracticeResults({ mode = "grid" }: { mode?: string }) {
 
       <div style={{ display: "flex", gap: "16px", marginTop: "36px" }}>
         <a
-          href={`/train/${mode}`}
+          href={routes.playAgain}
           style={{
             backgroundColor: "#00ff88",
             color: "#07090e",
@@ -172,7 +174,7 @@ export function PracticeResults({ mode = "grid" }: { mode?: string }) {
           Play Again
         </a>
         <a
-          href="/"
+          href={routes.hub}
           style={{
             backgroundColor: "rgba(255, 255, 255, 0.1)",
             color: "#f8fafc",
