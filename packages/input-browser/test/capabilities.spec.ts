@@ -10,6 +10,8 @@ import {
 import {
   createInputRingBuffer,
   createRawInputBatchTarget,
+  EVENT_KIND_INVALIDATE,
+  EVENT_KIND_MOVE,
   EVENT_KIND_SHOT,
 } from "../src/ring-buffer.js";
 
@@ -60,7 +62,6 @@ describe("Event-Source Capability Detection and Adapter Selection", () => {
       "pointermove",
     );
 
-    // Trigger pointermove with 3 coalesced events
     const moveListener = listeners["pointermove"];
     expect(moveListener).toBeDefined();
 
@@ -78,7 +79,7 @@ describe("Event-Source Capability Detection and Adapter Selection", () => {
     moveListener!(mockEvent);
 
     const stats = ring.drainInto(targetBatch);
-    expect(stats.drainedCount).toBe(3); // 3 coalesced sub-events
+    expect(stats.drainedCount).toBe(3);
     expect(targetBatch.dx[0]).toBe(10);
     expect(targetBatch.dx[1]).toBe(12);
     expect(targetBatch.dx[2]).toBe(8);
@@ -113,6 +114,52 @@ describe("Event-Source Capability Detection and Adapter Selection", () => {
     expect(stats.drainedCount).toBe(1);
     expect(targetBatch.kinds[0]).toBe(EVENT_KIND_SHOT);
     expect(targetBatch.buttons[0]).toBe(0);
+
+    cleanup();
+  });
+
+  it("drops gameplay movement and shots while capture is gated off but preserves invalidations", () => {
+    const ring = createInputRingBuffer(32);
+    const targetBatch = createRawInputBatchTarget(32);
+    const listeners: Record<string, (ev: unknown) => void> = {};
+    let gameplayCaptureActive = false;
+
+    const mockTarget = {
+      addEventListener: (type: string, listener: (ev: unknown) => void) => {
+        listeners[type] = listener;
+      },
+      removeEventListener: (type: string) => {
+        delete listeners[type];
+      },
+    };
+
+    const cleanup = attachInputListener(
+      mockTarget as unknown as EventTarget,
+      ring,
+      "pointermove",
+      { shouldCaptureGameplayInput: () => gameplayCaptureActive },
+    );
+
+    listeners["pointermove"]!({
+      movementX: 40,
+      movementY: -20,
+      timeStamp: 1,
+    });
+    listeners["pointerdown"]!({ button: 0, timeStamp: 2 });
+    listeners["blur"]!({ timeStamp: 3 });
+
+    let stats = ring.drainInto(targetBatch);
+    expect(stats.drainedCount).toBe(1);
+    expect(targetBatch.kinds[0]).toBe(EVENT_KIND_INVALIDATE);
+
+    gameplayCaptureActive = true;
+    listeners["pointermove"]!({ movementX: 12, movementY: 6, timeStamp: 4 });
+    listeners["pointerdown"]!({ button: 0, timeStamp: 5 });
+
+    stats = ring.drainInto(targetBatch);
+    expect(stats.drainedCount).toBe(2);
+    expect(targetBatch.kinds[0]).toBe(EVENT_KIND_MOVE);
+    expect(targetBatch.kinds[1]).toBe(EVENT_KIND_SHOT);
 
     cleanup();
   });

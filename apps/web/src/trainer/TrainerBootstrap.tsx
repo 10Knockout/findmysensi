@@ -22,6 +22,7 @@ import {
   PracticeRunController,
   PracticeRunState,
 } from "../features/training/PracticeRunController.js";
+import { startRunIfPointerLocked } from "./pointer-lock-guard.js";
 import {
   GridshotRuntimeConfig,
   resolveGridshotRuntimeConfig,
@@ -39,6 +40,7 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const controllerRef = useRef<PracticeRunController | null>(null);
   const pauseDeadlineRef = useRef<number | null>(null);
+  const countdownIntervalRef = useRef<number | null>(null);
 
   const [runtimeConfig, setRuntimeConfig] =
     useState<GridshotRuntimeConfig | null>(null);
@@ -198,6 +200,11 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
       window,
       controller.getRingBuffer(),
       preferredInputSource,
+      {
+        shouldCaptureGameplayInput: () =>
+          controller.getState() === "playing" &&
+          document.pointerLockElement === canvas,
+      },
     );
 
     const loop = (now: number) => {
@@ -207,7 +214,18 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
     animationFrameId = requestAnimationFrame(loop);
 
     const onPointerLockChange = () => {
-      if (!document.pointerLockElement && controller.getState() === "playing") {
+      if (document.pointerLockElement) return;
+
+      if (countdownIntervalRef.current !== null) {
+        window.clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
+        setCountdown(null);
+        setLockError(
+          "Mouse lock was released before the run started. Click Start again.",
+        );
+      }
+
+      if (controller.getState() === "playing") {
         controller.pause();
       }
     };
@@ -218,6 +236,10 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
       detachInput();
       document.removeEventListener("pointerlockchange", onPointerLockChange);
       if (animationFrameId !== null) cancelAnimationFrame(animationFrameId);
+      if (countdownIntervalRef.current !== null) {
+        window.clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
+      }
       controller.abort();
       renderer.dispose();
       if (controllerRef.current === controller) controllerRef.current = null;
@@ -295,9 +317,16 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
   }
 
   const startCountdownAndLock = async () => {
-    if (!canvasRef.current) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    if (countdownIntervalRef.current !== null) {
+      window.clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+
     setLockError(null);
-    const locked = await acquirePointerLock(canvasRef.current);
+    const locked = await acquirePointerLock(canvas);
     if (!locked) {
       setLockError(
         "Mouse lock was not granted. Click again and allow Pointer Lock in your browser.",
@@ -306,11 +335,32 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
     }
 
     setCountdown(3);
-    const interval = window.setInterval(() => {
+    countdownIntervalRef.current = window.setInterval(() => {
       setCountdown((previous) => {
-        if (previous === null || previous <= 1) {
-          window.clearInterval(interval);
-          controllerRef.current?.start();
+        if (previous === null) {
+          if (countdownIntervalRef.current !== null) {
+            window.clearInterval(countdownIntervalRef.current);
+            countdownIntervalRef.current = null;
+          }
+          return null;
+        }
+
+        if (previous <= 1) {
+          if (countdownIntervalRef.current !== null) {
+            window.clearInterval(countdownIntervalRef.current);
+            countdownIntervalRef.current = null;
+          }
+
+          const started = startRunIfPointerLocked(
+            canvas,
+            document.pointerLockElement,
+            () => controllerRef.current?.start(),
+          );
+          if (!started) {
+            setLockError(
+              "Mouse lock was released before the run started. Click Start again.",
+            );
+          }
           return null;
         }
         return previous - 1;
