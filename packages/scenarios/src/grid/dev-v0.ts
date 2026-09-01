@@ -1,4 +1,4 @@
-import { PrngV1 } from "@findmysensi/aim-core";
+import { PrngV1, wrapYaw } from "@findmysensi/aim-core";
 import { defaultScenarioRegistry } from "../registry.js";
 import {
   RankedScenarioDefinition,
@@ -26,13 +26,13 @@ export const GRID_DEV_V0_DEFINITION: RankedScenarioDefinition = {
   scenarioVersion: 0,
   engineVersion: 1,
   scoringVersion: 0,
-  durationTicks: 128 * 60, // 60 seconds at 128 Hz
+  durationTicks: 128 * 60,
   simulation: {
     maxActiveTargets: 3,
-    targetRadiusAngleUnits: 25000,
-    spawnAreaWidthUnits: 1200000, // ~25.7 deg horizontal
-    spawnAreaHeightUnits: 720000, // ~15.4 deg vertical
-    minTargetSeparationUnits: 120000,
+    targetRadiusAngleUnits: 50_000,
+    spawnAreaWidthUnits: 1_200_000,
+    spawnAreaHeightUnits: 720_000,
+    minTargetSeparationUnits: 120_000,
     gridRows: 5,
     gridCols: 5,
   },
@@ -46,13 +46,13 @@ export const GRID_DEV_V0_DEFINITION: RankedScenarioDefinition = {
 export const GRID_DEV_V0_ENTRY: ScenarioEntry = {
   definition: GRID_DEV_V0_DEFINITION,
   presentation: {
-    title: "Grid Shot (Dev v0)",
-    subtitle: "3-Target Static Flick Practice",
+    title: "Gridshot",
+    subtitle: "3-Target Static Flick Training",
     description:
-      "Practice clicking three static targets that regenerate upon being hit.",
+      "Click three medium static circular targets. Each successful hit immediately spawns one deterministic replacement.",
     category: "flick",
     thumbnailUrl: "/thumbnails/grid.webp",
-    tags: ["grid", "flick", "speed", "practice"],
+    tags: ["grid", "flick", "speed", "training"],
   },
 };
 
@@ -61,8 +61,8 @@ defaultScenarioRegistry.register(GRID_DEV_V0_ENTRY);
 export function generateGridSlots(
   rows: number = 5,
   cols: number = 5,
-  widthUnits: number = 1200000,
-  heightUnits: number = 720000,
+  widthUnits: number = 1_200_000,
+  heightUnits: number = 720_000,
 ): readonly GridSlot[] {
   const slots: GridSlot[] = [];
   const startX = -Math.floor(widthUnits / 2);
@@ -78,7 +78,7 @@ export function generateGridSlots(
         index: index++,
         row: r,
         col: c,
-        xAngleUnits: startX + c * stepX,
+        xAngleUnits: wrapYaw(startX + c * stepX),
         yAngleUnits: startY + r * stepY,
       });
     }
@@ -127,17 +127,14 @@ export class GridScenarioEngine {
   }
 
   public onTargetHit(targetId: number, prng: PrngV1): TargetSpawnSpec | null {
-    const hitIdx = this.activeTargets.findIndex((t) => t.id === targetId);
-    if (hitIdx === -1) {
-      return null;
-    }
+    const hitIdx = this.activeTargets.findIndex((target) => target.id === targetId);
+    if (hitIdx === -1) return null;
 
     const hitTarget = this.activeTargets[hitIdx]!;
-    // Find which slot was hit
     const slot = this.slots.find(
-      (s) =>
-        s.xAngleUnits === hitTarget.xAngleUnits &&
-        s.yAngleUnits === hitTarget.yAngleUnits,
+      (candidate) =>
+        candidate.xAngleUnits === hitTarget.xAngleUnits &&
+        candidate.yAngleUnits === hitTarget.yAngleUnits,
     );
 
     if (slot) {
@@ -145,23 +142,19 @@ export class GridScenarioEngine {
       this.lastHitSlotIndex = slot.index;
     }
 
-    // Remove hit target
     this.activeTargets.splice(hitIdx, 1);
-
-    // Spawn replacement
     return this.spawnNewTarget(prng);
   }
 
   private spawnNewTarget(prng: PrngV1): TargetSpawnSpec {
-    // Available candidate slots: not currently active, and not the last hit slot
     const candidates = this.slots.filter(
-      (s) =>
-        !this.activeSlotIndices.has(s.index) &&
-        (this.lastHitSlotIndex === null || s.index !== this.lastHitSlotIndex),
+      (slot) =>
+        !this.activeSlotIndices.has(slot.index) &&
+        (this.lastHitSlotIndex === null || slot.index !== this.lastHitSlotIndex),
     );
 
     if (candidates.length === 0) {
-      throw new Error("No candidate slots available for grid target spawn.");
+      throw new Error("No candidate slots available for Gridshot target spawn.");
     }
 
     const chosenIdx = prng.nextRange(0, candidates.length);
@@ -176,7 +169,6 @@ export class GridScenarioEngine {
 
     this.activeTargets.push(newTarget);
     this.activeSlotIndices.add(chosenSlot.index);
-
     return newTarget;
   }
 }
