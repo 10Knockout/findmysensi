@@ -20,7 +20,9 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
-function isPracticeSummaryRecord(value: unknown): value is PracticeSummaryRecord {
+function isPracticeSummaryRecord(
+  value: unknown,
+): value is PracticeSummaryRecord {
   if (typeof value !== "object" || value === null) return false;
 
   const record = value as Record<string, unknown>;
