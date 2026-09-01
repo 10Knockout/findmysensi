@@ -10,6 +10,7 @@ const USERNAME_HELP =
   "3-24 characters. Use letters, numbers, underscores, or hyphens only.";
 const PASSWORD_HELP =
   "At least 8 characters with one uppercase letter, one lowercase letter, and one symbol.";
+const AGE_HELP = "You must confirm that you are 18 years of age or older.";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -18,6 +19,7 @@ export default function RegisterPage() {
     email: "",
     password: "",
     confirmPassword: "",
+    ageAttested: false,
   });
   const [verificationEmail, setVerificationEmail] = useState<string | null>(
     null,
@@ -26,7 +28,10 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const update = (field: keyof typeof form, value: string) => {
+  const update = (
+    field: "username" | "email" | "password" | "confirmPassword",
+    value: string,
+  ) => {
     setForm((current) => ({ ...current, [field]: value }));
   };
 
@@ -43,6 +48,7 @@ export default function RegisterPage() {
       username: form.username,
       email: form.email,
       password: form.password,
+      ageAttested: form.ageAttested,
     });
     if (!parsed.success) {
       const firstIssue = parsed.error.issues[0];
@@ -51,7 +57,9 @@ export default function RegisterPage() {
           ? USERNAME_HELP
           : firstIssue?.path[0] === "email"
             ? "Enter a valid email address."
-            : PASSWORD_HELP,
+            : firstIssue?.path[0] === "ageAttested"
+              ? AGE_HELP
+              : PASSWORD_HELP,
       );
       return;
     }
@@ -185,6 +193,27 @@ export default function RegisterPage() {
               onChange={(value) => update("confirmPassword", value)}
               autoComplete="new-password"
             />
+            <label className="flex items-start gap-3 rounded-lg border border-zinc-800 bg-black/20 p-4 text-sm text-zinc-300">
+              <input
+                id="age-attestation"
+                name="ageAttested"
+                type="checkbox"
+                required
+                checked={form.ageAttested}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    ageAttested: event.target.checked,
+                  }))
+                }
+                className="mt-0.5 h-4 w-4 accent-emerald-400"
+              />
+              <span>I confirm that I am 18 years of age or older.</span>
+            </label>
+            <p className="text-xs leading-5 text-zinc-500">
+              FindMySensi records this age-policy attestation only. We do not
+              ask for or store your date of birth.
+            </p>
             <button
               disabled={loading}
               className="w-full rounded-lg bg-emerald-400 px-4 py-3 font-bold text-zinc-950 disabled:opacity-50"
