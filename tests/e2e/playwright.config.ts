@@ -4,6 +4,7 @@ const isCi = Boolean(process.env.CI);
 
 export default defineConfig({
   testDir: "./specs",
+  testMatch: "**/*.e2e.ts",
   fullyParallel: false,
   forbidOnly: isCi,
   retries: isCi ? 1 : 0,
