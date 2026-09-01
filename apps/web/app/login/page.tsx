@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BrowserApiClient } from "@findmysensi/api-client";
+import { resolveSafeLoginDestination } from "../../src/features/auth/login-next.js";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -21,7 +22,7 @@ export default function LoginPage() {
     const result = await client.login({ email, password });
 
     if (result.ok) {
-      router.push("/app");
+      router.push(resolveSafeLoginDestination(window.location.search));
     } else {
       setError(result.error || "Login failed. Please check your credentials.");
       setLoading(false);
