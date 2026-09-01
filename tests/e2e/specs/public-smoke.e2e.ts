@@ -13,33 +13,36 @@ function captureBrowserErrors(page: Page): string[] {
   return errors;
 }
 
-test("public home renders and shows a real-data error state when leaderboard is unavailable", async ({
-  page,
-}) => {
-  const browserErrors = captureBrowserErrors(page);
-  await page.route("**/api/v1/leaderboards/gridshot", async (route) => {
-    await route.fulfill({
-      status: 503,
-      contentType: "application/json",
-      body: JSON.stringify({ error: "Leaderboard unavailable in browser smoke" }),
+test(
+  "public home renders and shows a real-data error state when leaderboard is unavailable",
+  async ({ page }) => {
+    const browserErrors = captureBrowserErrors(page);
+    await page.route("**/api/v1/leaderboards/gridshot", async (route) => {
+      await route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: JSON.stringify({
+          error: "Leaderboard unavailable in browser smoke",
+        }),
+      });
     });
-  });
 
-  const response = await page.goto("/");
-  const hero = page.getByRole("heading", {
-    level: 1,
-    name: "Find the sensitivity you actually perform with.",
-  });
-  const startTraining = page.getByRole("link", { name: "START TRAINING" });
+    const response = await page.goto("/");
+    const hero = page.getByRole("heading", {
+      level: 1,
+      name: "Find the sensitivity you actually perform with.",
+    });
+    const startTraining = page.getByRole("link", { name: "START TRAINING" });
 
-  expect(response?.ok()).toBe(true);
-  await expect(hero).toBeVisible();
-  await expect(startTraining).toBeVisible();
-  await expect(page.getByRole("alert")).toContainText(
-    "Could not load the live Gridshot leaderboard",
-  );
-  expect(browserErrors).toEqual([]);
-});
+    expect(response?.ok()).toBe(true);
+    await expect(hero).toBeVisible();
+    await expect(startTraining).toBeVisible();
+    await expect(page.getByRole("alert")).toContainText(
+      "Could not load the live Gridshot leaderboard",
+    );
+    expect(browserErrors).toEqual([]);
+  },
+);
 
 test("registration requires and submits the 18+ attestation without DOB", async ({
   page,
@@ -68,7 +71,9 @@ test("registration requires and submits the 18+ attestation without DOB", async 
 
   await page.getByLabel("Username").fill("BrowserAudit");
   await page.getByLabel("Email").fill("browser-audit@example.com");
-  await page.getByLabel("Password", { exact: true }).fill("Valid!Password1");
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill("Valid!Password1");
   await page
     .getByLabel("Re-enter password", { exact: true })
     .fill("Valid!Password1");
