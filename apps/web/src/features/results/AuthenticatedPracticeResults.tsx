@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BrowserApiClient } from "@findmysensi/api-client";
 import { PracticeResults } from "./PracticeResults.js";
+import { getPracticeResultsRoutes } from "./routes.js";
 
 export function AuthenticatedPracticeResults({ mode }: { mode: string }) {
   const router = useRouter();
@@ -11,10 +12,12 @@ export function AuthenticatedPracticeResults({ mode }: { mode: string }) {
 
   useEffect(() => {
     let active = true;
+    const routes = getPracticeResultsRoutes(mode);
+
     new BrowserApiClient().getSession().then((session) => {
       if (!active) return;
       if (!session?.user) {
-        router.replace("/login?next=/app");
+        router.replace(routes.login);
         return;
       }
       setAuthorized(true);
@@ -22,7 +25,7 @@ export function AuthenticatedPracticeResults({ mode }: { mode: string }) {
     return () => {
       active = false;
     };
-  }, [router]);
+  }, [mode, router]);
 
   return authorized ? (
     <PracticeResults mode={mode} />
