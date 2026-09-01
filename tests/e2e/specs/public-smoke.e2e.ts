@@ -109,6 +109,68 @@ test("login continuation route renders safely", async ({ page }) => {
   await expect(heading).toBeVisible();
 });
 
+test("authenticated Gridshot shell initializes the real trainer canvas", async ({
+  page,
+}) => {
+  const browserErrors = captureBrowserErrors(page);
+  const session = {
+    user: {
+      id: "browser-user",
+      email: "browser-user@example.com",
+      username: "BrowserAudit",
+      emailVerified: true,
+    },
+    session: {
+      id: "browser-session",
+      userId: "browser-user",
+      expiresAt: "2026-09-02T00:00:00.000Z",
+    },
+  };
+  const trainerSettings = {
+    fmsSensitivity: null,
+    nominalDpi: null,
+    fovDegrees: 103,
+    targetColor: "#7CFF6B",
+    targetOpacity: 1,
+    targetOutline: false,
+    crosshairCode: null,
+    graphicsPreset: "automatic",
+    resolution: "native",
+    customResolutionWidth: null,
+    customResolutionHeight: null,
+    aspectRatio: "16:9",
+    scalingMode: "fit",
+    inputProcessing: "automatic",
+  };
+
+  await page.route("**/api/auth/get-session", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(session),
+    });
+  });
+  await page.route("**/api/v1/me/settings", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(trainerSettings),
+    });
+  });
+
+  const response = await page.goto("/app/train/grid");
+
+  expect(response?.ok()).toBe(true);
+  await expect(page.getByRole("heading", { name: "Gridshot" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "START GRIDSHOT" }),
+  ).toBeVisible();
+  await expect(
+    page.getByLabel("FindMySensi Gridshot simulation"),
+  ).toBeVisible();
+  expect(browserErrors).toEqual([]);
+});
+
 test("unfinished public ticket result URLs fail closed", async ({ page }) => {
   const response = await page.goto(
     "/results/00000000-0000-4000-8000-000000000001",
