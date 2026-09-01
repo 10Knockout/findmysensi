@@ -11,11 +11,12 @@ describe("login continuation", () => {
   });
 
   it("falls back to the app hub for missing or unsafe destinations", () => {
+    const externalUrl = "?next=https%3A%2F%2Fevil.example";
+    const protocolRelativeUrl = "?next=%2F%2Fevil.example";
+
     expect(resolveSafeLoginDestination("")).toBe("/app");
-    expect(resolveSafeLoginDestination("?next=https%3A%2F%2Fevil.example")).toBe(
-      "/app",
-    );
-    expect(resolveSafeLoginDestination("?next=%2F%2Fevil.example")).toBe("/app");
+    expect(resolveSafeLoginDestination(externalUrl)).toBe("/app");
+    expect(resolveSafeLoginDestination(protocolRelativeUrl)).toBe("/app");
     expect(resolveSafeLoginDestination("?next=%2Fregister")).toBe("/app");
   });
 });
