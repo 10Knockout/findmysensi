@@ -18,6 +18,7 @@ export const RegisterRequestSchema = z
       .regex(/[a-z]/)
       .regex(/[A-Z]/)
       .regex(/[^A-Za-z0-9]/),
+    ageAttested: z.literal(true),
   })
   .strict();
 
