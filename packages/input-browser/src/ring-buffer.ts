@@ -117,7 +117,9 @@ export class PreallocatedInputRingBuffer implements InputRingBuffer {
         this.timeIndices[lastIdx] = timeIndex;
         return { accepted: true, overflow: true };
       }
-      return { accepted: false, overflow: true };
+      // If the last slot is not a move (e.g. shot), evict oldest slot to prevent dropping movement
+      this.tail = (this.tail + 1) % this.capacity;
+      this.size--;
     }
 
     const idx = this.head;

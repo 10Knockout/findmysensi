@@ -29,10 +29,10 @@ export const GRID_DEV_V0_DEFINITION: RankedScenarioDefinition = {
   durationTicks: 128 * 60,
   simulation: {
     maxActiveTargets: 3,
-    targetRadiusAngleUnits: 50_000,
+    targetRadiusAngleUnits: 68_000,
     spawnAreaWidthUnits: 1_200_000,
     spawnAreaHeightUnits: 720_000,
-    minTargetSeparationUnits: 120_000,
+    minTargetSeparationUnits: 150_000,
     gridRows: 5,
     gridCols: 5,
   },

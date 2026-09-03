@@ -25,11 +25,11 @@ describe("Grid Shot Development Scenario (dev-v0)", () => {
     const targets = engine.initialize(prng);
 
     expect(GRID_DEV_V0_DEFINITION.simulation.targetRadiusAngleUnits).toBe(
-      50_000,
+      68_000,
     );
     expect(targets).toHaveLength(3);
     for (const target of targets) {
-      expect(target.radiusAngleUnits).toBe(50_000);
+      expect(target.radiusAngleUnits).toBe(68_000);
       expect(target.xAngleUnits).toBeGreaterThanOrEqual(0);
       expect(target.xAngleUnits).toBeLessThan(FULL_TURN_UNITS);
     }

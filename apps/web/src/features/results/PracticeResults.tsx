@@ -47,14 +47,15 @@ export function PracticeResults({ mode = "grid" }: { mode?: string }) {
           textTransform: "uppercase",
         }}
       >
-        Practice Mode (Offline / Not Synced)
+        Local Result · Not Submitted
       </div>
 
       <h1 style={{ fontSize: "2.5rem", fontWeight: 800, margin: "0 0 8px 0" }}>
         Run Complete
       </h1>
       <p style={{ color: "#94a3b8", margin: "0 0 32px 0" }}>
-        Results from your practice session.
+        This run is stored locally. Official leaderboard verification is not
+        enabled yet.
       </p>
 
       {latestRun ? (
@@ -156,7 +157,9 @@ export function PracticeResults({ mode = "grid" }: { mode?: string }) {
           </div>
         </div>
       ) : (
-        <div style={{ color: "#94a3b8" }}>No recent practice run recorded.</div>
+        <div style={{ color: "#94a3b8" }}>
+          No recent local Gridshot result found.
+        </div>
       )}
 
       <div style={{ display: "flex", gap: "16px", marginTop: "36px" }}>

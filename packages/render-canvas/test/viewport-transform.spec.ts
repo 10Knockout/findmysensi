@@ -125,4 +125,19 @@ describe("Canonical Ranked Angular Viewport Transform", () => {
       fov103.angleRadiusToPixels(50_000),
     );
   });
+
+  it("fills the entire canvas without letterboxing in fill mode", () => {
+    const tFill = createViewportTransform({
+      canvasWidth: 2560,
+      canvasHeight: 1440,
+      scaleMode: "fill",
+    });
+
+    expect(tFill.displayRect).toEqual({
+      x: 0,
+      y: 0,
+      width: 2560,
+      height: 1440,
+    });
+  });
 });

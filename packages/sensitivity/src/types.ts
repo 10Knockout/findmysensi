@@ -4,6 +4,7 @@ export type SupportedGameId =
   | "cs2"
   | "valorant"
   | "apex"
+  | "aimlab"
   | "overwatch2"
   | "fortnite"
   | "r6siege"
@@ -14,6 +15,7 @@ export const SupportedGameIdSchema = z.enum([
   "cs2",
   "valorant",
   "apex",
+  "aimlab",
   "overwatch2",
   "fortnite",
   "r6siege",

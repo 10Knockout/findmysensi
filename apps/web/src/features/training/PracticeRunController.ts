@@ -36,6 +36,7 @@ import {
   FixedTickRunner,
 } from "../../trainer/fixed-tick-runner.js";
 import { localPracticeHistory } from "./local-history.js";
+import { generateRunSeed } from "./seed.js";
 
 export type PracticeRunState =
   "ready" | "playing" | "paused" | "completed" | "aborted";
@@ -86,12 +87,13 @@ export class PracticeRunController {
   private callbacks: PracticeRunCallbacks;
 
   private readonly totalDurationTicks: number;
-  private readonly inputGainAngleUnitsPerUnit: number;
+  private inputGainAngleUnitsPerUnit: number;
   private playerYaw: AngleUnits = createAngleUnits(0);
   private playerPitch: PitchUnits = createPitchUnits(0);
   private totalOverflowEvents: number = 0;
   private highWaterMark: number = 0;
   private exactReplayPreserved: boolean = true;
+  private activeSeed: readonly [number, number, number, number] | null = null;
 
   constructor(
     callbacks: PracticeRunCallbacks,
@@ -133,12 +135,21 @@ export class PracticeRunController {
     return this.state;
   }
 
-  public start(
-    seed: [number, number, number, number] = [
-      0x12345678, 0x9abcdef0, 0x0fedcba9, 0x87654321,
-    ],
-  ): void {
-    this.prng = createPrngV1(seed);
+  public getActiveSeed(): readonly [number, number, number, number] | null {
+    return this.activeSeed;
+  }
+
+  public setInputGainAngleUnitsPerUnit(newGain: number): void {
+    if (!Number.isSafeInteger(newGain) || newGain <= 0) {
+      throw new RangeError("Input gain must be a positive safe integer.");
+    }
+    this.inputGainAngleUnitsPerUnit = newGain;
+  }
+
+  public start(seed?: readonly [number, number, number, number]): void {
+    const effectiveSeed = seed ?? generateRunSeed();
+    this.activeSeed = effectiveSeed;
+    this.prng = createPrngV1(effectiveSeed);
     this.metricsTracker = createGridMetricsTracker();
     this.shotTracker.reset();
     this.playerYaw = createAngleUnits(0);

@@ -4,16 +4,23 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BrowserApiClient } from "@findmysensi/api-client";
+import { TrainerSettings, TrainerSettingsSchema } from "@findmysensi/protocol";
 import type { SessionUser } from "@findmysensi/protocol";
+import { QuickSetupModal } from "../../src/features/onboarding/QuickSetupModal.js";
 
 export default function AppDashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<SessionUser | null>(null);
+  const [trainerSettings, setTrainerSettings] =
+    useState<TrainerSettings | null>(null);
+  const [showQuickSetup, setShowQuickSetup] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
-    new BrowserApiClient()
+    const client = new BrowserApiClient();
+
+    client
       .getSession()
       .then((session) => {
         if (!active) return;
@@ -22,6 +29,22 @@ export default function AppDashboardPage() {
           return;
         }
         setUser(session.user);
+
+        return client.getTrainerSettings();
+      })
+      .then((res) => {
+        if (!active || !res) return;
+        if (res.ok && res.data) {
+          try {
+            const parsed = TrainerSettingsSchema.parse(res.data);
+            setTrainerSettings(parsed);
+            if (parsed.fmsSensitivity === null) {
+              setShowQuickSetup(true);
+            }
+          } catch {
+            // ignore
+          }
+        }
       })
       .catch(() => {
         if (active) setError("Could not load your session.");
@@ -67,7 +90,13 @@ export default function AppDashboardPage() {
               {user.username ?? user.email}
             </h1>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setShowQuickSetup(true)}
+              className="rounded-lg border border-cyan-500/40 bg-cyan-950/40 px-4 py-2 text-sm font-semibold text-cyan-300 hover:bg-cyan-900/50 transition-colors"
+            >
+              Calibrate Aim
+            </button>
             <Link
               href="/app/settings"
               className="rounded-lg border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-200 hover:bg-zinc-900"
@@ -112,6 +141,15 @@ export default function AppDashboardPage() {
           </div>
         </section>
       </div>
+
+      {trainerSettings ? (
+        <QuickSetupModal
+          isOpen={showQuickSetup}
+          onClose={() => setShowQuickSetup(false)}
+          currentSettings={trainerSettings}
+          onSaved={(updated) => setTrainerSettings(updated)}
+        />
+      ) : null}
     </main>
   );
 }

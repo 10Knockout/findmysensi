@@ -11,9 +11,8 @@ import {
 import {
   attachInputListener,
   createPointerLockController,
-  detectInputCapabilities,
 } from "@findmysensi/input-browser";
-import { TrainerSettingsSchema } from "@findmysensi/protocol";
+import { TrainerSettings, TrainerSettingsSchema } from "@findmysensi/protocol";
 import {
   createAimRenderer,
   createViewportTransform,
@@ -22,6 +21,7 @@ import {
   PracticeRunController,
   PracticeRunState,
 } from "../features/training/PracticeRunController.js";
+import { InGameSettingsModal } from "./InGameSettingsModal.js";
 import { startRunIfPointerLocked } from "./pointer-lock-guard.js";
 import {
   GridshotRuntimeConfig,
@@ -39,9 +39,18 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const controllerRef = useRef<PracticeRunController | null>(null);
+  const rendererRef = useRef<ReturnType<typeof createAimRenderer> | null>(null);
+  const runtimeConfigRef = useRef<GridshotRuntimeConfig | null>(null);
+  const savedCrosshairRef = useRef<SavedCrosshairConfig>(
+    CROSSHAIR_PRESETS[0]!.config,
+  );
+  const handleResizeRef = useRef<(() => void) | null>(null);
   const pauseDeadlineRef = useRef<number | null>(null);
   const countdownIntervalRef = useRef<number | null>(null);
 
+  const [rawSettings, setRawSettings] = useState<TrainerSettings | null>(null);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [initialConfigLoaded, setInitialConfigLoaded] = useState(false);
   const [runtimeConfig, setRuntimeConfig] =
     useState<GridshotRuntimeConfig | null>(null);
   const [settingsError, setSettingsError] = useState<string | null>(null);
@@ -84,9 +93,13 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
 
       try {
         const settings = TrainerSettingsSchema.parse(result.data);
+        setRawSettings(settings);
         const resolved = resolveGridshotRuntimeConfig(settings);
-        resolveSavedCrosshair(resolved.crosshairCode);
+        const crosshair = resolveSavedCrosshair(resolved.crosshairCode);
+        savedCrosshairRef.current = crosshair;
         setRuntimeConfig(resolved);
+        runtimeConfigRef.current = resolved;
+        setInitialConfigLoaded(true);
       } catch {
         setSettingsError(
           "Saved trainer settings are invalid. Open Settings and save valid values before starting Gridshot.",
@@ -100,21 +113,29 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
   }, [mode, router, settingsAttempt]);
 
   useEffect(() => {
-    if (!runtimeConfig || !canvasRef.current || !containerRef.current) return;
+    if (
+      !initialConfigLoaded ||
+      !runtimeConfigRef.current ||
+      !canvasRef.current ||
+      !containerRef.current
+    )
+      return;
 
+    const runtimeConfig = runtimeConfigRef.current;
     const canvas = canvasRef.current;
     const container = containerRef.current;
     const renderer = createAimRenderer();
-    const savedCrosshair = resolveSavedCrosshair(runtimeConfig.crosshairCode);
+    rendererRef.current = renderer;
     let animationFrameId: number | null = null;
     let rendererInitialized = false;
 
     const handleResize = () => {
+      const activeCfg = runtimeConfigRef.current ?? runtimeConfig;
       const cssWidth = container.clientWidth || 1280;
       const cssHeight = container.clientHeight || 720;
       const dpr = window.devicePixelRatio || 1;
       const backing = resolveBackingResolution(
-        runtimeConfig,
+        activeCfg,
         cssWidth,
         cssHeight,
         dpr,
@@ -128,26 +149,37 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
       const viewport = createViewportTransform({
         canvasWidth: backing.width,
         canvasHeight: backing.height,
-        dpr: runtimeConfig.resolution === "native" ? dpr : 1,
-        scaleMode: runtimeConfig.scalingMode,
-        horizontalFovDegrees: runtimeConfig.fovDegrees,
+        dpr: activeCfg.resolution === "native" ? dpr : 1,
+        scaleMode: activeCfg.scalingMode,
+        horizontalFovDegrees: activeCfg.fovDegrees,
       });
 
       if (!rendererInitialized) {
         renderer.initialize(canvas, viewport, {
-          crosshair: savedCrosshair,
+          crosshair: savedCrosshairRef.current,
           target: {
-            bodyColor: runtimeConfig.targetColor,
-            opacity: runtimeConfig.targetOpacity,
-            borderWidth: runtimeConfig.targetOutline ? 2 : 0,
+            bodyColor: activeCfg.targetColor,
+            opacity: activeCfg.targetOpacity,
+            borderWidth: activeCfg.targetOutline ? 2 : 0,
             borderColor: "#ffffff",
           },
         });
         rendererInitialized = true;
       } else {
         renderer.resize(viewport);
+        renderer.initialize(canvas, viewport, {
+          crosshair: savedCrosshairRef.current,
+          target: {
+            bodyColor: activeCfg.targetColor,
+            opacity: activeCfg.targetOpacity,
+            borderWidth: activeCfg.targetOutline ? 2 : 0,
+            borderColor: "#ffffff",
+          },
+        });
       }
     };
+
+    handleResizeRef.current = handleResize;
 
     handleResize();
     const resizeObserver = new ResizeObserver(handleResize);
@@ -195,11 +227,10 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
     );
 
     controllerRef.current = controller;
-    const preferredInputSource = detectInputCapabilities().preferredSource;
     const detachInput = attachInputListener(
       window,
       controller.getRingBuffer(),
-      preferredInputSource,
+      "pointermove",
       {
         shouldCaptureGameplayInput: () =>
           controller.getState() === "playing" &&
@@ -243,8 +274,10 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
       controller.abort();
       renderer.dispose();
       if (controllerRef.current === controller) controllerRef.current = null;
+      if (rendererRef.current === renderer) rendererRef.current = null;
+      if (handleResizeRef.current === handleResize) handleResizeRef.current = null;
     };
-  }, [mode, router, runtimeConfig]);
+  }, [mode, router, initialConfigLoaded]);
 
   useEffect(() => {
     if (gameState !== "paused") return;
@@ -380,7 +413,34 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
   };
 
   const openSettings = () => {
-    window.open("/app/settings", "fms-settings", "noopener,noreferrer");
+    setIsSettingsModalOpen(true);
+  };
+
+  const handleSaveAndApply = async (
+    newSettings: TrainerSettings,
+    newCrosshair: SavedCrosshairConfig,
+  ) => {
+    const client = new BrowserApiClient();
+    const saveRes = await client.saveTrainerSettings(newSettings);
+    if (!saveRes.ok) {
+      throw new Error(saveRes.error ?? "Failed to save settings");
+    }
+
+    setRawSettings(newSettings);
+    const resolved = resolveGridshotRuntimeConfig(newSettings);
+    setRuntimeConfig(resolved);
+    runtimeConfigRef.current = resolved;
+    savedCrosshairRef.current = newCrosshair;
+
+    if (controllerRef.current) {
+      controllerRef.current.setInputGainAngleUnitsPerUnit(
+        resolved.inputGainAngleUnitsPerUnit,
+      );
+    }
+
+    if (handleResizeRef.current) {
+      handleResizeRef.current();
+    }
   };
 
   const restartWithLatestSettings = () => {
@@ -398,6 +458,8 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
         className="block cursor-crosshair focus:outline-none"
         tabIndex={0}
         aria-label="FindMySensi Gridshot simulation"
+        onContextMenu={(e) => e.preventDefault()}
+        onDragStart={(e) => e.preventDefault()}
       />
 
       {gameState === "playing" ? (
@@ -518,6 +580,15 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
             </p>
           </div>
         </div>
+      ) : null}
+
+      {rawSettings && isSettingsModalOpen ? (
+        <InGameSettingsModal
+          isOpen={isSettingsModalOpen}
+          onClose={() => setIsSettingsModalOpen(false)}
+          currentSettings={rawSettings}
+          onSaveAndApply={handleSaveAndApply}
+        />
       ) : null}
     </div>
   );

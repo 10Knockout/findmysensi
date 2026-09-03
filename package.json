@@ -12,6 +12,7 @@
     "tools/*"
   ],
   "scripts": {
+    "dev": "npm run dev --workspace @findmysensi/web",
     "format:check": "prettier --check .",
     "format": "prettier --write .",
     "lint": "eslint .",

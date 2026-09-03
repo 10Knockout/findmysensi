@@ -28,6 +28,15 @@ export const GAME_ADAPTERS: Record<SupportedGameId, GameAdapter> = {
     maxSensitivity: 30.0,
     defaultFovDegrees: 90,
   },
+  aimlab: {
+    id: "aimlab",
+    name: "Aim Lab (Default)",
+    defaultYawDegrees: 0.022,
+    defaultDpi: 800,
+    minSensitivity: 0.01,
+    maxSensitivity: 30.0,
+    defaultFovDegrees: 103,
+  },
   overwatch2: {
     id: "overwatch2",
     name: "Overwatch 2",

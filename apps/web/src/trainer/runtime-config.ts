@@ -9,7 +9,7 @@ export interface GridshotRuntimeConfig {
   readonly fovDegrees: number;
   readonly inputGainAngleUnitsPerUnit: number;
   readonly inputBufferCapacity: number;
-  readonly scalingMode: "fit" | "stretch" | "black-bars";
+  readonly scalingMode: "fit" | "fill" | "stretch" | "black-bars";
   readonly targetColor: string;
   readonly targetOpacity: number;
   readonly targetOutline: boolean;

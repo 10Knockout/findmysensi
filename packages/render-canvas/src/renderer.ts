@@ -82,6 +82,17 @@ export class Canvas2DPotatoRenderer implements AimRenderer {
     ctx.fillStyle = this.backgroundColor;
     ctx.fillRect(rectX, rectY, rectW, rectH);
 
+    if (typeof ctx.save === "function") ctx.save();
+    if (
+      typeof ctx.beginPath === "function" &&
+      typeof ctx.rect === "function" &&
+      typeof ctx.clip === "function"
+    ) {
+      ctx.beginPath();
+      ctx.rect(rectX, rectY, rectW, rectH);
+      ctx.clip();
+    }
+
     const targetCount = snapshot.targetCount;
     const playerYaw = snapshot.playerYaw;
     const playerPitch = snapshot.playerPitch;
@@ -114,6 +125,7 @@ export class Canvas2DPotatoRenderer implements AimRenderer {
     }
 
     this.renderCrosshair(ctx, rectX + rectW / 2, rectY + rectH / 2);
+    if (typeof ctx.restore === "function") ctx.restore();
   }
 
   private renderCrosshair(

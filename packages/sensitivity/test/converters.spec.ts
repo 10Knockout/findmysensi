@@ -3,6 +3,8 @@ import {
   convertSensitivity,
   sensitivityToCmPer360,
   cmPer360ToSensitivity,
+  gameSensitivityToFms,
+  fmsToGameSensitivity,
 } from "../src/index.js";
 
 describe("Sensitivity Converters (@findmysensi/sensitivity)", () => {
@@ -62,5 +64,14 @@ describe("Sensitivity Converters (@findmysensi/sensitivity)", () => {
     expect(() => sensitivityToCmPer360("cs2", 0, 800)).toThrow(RangeError);
     expect(() => sensitivityToCmPer360("cs2", -1.5, 800)).toThrow(RangeError);
     expect(() => cmPer360ToSensitivity("cs2", -10, 800)).toThrow(RangeError);
+  });
+
+  it("converts game sensitivity to FMS gain and roundtrips accurately", () => {
+    const valorantSens = 0.35;
+    const fms = gameSensitivityToFms("valorant", valorantSens);
+    expect(parseFloat(fms)).toBeGreaterThan(0);
+
+    const recovered = fmsToGameSensitivity("valorant", fms);
+    expect(recovered).toBeCloseTo(valorantSens, 3);
   });
 });

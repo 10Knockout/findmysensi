@@ -45,7 +45,7 @@ export default function LoginPage() {
             Sign In
           </h1>
           <p className="text-sm text-zinc-400 mt-1">
-            Sign in to access Gridshot practice
+            Sign in to access Gridshot training
           </p>
         </div>
 

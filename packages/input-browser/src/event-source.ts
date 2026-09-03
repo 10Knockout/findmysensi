@@ -55,8 +55,26 @@ export function attachInputListener(
   const shouldCaptureGameplayInput =
     options.shouldCaptureGameplayInput ?? (() => true);
 
+  let fractionX = 0;
+  let fractionY = 0;
+
+  const pushMovement = (dx: number, dy: number, timeStamp: number) => {
+    fractionX += dx;
+    fractionY += dy;
+    const intX = Math.trunc(fractionX);
+    const intY = Math.trunc(fractionY);
+    fractionX -= intX;
+    fractionY -= intY;
+    if (intX !== 0 || intY !== 0) {
+      ringBuffer.pushMove(intX, intY, timeStamp);
+    }
+  };
+
   const onPointerMove = (ev: Event) => {
     if (!shouldCaptureGameplayInput()) return;
+    if (typeof (ev as { preventDefault?: () => void }).preventDefault === "function") {
+      ev.preventDefault();
+    }
 
     const pEv = ev as PointerEvent & {
       getCoalescedEvents?: () => PointerEvent[];
@@ -65,22 +83,37 @@ export function attachInputListener(
     if (typeof pEv.getCoalescedEvents === "function") {
       const coalesced = pEv.getCoalescedEvents();
       if (coalesced && coalesced.length > 0) {
-        for (const subEv of coalesced) {
-          ringBuffer.pushMove(
-            subEv.movementX,
-            subEv.movementY,
-            subEv.timeStamp,
-          );
+        let sumX = 0;
+        let sumY = 0;
+        for (let i = 0; i < coalesced.length; i++) {
+          sumX += coalesced[i]?.movementX ?? 0;
+          sumY += coalesced[i]?.movementY ?? 0;
         }
-        return;
+
+        // If coalesced events have actual movement, use them;
+        // if they are all 0 while parent has movement, fallback to parent event (Chromium pointer lock bug)
+        if (
+          sumX !== 0 ||
+          sumY !== 0 ||
+          (pEv.movementX === 0 && pEv.movementY === 0)
+        ) {
+          for (let i = 0; i < coalesced.length; i++) {
+            const subEv = coalesced[i]!;
+            pushMovement(subEv.movementX, subEv.movementY, subEv.timeStamp);
+          }
+          return;
+        }
       }
     }
 
-    ringBuffer.pushMove(pEv.movementX, pEv.movementY, pEv.timeStamp);
+    pushMovement(pEv.movementX, pEv.movementY, pEv.timeStamp);
   };
 
   const onPointerDown = (ev: Event) => {
     if (!shouldCaptureGameplayInput()) return;
+    if (typeof (ev as { preventDefault?: () => void }).preventDefault === "function") {
+      ev.preventDefault();
+    }
 
     const mEv = ev as MouseEvent;
     if (mEv.button === 0) {

@@ -17,6 +17,14 @@ import {
   type CrosshairConfig,
 } from "@findmysensi/crosshair";
 import {
+  GAME_ADAPTERS,
+  SupportedGameId,
+  gameSensitivityToFms,
+  fmsToGameSensitivity,
+  sensitivityToCmPer360,
+} from "@findmysensi/sensitivity";
+import { InteractiveCrosshairEditor } from "../crosshair/InteractiveCrosshairEditor.js";
+import {
   ASPECT_OPTIONS,
   GRAPHICS_OPTIONS,
   INPUT_PROCESSING_OPTIONS,
@@ -31,10 +39,11 @@ export function SettingsClient() {
   const client = useMemo(() => new BrowserApiClient(), []);
   const [profile, setProfile] = useState<ProfileSettings | null>(null);
   const [trainer, setTrainer] = useState<TrainerSettings | null>(null);
+  const [selectedGame, setSelectedGame] = useState<SupportedGameId>("valorant");
+  const [gameSens, setGameSens] = useState<number>(0.35);
   const [crosshair, setCrosshair] = useState<CrosshairConfig>(
     CROSSHAIR_PRESETS[0]!.config,
   );
-  const [crosshairImport, setCrosshairImport] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -76,6 +85,14 @@ export function SettingsClient() {
           );
         }
       }
+      if (parsedSettings.fmsSensitivity) {
+        try {
+          const sens = fmsToGameSensitivity("valorant", parsedSettings.fmsSensitivity);
+          setGameSens(sens);
+        } catch {
+          setGameSens(0.35);
+        }
+      }
     })();
 
     return () => {
@@ -89,6 +106,39 @@ export function SettingsClient() {
   ) => {
     setTrainer((current) => (current ? { ...current, [key]: value } : current));
   };
+
+  const handleGameChange = (game: SupportedGameId) => {
+    setSelectedGame(game);
+    if (trainer?.fmsSensitivity) {
+      try {
+        setGameSens(fmsToGameSensitivity(game, trainer.fmsSensitivity));
+      } catch {
+        setGameSens(0.35);
+      }
+    }
+  };
+
+  const handleGameSensChange = (val: number) => {
+    setGameSens(val);
+    try {
+      const fms = gameSensitivityToFms(selectedGame, val);
+      updateTrainer("fmsSensitivity", fms);
+    } catch {
+      // ignore
+    }
+  };
+
+  let calcCmPer360 = "N/A";
+  let calcEdpi = "N/A";
+  try {
+    const effDpi = trainer?.nominalDpi ?? 800;
+    if (gameSens > 0 && effDpi > 0) {
+      calcCmPer360 = `${sensitivityToCmPer360(selectedGame, gameSens, effDpi).toFixed(1)} cm / 360°`;
+      calcEdpi = `${(gameSens * effDpi).toFixed(0)}`;
+    }
+  } catch {
+    // ignore
+  }
 
   const saveAll = async () => {
     if (!profile || !trainer) return;
@@ -127,26 +177,6 @@ export function SettingsClient() {
     setSaving(false);
   };
 
-  const importCrosshair = () => {
-    setError(null);
-    try {
-      setCrosshair(decodeCrosshairShareCode(crosshairImport.trim()));
-      setCrosshairImport("");
-      setStatus("Crosshair code imported. Save settings to persist it.");
-    } catch {
-      setError("Invalid crosshair share code.");
-    }
-  };
-
-  const copyCrosshair = async () => {
-    try {
-      await navigator.clipboard.writeText(encodeCrosshairShareCode(crosshair));
-      setStatus("Crosshair code copied.");
-    } catch {
-      setError("Could not copy crosshair code.");
-    }
-  };
-
   if (error && (!profile || !trainer)) {
     return (
       <main className="grid min-h-screen place-items-center bg-zinc-950 p-6 text-zinc-100">
@@ -167,8 +197,6 @@ export function SettingsClient() {
       </main>
     );
   }
-
-  const shareCode = encodeCrosshairShareCode(crosshair);
 
   return (
     <main className="min-h-screen bg-zinc-950 px-6 py-8 text-zinc-100">
@@ -260,237 +288,232 @@ export function SettingsClient() {
           </SettingsSection>
 
           <SettingsSection
-            title="Aim"
-            description="FOV changes camera presentation. It does not silently rewrite physical sensitivity. Target geometry and scoring are not user-editable settings."
+            title="Aim & Sensitivity"
+            description="Select your main game profile to calibrate physical turn distances. FOV adjusts camera angle without altering physical sensitivity."
           >
-            <div className="grid gap-4 md:grid-cols-3">
-              <Field label="FindMySensi sensitivity">
-                <input
-                  value={trainer.fmsSensitivity ?? ""}
-                  onChange={(e) =>
-                    updateTrainer(
-                      "fmsSensitivity",
-                      e.target.value.trim() === "" ? null : e.target.value,
-                    )
-                  }
-                  inputMode="decimal"
-                  className={inputClass}
-                  placeholder="Not set"
-                />
-              </Field>
-              <Field label="DPI (optional)">
-                <input
-                  value={trainer.nominalDpi ?? ""}
-                  onChange={(e) =>
-                    updateTrainer(
-                      "nominalDpi",
-                      e.target.value === "" ? null : Number(e.target.value),
-                    )
-                  }
-                  type="number"
-                  min={1}
-                  max={100000}
-                  className={inputClass}
-                  placeholder="Unknown is OK"
-                />
-              </Field>
-              <Field label="Training FOV">
-                <input
-                  value={trainer.fovDegrees}
-                  onChange={(e) =>
-                    updateTrainer("fovDegrees", Number(e.target.value))
-                  }
-                  type="number"
-                  min={40}
-                  max={140}
-                  step={0.1}
-                  className={inputClass}
-                />
-              </Field>
-              <Field label="Target color">
-                <input
-                  value={trainer.targetColor}
-                  onChange={(e) => updateTrainer("targetColor", e.target.value)}
-                  type="color"
-                  className="h-11 w-full rounded-lg border border-zinc-700 bg-black p-1"
-                />
-              </Field>
-              <Field
-                label={`Target opacity (${Math.round(trainer.targetOpacity * 100)}%)`}
-              >
-                <input
-                  value={trainer.targetOpacity}
-                  onChange={(e) =>
-                    updateTrainer("targetOpacity", Number(e.target.value))
-                  }
-                  type="range"
-                  min={0.2}
-                  max={1}
-                  step={0.05}
-                  className="w-full accent-emerald-400"
-                />
-              </Field>
-              <Field label="Target outline">
-                <label className="flex h-11 items-center gap-3 rounded-lg border border-zinc-700 bg-black/50 px-3">
-                  <input
-                    checked={trainer.targetOutline}
-                    onChange={(e) =>
-                      updateTrainer("targetOutline", e.target.checked)
-                    }
-                    type="checkbox"
-                    className="accent-emerald-400"
-                  />
-                  <span className="text-sm text-zinc-300">Enabled</span>
-                </label>
-              </Field>
-            </div>
-            <p className="mt-4 text-xs text-zinc-500">
-              Target shape is always circular. Size, hitbox, movement, spawn
-              rules and points-per-hit are scenario rules and cannot be changed
-              here.
-            </p>
-          </SettingsSection>
-
-          <SettingsSection
-            title="Crosshair"
-            description="Crosshair is presentation-only and can be shared with a versioned code."
-          >
-            <div className="grid gap-5 lg:grid-cols-[220px_1fr]">
-              <div className="relative flex aspect-square items-center justify-center overflow-hidden rounded-xl border border-zinc-800 bg-black">
-                <CrosshairPreview config={crosshair} />
-              </div>
-              <div className="space-y-4">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Preset">
+            <div className="space-y-6">
+              {/* Game Profile & Mouse Sensitivity */}
+              <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/60 p-5">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Game Profile">
                     <select
-                      onChange={(e) => {
-                        const preset = CROSSHAIR_PRESETS.find(
-                          (item) => item.id === e.target.value,
-                        );
-                        if (preset) setCrosshair(preset.config);
-                      }}
+                      value={selectedGame}
+                      onChange={(e) =>
+                        handleGameChange(e.target.value as SupportedGameId)
+                      }
                       className={inputClass}
-                      defaultValue={CROSSHAIR_PRESETS[0]!.id}
                     >
-                      {CROSSHAIR_PRESETS.map((preset) => (
-                        <option key={preset.id} value={preset.id}>
-                          {preset.name}
+                      {Object.values(GAME_ADAPTERS).map((g) => (
+                        <option key={g.id} value={g.id}>
+                          {g.name}
                         </option>
                       ))}
                     </select>
                   </Field>
-                  <Field label="Color">
+                  <Field label="Mouse DPI">
                     <input
-                      type="color"
-                      value={crosshair.color}
+                      value={trainer.nominalDpi ?? ""}
                       onChange={(e) =>
-                        setCrosshair({ ...crosshair, color: e.target.value })
+                        updateTrainer(
+                          "nominalDpi",
+                          e.target.value === "" ? null : Number(e.target.value),
+                        )
                       }
-                      className="h-11 w-full rounded-lg border border-zinc-700 bg-black p-1"
+                      type="number"
+                      min={100}
+                      max={100000}
+                      className={inputClass}
+                      placeholder="e.g. 800"
                     />
                   </Field>
-                  <Field label={`Size (${crosshair.size})`}>
+                </div>
+
+                {/* In-Game Sensitivity Slider */}
+                <div className="mt-4">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-xs font-semibold text-zinc-300">
+                      In-Game Sensitivity ({GAME_ADAPTERS[selectedGame]?.name ?? "Game"})
+                    </span>
                     <input
-                      type="range"
-                      min={1}
-                      max={25}
-                      value={crosshair.size}
+                      type="number"
+                      min={0.01}
+                      max={10.0}
+                      step={0.005}
+                      value={gameSens}
                       onChange={(e) =>
-                        setCrosshair({
-                          ...crosshair,
-                          size: Number(e.target.value),
-                        })
+                        handleGameSensChange(parseFloat(e.target.value) || 0.1)
                       }
-                      className="w-full accent-emerald-400"
+                      className="w-24 rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-1 text-right font-mono text-sm text-cyan-400 focus:border-cyan-400 focus:outline-none"
                     />
-                  </Field>
-                  <Field label={`Thickness (${crosshair.thickness})`}>
-                    <input
-                      type="range"
-                      min={1}
-                      max={10}
-                      value={crosshair.thickness}
-                      onChange={(e) =>
-                        setCrosshair({
-                          ...crosshair,
-                          thickness: Number(e.target.value),
-                        })
-                      }
-                      className="w-full accent-emerald-400"
-                    />
-                  </Field>
-                  <Field label={`Gap (${crosshair.gap})`}>
-                    <input
-                      type="range"
-                      min={0}
-                      max={20}
-                      value={crosshair.gap}
-                      onChange={(e) =>
-                        setCrosshair({
-                          ...crosshair,
-                          gap: Number(e.target.value),
-                        })
-                      }
-                      className="w-full accent-emerald-400"
-                    />
-                  </Field>
-                  <div className="flex items-end gap-5 pb-2 text-sm text-zinc-300">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={crosshair.dot}
-                        onChange={(e) =>
-                          setCrosshair({ ...crosshair, dot: e.target.checked })
-                        }
-                      />{" "}
-                      Dot
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={crosshair.outline}
-                        onChange={(e) =>
-                          setCrosshair({
-                            ...crosshair,
-                            outline: e.target.checked,
-                          })
-                        }
-                      />{" "}
-                      Outline
-                    </label>
+                  </div>
+                  <input
+                    type="range"
+                    min={0.01}
+                    max={selectedGame === "valorant" ? 2.0 : 6.0}
+                    step={0.005}
+                    value={gameSens}
+                    onChange={(e) =>
+                      handleGameSensChange(parseFloat(e.target.value))
+                    }
+                    className="w-full accent-cyan-400"
+                  />
+                </div>
+
+                {/* Physical Turn Metrics */}
+                <div className="mt-4 grid grid-cols-3 gap-3 rounded-lg border border-zinc-800 bg-black/50 p-3 text-center">
+                  <div>
+                    <span className="block text-[10px] uppercase tracking-wider text-zinc-500">
+                      Turn Distance
+                    </span>
+                    <span className="font-mono text-sm font-bold text-cyan-300">
+                      {calcCmPer360}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] uppercase tracking-wider text-zinc-500">
+                      eDPI
+                    </span>
+                    <span className="font-mono text-sm font-bold text-white">
+                      {calcEdpi}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] uppercase tracking-wider text-zinc-500">
+                      FMS Browser Gain
+                    </span>
+                    <span className="font-mono text-sm font-bold text-emerald-400">
+                      {trainer.fmsSensitivity ?? "1.0"}
+                    </span>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <input
-                    readOnly
-                    value={shareCode}
-                    className={`${inputClass} font-mono text-xs`}
-                  />
-                  <button
-                    type="button"
-                    onClick={copyCrosshair}
-                    className="rounded-lg border border-zinc-700 px-4 py-2 text-sm font-bold hover:bg-zinc-800"
-                  >
-                    Copy
-                  </button>
+              </div>
+
+              {/* Training FOV Slider with Game Presets */}
+              <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/60 p-5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-zinc-300">
+                    Training Field of View (FOV)
+                  </span>
+                  <span className="rounded-md border border-cyan-500/40 bg-cyan-950/40 px-3 py-1 font-mono text-sm font-bold text-cyan-300">
+                    {trainer.fovDegrees}°
+                  </span>
                 </div>
-                <div className="flex gap-2">
+                <div className="mt-3">
                   <input
-                    value={crosshairImport}
-                    onChange={(e) => setCrosshairImport(e.target.value)}
-                    placeholder="Paste FMS crosshair code"
-                    className={`${inputClass} font-mono text-xs`}
+                    type="range"
+                    min={80}
+                    max={120}
+                    step={1}
+                    value={trainer.fovDegrees}
+                    onChange={(e) =>
+                      updateTrainer("fovDegrees", Number(e.target.value))
+                    }
+                    className="w-full accent-cyan-400"
                   />
+                  <div className="mt-1 flex justify-between font-mono text-[10px] text-zinc-500">
+                    <span>80°</span>
+                    <span>103° (Valorant)</span>
+                    <span>120°</span>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
                   <button
                     type="button"
-                    onClick={importCrosshair}
-                    className="rounded-lg border border-zinc-700 px-4 py-2 text-sm font-bold hover:bg-zinc-800"
+                    onClick={() => updateTrainer("fovDegrees", 103)}
+                    className={`rounded-lg border px-3 py-1 text-xs font-semibold transition-all ${
+                      trainer.fovDegrees === 103
+                        ? "border-cyan-400 bg-cyan-500/20 text-cyan-300"
+                        : "border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+                    }`}
                   >
-                    Import
+                    Valorant (103°)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateTrainer("fovDegrees", 106)}
+                    className={`rounded-lg border px-3 py-1 text-xs font-semibold transition-all ${
+                      trainer.fovDegrees === 106
+                        ? "border-cyan-400 bg-cyan-500/20 text-cyan-300"
+                        : "border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+                    }`}
+                  >
+                    CS2 / Source (106°)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateTrainer("fovDegrees", 90)}
+                    className={`rounded-lg border px-3 py-1 text-xs font-semibold transition-all ${
+                      trainer.fovDegrees === 90
+                        ? "border-cyan-400 bg-cyan-500/20 text-cyan-300"
+                        : "border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+                    }`}
+                  >
+                    Apex / Source (90°)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateTrainer("fovDegrees", 120)}
+                    className={`rounded-lg border px-3 py-1 text-xs font-semibold transition-all ${
+                      trainer.fovDegrees === 120
+                        ? "border-cyan-400 bg-cyan-500/20 text-cyan-300"
+                        : "border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+                    }`}
+                  >
+                    COD / Warzone (120°)
                   </button>
                 </div>
               </div>
+
+              {/* Targets Appearance */}
+              <div className="grid gap-4 md:grid-cols-3">
+                <Field label="Target color">
+                  <input
+                    value={trainer.targetColor}
+                    onChange={(e) => updateTrainer("targetColor", e.target.value)}
+                    type="color"
+                    className="h-11 w-full rounded-lg border border-zinc-700 bg-black p-1"
+                  />
+                </Field>
+                <Field
+                  label={`Target opacity (${Math.round(trainer.targetOpacity * 100)}%)`}
+                >
+                  <input
+                    value={trainer.targetOpacity}
+                    onChange={(e) =>
+                      updateTrainer("targetOpacity", Number(e.target.value))
+                    }
+                    type="range"
+                    min={0.2}
+                    max={1}
+                    step={0.05}
+                    className="w-full accent-emerald-400"
+                  />
+                </Field>
+                <Field label="Target outline">
+                  <label className="flex h-11 items-center gap-3 rounded-lg border border-zinc-700 bg-black/50 px-3">
+                    <input
+                      checked={trainer.targetOutline}
+                      onChange={(e) =>
+                        updateTrainer("targetOutline", e.target.checked)
+                      }
+                      type="checkbox"
+                      className="accent-emerald-400"
+                    />
+                    <span className="text-sm text-zinc-300">Enabled</span>
+                  </label>
+                </Field>
+              </div>
             </div>
+          </SettingsSection>
+
+          <SettingsSection
+            title="Crosshair"
+            description="Crosshair is presentation-only and can be customized or shared with a versioned code."
+          >
+            <InteractiveCrosshairEditor
+              crosshair={crosshair}
+              onChange={setCrosshair}
+            />
           </SettingsSection>
 
           <SettingsSection
@@ -669,68 +692,5 @@ function SelectField({
         ))}
       </select>
     </Field>
-  );
-}
-
-function CrosshairPreview({ config }: { config: CrosshairConfig }) {
-  const bar = (style: React.CSSProperties) => (
-    <span
-      className="absolute"
-      style={{ backgroundColor: config.color, ...style }}
-    />
-  );
-  return (
-    <div className="relative" style={{ opacity: config.opacity }}>
-      {config.dot ? (
-        <span
-          className="absolute rounded-full"
-          style={{
-            width: config.dotSize * 2,
-            height: config.dotSize * 2,
-            backgroundColor: config.color,
-            transform: "translate(-50%, -50%)",
-          }}
-        />
-      ) : null}
-      {config.style === "cross" || config.style === "classic" ? (
-        <>
-          {bar({
-            width: config.thickness * 2,
-            height: config.size * 2,
-            left: -config.thickness,
-            bottom: config.gap,
-          })}
-          {bar({
-            width: config.thickness * 2,
-            height: config.size * 2,
-            left: -config.thickness,
-            top: config.gap,
-          })}
-          {bar({
-            width: config.size * 2,
-            height: config.thickness * 2,
-            right: config.gap,
-            top: -config.thickness,
-          })}
-          {bar({
-            width: config.size * 2,
-            height: config.thickness * 2,
-            left: config.gap,
-            top: -config.thickness,
-          })}
-        </>
-      ) : null}
-      {config.style === "circle" ? (
-        <span
-          className="absolute rounded-full"
-          style={{
-            width: config.size * 4,
-            height: config.size * 4,
-            border: `${config.thickness * 2}px solid ${config.color}`,
-            transform: "translate(-50%, -50%)",
-          }}
-        />
-      ) : null}
-    </div>
   );
 }

@@ -90,3 +90,40 @@ export function convertSensitivity(
     formattedCmPer360: cmPer360.toFixed(2),
   };
 }
+
+export const FMS_BASE_DEGREES_PER_COUNT = (2_500 * 360) / 16_777_216;
+
+/**
+ * Converts a specific game's sensitivity into the equivalent FindMySensi browser gain multiplier string.
+ */
+export function gameSensitivityToFms(
+  gameId: SupportedGameId,
+  sensitivity: number,
+): string {
+  if (sensitivity <= 0 || !Number.isFinite(sensitivity)) {
+    throw new RangeError("Sensitivity must be a positive finite number.");
+  }
+  const adapter = getGameAdapter(gameId);
+  const yaw = adapter.defaultYawDegrees * sensitivity;
+  const fms = yaw / FMS_BASE_DEGREES_PER_COUNT;
+  return fms.toFixed(4);
+}
+
+/**
+ * Converts a FindMySensi browser gain multiplier string or number into the equivalent in-game sensitivity for a specified game.
+ */
+export function fmsToGameSensitivity(
+  gameId: SupportedGameId,
+  fmsSensitivity: string | number,
+): number {
+  const fmsNum =
+    typeof fmsSensitivity === "string"
+      ? parseFloat(fmsSensitivity)
+      : fmsSensitivity;
+  if (!Number.isFinite(fmsNum) || fmsNum <= 0) {
+    throw new RangeError("FMS sensitivity must be a positive finite number.");
+  }
+  const adapter = getGameAdapter(gameId);
+  const yaw = fmsNum * FMS_BASE_DEGREES_PER_COUNT;
+  return Number((yaw / adapter.defaultYawDegrees).toFixed(4));
+}

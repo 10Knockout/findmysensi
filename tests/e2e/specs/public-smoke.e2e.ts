@@ -175,3 +175,186 @@ test("unfinished public ticket result URLs fail closed", async ({ page }) => {
   expect(response?.status()).toBe(404);
   await expect(page.locator("body")).not.toContainText("Run Complete");
 });
+
+test("authenticated Trainer Home renders user greeting, Gridshot play link, and Settings link", async ({
+  page,
+}) => {
+  const browserErrors = captureBrowserErrors(page);
+  const session = {
+    user: {
+      id: "browser-user",
+      email: "browser-user@example.com",
+      username: "BrowserAudit",
+      emailVerified: true,
+    },
+    session: {
+      id: "browser-session",
+      userId: "browser-user",
+      expiresAt: "2026-09-02T00:00:00.000Z",
+    },
+  };
+
+  await page.route("**/api/auth/get-session", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(session),
+    });
+  });
+
+  const response = await page.goto("/app");
+  expect(response?.ok()).toBe(true);
+
+  await expect(
+    page.getByRole("heading", { name: "BrowserAudit" }),
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "PLAY GRIDSHOT" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Settings" })).toBeVisible();
+  expect(browserErrors).toEqual([]);
+});
+
+test("authenticated Settings page renders profile, aim, video, and input sections", async ({
+  page,
+}) => {
+  const browserErrors = captureBrowserErrors(page);
+  const session = {
+    user: {
+      id: "browser-user",
+      email: "browser-user@example.com",
+      username: "BrowserAudit",
+      emailVerified: true,
+    },
+    session: {
+      id: "browser-session",
+      userId: "browser-user",
+      expiresAt: "2026-09-02T00:00:00.000Z",
+    },
+  };
+  const profile = {
+    username: "BrowserAudit",
+    avatarId: "avatar-default",
+    frameId: "frame-none",
+  };
+  const trainerSettings = {
+    fmsSensitivity: "1.0",
+    nominalDpi: 800,
+    fovDegrees: 103,
+    targetColor: "#7CFF6B",
+    targetOpacity: 1,
+    targetOutline: false,
+    crosshairCode: null,
+    graphicsPreset: "automatic",
+    resolution: "native",
+    customResolutionWidth: null,
+    customResolutionHeight: null,
+    aspectRatio: "16:9",
+    scalingMode: "fit",
+    inputProcessing: "automatic",
+  };
+
+  await page.route("**/api/auth/get-session", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(session),
+    });
+  });
+  await page.route("**/api/v1/me/profile", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(profile),
+    });
+  });
+  await page.route("**/api/v1/me/settings", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(trainerSettings),
+    });
+  });
+
+  const response = await page.goto("/app/settings");
+  expect(response?.ok()).toBe(true);
+
+  await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Aim" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Save Settings" }),
+  ).toBeVisible();
+  expect(browserErrors).toEqual([]);
+});
+
+test("authenticated Results page displays honest local results wording and metrics", async ({
+  page,
+}) => {
+  const browserErrors = captureBrowserErrors(page);
+  const session = {
+    user: {
+      id: "browser-user",
+      email: "browser-user@example.com",
+      username: "BrowserAudit",
+      emailVerified: true,
+    },
+    session: {
+      id: "browser-session",
+      userId: "browser-user",
+      expiresAt: "2026-09-02T00:00:00.000Z",
+    },
+  };
+
+  await page.route("**/api/auth/get-session", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(session),
+    });
+  });
+
+  await page.addInitScript(() => {
+    window.localStorage.setItem(
+      "findmysensi:practice_history:v1",
+      JSON.stringify([
+        {
+          id: "practice-test-1",
+          modeId: "grid",
+          timestamp: Date.now(),
+          score: 72450,
+          hits: 65,
+          shots: 70,
+          misses: 5,
+          accuracyPercentage: 93,
+          durationSeconds: 60,
+          killsPerSecond: 1.08,
+          exactReplayPreserved: true,
+          inputOverflowEvents: 0,
+          inputHighWaterMark: 8,
+        },
+      ]),
+    );
+  });
+
+  const response = await page.goto("/app/train/grid/results");
+  expect(response?.ok()).toBe(true);
+
+  // Assert honest local results badge and explanation
+  await expect(page.locator("text=Local Result · Not Submitted")).toBeVisible();
+  await expect(
+    page.locator(
+      "text=This run is stored locally. Official leaderboard verification is not enabled yet.",
+    ),
+  ).toBeVisible();
+
+  // Assert score card displays formatted score
+  await expect(page.locator("text=72,450")).toBeVisible();
+  await expect(page.locator("text=93%")).toBeVisible();
+
+  // Assert obsolete "Practice Mode" copy is NOT present
+  await expect(page.locator("body")).not.toContainText(
+    "Practice Mode (Offline / Not Synced)",
+  );
+  await expect(page.locator("body")).not.toContainText(
+    "Results from your practice session.",
+  );
+  expect(browserErrors).toEqual([]);
+});

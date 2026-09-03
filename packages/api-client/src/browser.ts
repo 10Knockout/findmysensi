@@ -109,6 +109,20 @@ export class BrowserApiClient {
     return { ok: result.ok, ...(result.error ? { error: result.error } : {}) };
   }
 
+  async resendEmailOtp(
+    email: string,
+    type: "email-verification" | "forget-password" = "email-verification",
+  ): Promise<{ ok: boolean; error?: string }> {
+    const result = await this.requestJson<unknown>(
+      "/api/auth/email-otp/send-verification-otp",
+      {
+        method: "POST",
+        body: JSON.stringify({ email, type }),
+      },
+    );
+    return { ok: result.ok, ...(result.error ? { error: result.error } : {}) };
+  }
+
   async logout(): Promise<void> {
     await this.requestJson<unknown>("/api/auth/sign-out", { method: "POST" });
   }

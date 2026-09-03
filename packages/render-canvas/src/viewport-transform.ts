@@ -3,10 +3,11 @@ import {
   createAngleDeltaUnits,
   createPitchUnits,
   degreesToAngleDeltaUnits,
+  FULL_TURN_UNITS,
   PitchUnits,
 } from "@findmysensi/aim-core";
 
-export type ScaleMode = "fit" | "stretch" | "black-bars";
+export type ScaleMode = "fit" | "stretch" | "black-bars" | "fill";
 
 export interface ViewportTransformConfig {
   readonly canvasWidth: number;
@@ -52,8 +53,8 @@ export class CanonicalViewportTransform implements ViewportTransform {
   public readonly horizontalFovUnits: number;
 
   private readonly vFovUnits: number;
-  private readonly pxPerAngleUnitX: number;
-  private readonly pxPerAngleUnitY: number;
+  private readonly focalLengthX: number;
+  private readonly focalLengthY: number;
   private readonly centerX: number;
   private readonly centerY: number;
 
@@ -68,16 +69,37 @@ export class CanonicalViewportTransform implements ViewportTransform {
 
     this.dpr = dpr;
     this.horizontalFovUnits = degreesToAngleDeltaUnits(horizontalFovDegrees);
-    this.vFovUnits = Math.round(this.horizontalFovUnits / CANONICAL_ASPECT);
+    const hFovRad = (this.horizontalFovUnits / FULL_TURN_UNITS) * (2 * Math.PI);
+    const halfTanH = Math.tan(hFovRad / 2);
 
-    if (scaleMode === "stretch") {
+    if (scaleMode === "fill") {
       this.displayRect = {
         x: 0,
         y: 0,
         width: canvasWidth,
         height: canvasHeight,
       };
+      const currentAspect = canvasWidth / Math.max(1, canvasHeight);
+      const halfTanV = halfTanH / currentAspect;
+      const vFovRad = 2 * Math.atan(halfTanV);
+      this.vFovUnits = Math.max(
+        1,
+        Math.round((vFovRad / (2 * Math.PI)) * FULL_TURN_UNITS),
+      );
+    } else if (scaleMode === "stretch") {
+      this.displayRect = {
+        x: 0,
+        y: 0,
+        width: canvasWidth,
+        height: canvasHeight,
+      };
+      const halfTanV = halfTanH / CANONICAL_ASPECT;
+      const vFovRad = 2 * Math.atan(halfTanV);
+      this.vFovUnits = Math.round((vFovRad / (2 * Math.PI)) * FULL_TURN_UNITS);
     } else {
+      const halfTanV = halfTanH / CANONICAL_ASPECT;
+      const vFovRad = 2 * Math.atan(halfTanV);
+      this.vFovUnits = Math.round((vFovRad / (2 * Math.PI)) * FULL_TURN_UNITS);
       const currentAspect = canvasWidth / Math.max(1, canvasHeight);
 
       if (currentAspect > CANONICAL_ASPECT) {
@@ -105,16 +127,19 @@ export class CanonicalViewportTransform implements ViewportTransform {
     this.centerX = this.displayRect.x + this.displayRect.width / 2;
     this.centerY = this.displayRect.y + this.displayRect.height / 2;
 
-    this.pxPerAngleUnitX = this.displayRect.width / this.horizontalFovUnits;
-    this.pxPerAngleUnitY = this.displayRect.height / this.vFovUnits;
+    const vFovRad = (this.vFovUnits / FULL_TURN_UNITS) * (2 * Math.PI);
+    this.focalLengthX = (this.displayRect.width / 2) / Math.tan(hFovRad / 2);
+    this.focalLengthY = (this.displayRect.height / 2) / Math.tan(vFovRad / 2);
   }
 
   public simToDisplay(
     yawDelta: AngleDeltaUnits | number,
     pitch: PitchUnits | number,
   ): { x: number; y: number } {
-    const x = this.centerX + yawDelta * this.pxPerAngleUnitX;
-    const y = this.centerY - pitch * this.pxPerAngleUnitY;
+    const yawRad = (yawDelta / FULL_TURN_UNITS) * (2 * Math.PI);
+    const pitchRad = (pitch / FULL_TURN_UNITS) * (2 * Math.PI);
+    const x = this.centerX + this.focalLengthX * Math.tan(yawRad);
+    const y = this.centerY - this.focalLengthY * Math.tan(pitchRad);
     return { x, y };
   }
 
@@ -122,8 +147,10 @@ export class CanonicalViewportTransform implements ViewportTransform {
     x: number,
     y: number,
   ): { yaw: AngleDeltaUnits; pitch: PitchUnits } {
-    const yaw = Math.round((x - this.centerX) / this.pxPerAngleUnitX);
-    const pitch = Math.round((this.centerY - y) / this.pxPerAngleUnitY);
+    const yawRad = Math.atan((x - this.centerX) / this.focalLengthX);
+    const pitchRad = Math.atan((this.centerY - y) / this.focalLengthY);
+    const yaw = Math.round((yawRad / (2 * Math.PI)) * FULL_TURN_UNITS);
+    const pitch = Math.round((pitchRad / (2 * Math.PI)) * FULL_TURN_UNITS);
     return {
       yaw: createAngleDeltaUnits(yaw),
       pitch: createPitchUnits(pitch),
@@ -136,7 +163,8 @@ export class CanonicalViewportTransform implements ViewportTransform {
         "Target radius must be a non-negative safe integer.",
       );
     }
-    return radiusAngleUnits * this.pxPerAngleUnitX;
+    const rad = (radiusAngleUnits / FULL_TURN_UNITS) * (2 * Math.PI);
+    return this.focalLengthX * Math.tan(rad);
   }
 }
 

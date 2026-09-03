@@ -31,7 +31,12 @@ export const ASPECT_OPTIONS = [
   "5:4",
   "custom",
 ] as const;
-export const SCALING_OPTIONS = ["fit", "stretch", "black-bars"] as const;
+export const SCALING_OPTIONS = [
+  "fill",
+  "fit",
+  "stretch",
+  "black-bars",
+] as const;
 export const INPUT_PROCESSING_OPTIONS = [
   "automatic",
   "1000",

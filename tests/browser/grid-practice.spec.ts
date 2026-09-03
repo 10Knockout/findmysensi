@@ -161,4 +161,92 @@ describe("Grid Practice Run Flow & Lifecycle", () => {
     const after = capture.latest();
     expect(after?.playerYaw).toBe(wrapYaw(targetYaw - 100_000));
   });
+
+  it("generates fresh valid cryptographic seeds when start() is called without arguments", () => {
+    const controllerA = new PracticeRunController({
+      onStateChange: () => {},
+      onTickProgress: () => {},
+      onScoreUpdate: () => {},
+      onComplete: () => {},
+    });
+    const controllerB = new PracticeRunController({
+      onStateChange: () => {},
+      onTickProgress: () => {},
+      onScoreUpdate: () => {},
+      onComplete: () => {},
+    });
+
+    controllerA.start();
+    controllerB.start();
+
+    const seedA = controllerA.getActiveSeed();
+    const seedB = controllerB.getActiveSeed();
+
+    expect(seedA).not.toBeNull();
+    expect(seedB).not.toBeNull();
+    expect(seedA!.length).toBe(4);
+    expect(seedB!.length).toBe(4);
+
+    for (let i = 0; i < 4; i++) {
+      expect(Number.isInteger(seedA![i])).toBe(true);
+      expect(seedA![i]).toBeGreaterThanOrEqual(0);
+      expect(seedA![i]).toBeLessThanOrEqual(0xffffffff);
+    }
+
+    // Successive fresh runs should receive different seeds
+    expect(seedA).not.toEqual(seedB);
+
+    controllerA.abort();
+    controllerB.abort();
+  });
+
+  it("strictly preserves identical deterministic target sequences when explicit seeds are provided", () => {
+    const captureA = createCaptureRenderer();
+    const captureB = createCaptureRenderer();
+
+    const controllerA = new PracticeRunController(
+      {
+        onStateChange: () => {},
+        onTickProgress: () => {},
+        onScoreUpdate: () => {},
+        onComplete: () => {},
+      },
+      captureA.renderer,
+    );
+    const controllerB = new PracticeRunController(
+      {
+        onStateChange: () => {},
+        onTickProgress: () => {},
+        onScoreUpdate: () => {},
+        onComplete: () => {},
+      },
+      captureB.renderer,
+    );
+
+    const explicitSeed: [number, number, number, number] = [
+      0x11112222, 0x33334444, 0x55556666, 0x77778888,
+    ];
+
+    controllerA.start(explicitSeed);
+    controllerB.start(explicitSeed);
+
+    controllerA.onAnimationFrame(0);
+    controllerB.onAnimationFrame(0);
+
+    expect(controllerA.getActiveSeed()).toEqual(explicitSeed);
+    expect(controllerB.getActiveSeed()).toEqual(explicitSeed);
+
+    const snapA = captureA.latest()!;
+    const snapB = captureB.latest()!;
+
+    expect(snapA.targetCount).toBe(snapB.targetCount);
+    for (let i = 0; i < snapA.targetCount; i++) {
+      expect(snapA.targetX[i]).toBe(snapB.targetX[i]);
+      expect(snapA.targetY[i]).toBe(snapB.targetY[i]);
+      expect(snapA.targetRadius[i]).toBe(snapB.targetRadius[i]);
+    }
+
+    controllerA.abort();
+    controllerB.abort();
+  });
 });
