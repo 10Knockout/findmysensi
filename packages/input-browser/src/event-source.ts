@@ -90,12 +90,12 @@ export function attachInputListener(
           sumY += coalesced[i]?.movementY ?? 0;
         }
 
-        // If coalesced events have actual movement, use them;
-        // if they are all 0 while parent has movement, fallback to parent event (Chromium pointer lock bug)
+        // Only use coalesced events if their sum actually accounts for the parent movement;
+        // if they are missing deltas or stuck at 0 (known Chromium bug), use the parent event.
         if (
-          sumX !== 0 ||
-          sumY !== 0 ||
-          (pEv.movementX === 0 && pEv.movementY === 0)
+          Math.abs(sumX - pEv.movementX) <= 1 &&
+          Math.abs(sumY - pEv.movementY) <= 1 &&
+          (sumX !== 0 || sumY !== 0 || (pEv.movementX === 0 && pEv.movementY === 0))
         ) {
           for (let i = 0; i < coalesced.length; i++) {
             const subEv = coalesced[i]!;
@@ -121,6 +121,12 @@ export function attachInputListener(
     }
   };
 
+  const preventGesture = (ev: Event) => {
+    if (shouldCaptureGameplayInput() && typeof (ev as { preventDefault?: () => void }).preventDefault === "function") {
+      ev.preventDefault();
+    }
+  };
+
   const onBlur = (ev: Event) => {
     const timeStamp = (ev as { timeStamp?: number }).timeStamp ?? 0;
     ringBuffer.pushInvalidate(1 /* focus_lost */, timeStamp);
@@ -134,6 +140,13 @@ export function attachInputListener(
 
   target.addEventListener(source, onPointerMove as EventListener);
   target.addEventListener("pointerdown", onPointerDown as EventListener);
+  target.addEventListener("mousedown", preventGesture as EventListener);
+  target.addEventListener("mouseup", preventGesture as EventListener);
+  target.addEventListener("click", preventGesture as EventListener);
+  target.addEventListener("dblclick", preventGesture as EventListener);
+  target.addEventListener("contextmenu", preventGesture as EventListener);
+  target.addEventListener("selectstart", preventGesture as EventListener);
+  target.addEventListener("dragstart", preventGesture as EventListener);
   target.addEventListener("blur", onBlur as EventListener);
 
   if (typeof document !== "undefined") {
@@ -143,6 +156,13 @@ export function attachInputListener(
   return () => {
     target.removeEventListener(source, onPointerMove as EventListener);
     target.removeEventListener("pointerdown", onPointerDown as EventListener);
+    target.removeEventListener("mousedown", preventGesture as EventListener);
+    target.removeEventListener("mouseup", preventGesture as EventListener);
+    target.removeEventListener("click", preventGesture as EventListener);
+    target.removeEventListener("dblclick", preventGesture as EventListener);
+    target.removeEventListener("contextmenu", preventGesture as EventListener);
+    target.removeEventListener("selectstart", preventGesture as EventListener);
+    target.removeEventListener("dragstart", preventGesture as EventListener);
     target.removeEventListener("blur", onBlur as EventListener);
     if (typeof document !== "undefined") {
       document.removeEventListener("pointerlockchange", onPointerLockChange);

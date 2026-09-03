@@ -39,7 +39,13 @@ export function SettingsClient() {
   const client = useMemo(() => new BrowserApiClient(), []);
   const [profile, setProfile] = useState<ProfileSettings | null>(null);
   const [trainer, setTrainer] = useState<TrainerSettings | null>(null);
-  const [selectedGame, setSelectedGame] = useState<SupportedGameId>("valorant");
+  const [selectedGame, setSelectedGame] = useState<SupportedGameId>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("findmysensi:selected_game");
+      if (saved && saved in GAME_ADAPTERS) return saved as SupportedGameId;
+    }
+    return "valorant";
+  });
   const [gameSens, setGameSens] = useState<number>(0.35);
   const [crosshair, setCrosshair] = useState<CrosshairConfig>(
     CROSSHAIR_PRESETS[0]!.config,
@@ -109,6 +115,9 @@ export function SettingsClient() {
 
   const handleGameChange = (game: SupportedGameId) => {
     setSelectedGame(game);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("findmysensi:selected_game", game);
+    }
     if (trainer?.fmsSensitivity) {
       try {
         setGameSens(fmsToGameSensitivity(game, trainer.fmsSensitivity));
@@ -385,6 +394,46 @@ export function SettingsClient() {
                       {trainer.fmsSensitivity ?? "1.0"}
                     </span>
                   </div>
+                </div>
+
+                {/* Cross-Game Parity (GamingSmart / mouse-sensitivity.com Parity) */}
+                <div className="mt-4 rounded-lg border border-zinc-800 bg-zinc-950/80 p-3">
+                  <div className="mb-2 flex items-center justify-between text-[11px] font-semibold text-zinc-400">
+                    <span className="uppercase tracking-wider">Cross-Game Equivalent Sensitivities</span>
+                    <span className="font-mono text-xs text-cyan-400">{calcCmPer360}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {[
+                      { id: "valorant", label: "Valorant" },
+                      { id: "aimlab", label: "Aim Lab" },
+                      { id: "cs2", label: "CS2 / Apex" },
+                      { id: "pubg", label: "PUBG" },
+                    ].map((g) => {
+                      const sens = fmsToGameSensitivity(
+                        g.id as SupportedGameId,
+                        trainer.fmsSensitivity ?? "0.1631",
+                      );
+                      const isCurrent = selectedGame === g.id;
+                      return (
+                        <button
+                          key={g.id}
+                          type="button"
+                          onClick={() => handleGameChange(g.id as SupportedGameId)}
+                          className={`flex flex-col items-center rounded-lg border p-2 transition ${
+                            isCurrent
+                              ? "border-cyan-500 bg-cyan-950/40 text-cyan-300"
+                              : "border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:border-zinc-700 hover:text-white"
+                          }`}
+                        >
+                          <span className="text-[10px] font-medium uppercase text-zinc-400">{g.label}</span>
+                          <span className="font-mono text-sm font-bold">{sens}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-2 text-center text-[10px] text-zinc-500">
+                    Click any game to switch profile. All game sensitivities above produce identical {calcCmPer360} turn distance.
+                  </p>
                 </div>
               </div>
 

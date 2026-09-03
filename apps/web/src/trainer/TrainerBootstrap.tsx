@@ -64,6 +64,25 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
   const [countdown, setCountdown] = useState<number | null>(null);
   const [lockError, setLockError] = useState<string | null>(null);
   const [pauseSecondsLeft, setPauseSecondsLeft] = useState(MAX_PAUSE_MS / 1000);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const onFsChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", onFsChange);
+    return () => document.removeEventListener("fullscreenchange", onFsChange);
+  }, []);
+
+  const toggleFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await containerRef.current?.requestFullscreen();
+      } else {
+        await document.exitFullscreen();
+      }
+    } catch {
+      // ignore
+    }
+  };
 
   useEffect(() => {
     let active = true;
@@ -470,12 +489,22 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
               ["SCORE", score.toLocaleString()],
             ]}
           />
-          <HudGroup
-            items={[
-              ["ACCURACY", `${accuracy}%`],
-              ["HITS / MISS", `${hits} / ${misses}`],
-            ]}
-          />
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              className="pointer-events-auto rounded border border-zinc-800 bg-zinc-950/80 px-3 py-1.5 text-xs text-zinc-400 hover:border-cyan-400 hover:text-cyan-300"
+              title="Toggle Fullscreen"
+            >
+              {isFullscreen ? "EXIT FULLSCREEN" : "⛶ FULLSCREEN"}
+            </button>
+            <HudGroup
+              items={[
+                ["ACCURACY", `${accuracy}%`],
+                ["HITS / MISS", `${hits} / ${misses}`],
+              ]}
+            />
+          </div>
         </div>
       ) : null}
 
@@ -507,19 +536,29 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
                 and begin the 60-second run.
               </p>
             </div>
-            <button
-              onClick={startCountdownAndLock}
-              className="w-full rounded-xl bg-emerald-400 py-4 text-lg font-black text-zinc-950 hover:bg-emerald-300"
-            >
-              START GRIDSHOT
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={startCountdownAndLock}
+                className="flex-1 rounded-xl bg-emerald-400 py-4 text-lg font-black text-zinc-950 hover:bg-emerald-300"
+              >
+                START GRIDSHOT
+              </button>
+              <button
+                type="button"
+                onClick={toggleFullscreen}
+                className="rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-4 font-mono text-xs font-bold text-zinc-300 hover:border-cyan-400 hover:text-cyan-300"
+                title="Toggle Fullscreen"
+              >
+                {isFullscreen ? "EXIT FS" : "⛶ FULLSCREEN"}
+              </button>
+            </div>
             {lockError ? (
               <p role="alert" className="text-sm text-red-300">
                 {lockError}
               </p>
             ) : null}
             <p className="font-mono text-[11px] text-zinc-500">
-              Esc releases mouse capture and pauses the run.
+              Esc releases mouse capture and pauses the run. Fullscreen is recommended for best mouse precision.
             </p>
           </div>
         </div>
@@ -555,6 +594,13 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 py-3 font-semibold text-zinc-200 hover:bg-zinc-700"
               >
                 Settings
+              </button>
+              <button
+                type="button"
+                onClick={toggleFullscreen}
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800/80 py-3 font-semibold text-zinc-200 hover:border-cyan-400 hover:text-cyan-300"
+              >
+                {isFullscreen ? "Exit Fullscreen" : "Toggle Fullscreen"}
               </button>
               <button
                 onClick={restartWithLatestSettings}

@@ -31,11 +31,20 @@ export const GAME_ADAPTERS: Record<SupportedGameId, GameAdapter> = {
   aimlab: {
     id: "aimlab",
     name: "Aim Lab (Default)",
-    defaultYawDegrees: 0.022,
+    defaultYawDegrees: 0.05,
     defaultDpi: 800,
     minSensitivity: 0.01,
     maxSensitivity: 30.0,
     defaultFovDegrees: 103,
+  },
+  pubg: {
+    id: "pubg",
+    name: "PUBG: BATTLEGROUNDS",
+    defaultYawDegrees: 0.00707,
+    defaultDpi: 800,
+    minSensitivity: 1,
+    maxSensitivity: 100,
+    defaultFovDegrees: 90,
   },
   overwatch2: {
     id: "overwatch2",

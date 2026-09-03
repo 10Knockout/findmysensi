@@ -74,4 +74,31 @@ describe("Sensitivity Converters (@findmysensi/sensitivity)", () => {
     const recovered = fmsToGameSensitivity("valorant", fms);
     expect(recovered).toBeCloseTo(valorantSens, 3);
   });
+
+  it("converts Valorant 0.125 to Aimlabs 0.175 with exact GamingSmart parity", () => {
+    // Valorant 0.125 @ 800 DPI:
+    // Yaw = 0.07 * 0.125 = 0.00875 deg/count
+    // Aimlabs Yaw = 0.05 deg/count -> Sens = 0.00875 / 0.05 = 0.175
+    const result = convertSensitivity({
+      sourceGame: "valorant",
+      targetGame: "aimlab",
+      sourceSensitivity: 0.125,
+      sourceDpi: 800,
+      targetDpi: 800,
+    });
+
+    expect(result.targetSensitivity).toBeCloseTo(0.175, 4);
+    expect(result.cmPer360).toBeCloseTo(130.63, 1);
+
+    // At 2400 DPI:
+    const at2400 = convertSensitivity({
+      sourceGame: "valorant",
+      targetGame: "aimlab",
+      sourceSensitivity: 0.125,
+      sourceDpi: 2400,
+      targetDpi: 2400,
+    });
+    expect(at2400.targetSensitivity).toBeCloseTo(0.175, 4);
+    expect(at2400.cmPer360).toBeCloseTo(43.54, 1);
+  });
 });
