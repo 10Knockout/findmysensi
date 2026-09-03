@@ -29,7 +29,10 @@ describe("Privacy-Safe Local Practice History", () => {
       inputHighWaterMark: 12,
     };
 
-    const sample2: PracticeSummaryRecord = {
+    // Deliberately a mode id outside today's known union: this test proves
+    // getAll(modeId) filters generically rather than being hardcoded to
+    // "grid", ahead of future modes actually joining the union (M4/M5).
+    const sample2 = {
       id: "run-2",
       modeId: "tracking",
       timestamp: 1000500,
@@ -43,7 +46,7 @@ describe("Privacy-Safe Local Practice History", () => {
       exactReplayPreserved: false,
       inputOverflowEvents: 2,
       inputHighWaterMark: 4096,
-    };
+    } as unknown as PracticeSummaryRecord;
 
     history.save(sample1);
     history.save(sample2);

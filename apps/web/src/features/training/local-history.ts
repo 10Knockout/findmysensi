@@ -1,18 +1,6 @@
-export interface PracticeSummaryRecord {
-  readonly id: string;
-  readonly modeId: string;
-  readonly timestamp: number;
-  readonly score: number;
-  readonly hits: number;
-  readonly shots: number;
-  readonly misses: number;
-  readonly accuracyPercentage: number;
-  readonly durationSeconds: number;
-  readonly killsPerSecond: number;
-  readonly exactReplayPreserved: boolean;
-  readonly inputOverflowEvents: number;
-  readonly inputHighWaterMark: number;
-}
+import type { PracticeSummaryRecord } from "@findmysensi/trainer-runtime";
+
+export type { PracticeSummaryRecord };
 
 const STORAGE_KEY = "findmysensi:practice_history:v1";
 

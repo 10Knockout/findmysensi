@@ -6,17 +6,13 @@ import {
   createPrngV1,
   createShotTracker,
   createSnapshotBuffer,
-  findHitTarget,
   FULL_TURN_UNITS,
   PitchUnits,
   PrngV1,
   SnapshotBuffer,
   wrapYaw,
 } from "@findmysensi/aim-core";
-import {
-  createGridMetricsTracker,
-  GridMetricsTracker,
-} from "@findmysensi/analytics";
+import { GridMetrics } from "@findmysensi/analytics";
 import {
   createInputRingBuffer,
   createRawInputBatchTarget,
@@ -27,16 +23,16 @@ import {
 import { createTick, Tick } from "@findmysensi/protocol";
 import { AimRenderer } from "@findmysensi/render-canvas";
 import {
-  GRID_DEV_V0_DEFINITION,
-  GridScenarioEngine,
-} from "@findmysensi/scenarios";
-import {
   BrowserInputGain,
   createBrowserInputScaler,
   DEFAULT_BROWSER_INPUT_GAIN,
   DeterministicBrowserInputScaler,
 } from "@findmysensi/sensitivity";
-import { computeGridDevScore, ScoreResult } from "@findmysensi/scoring";
+import { ScoreResult } from "@findmysensi/scoring";
+import {
+  createGridModeAdapter,
+  ModeRuntimeAdapter,
+} from "@findmysensi/trainer-runtime";
 import {
   createFixedTickRunner,
   FixedTickRunner,
@@ -76,8 +72,7 @@ export class PracticeRunController {
   private state: PracticeRunState = "ready";
   private runner: FixedTickRunner | null = null;
   private prng: PrngV1 | null = null;
-  private engine: GridScenarioEngine;
-  private metricsTracker: GridMetricsTracker;
+  private readonly adapter: ModeRuntimeAdapter<GridMetrics>;
   private shotTracker = createShotTracker();
   private ringBuffer: InputRingBuffer;
   private batchTarget: RawInputBatchTarget;
@@ -103,6 +98,7 @@ export class PracticeRunController {
     callbacks: PracticeRunCallbacks,
     renderer?: AimRenderer,
     optionsOrDuration: PracticeRunOptions | number = {},
+    adapter: ModeRuntimeAdapter<GridMetrics> = createGridModeAdapter(),
   ) {
     const options: PracticeRunOptions =
       typeof optionsOrDuration === "number"
@@ -116,11 +112,10 @@ export class PracticeRunController {
     }
     this.callbacks = callbacks;
     this.renderer = renderer ?? null;
+    this.adapter = adapter;
     this.totalDurationTicks =
-      options.durationTicks ?? GRID_DEV_V0_DEFINITION.durationTicks;
+      options.durationTicks ?? adapter.definition.durationTicks;
     this.inputScaler = createBrowserInputScaler(gain);
-    this.engine = new GridScenarioEngine(GRID_DEV_V0_DEFINITION);
-    this.metricsTracker = createGridMetricsTracker();
     this.ringBuffer = createInputRingBuffer(capacity);
     this.batchTarget = createRawInputBatchTarget(capacity);
     this.snapshotBuffer = createSnapshotBuffer(32);
@@ -176,7 +171,6 @@ export class PracticeRunController {
     const effectiveSeed = seed ?? generateRunSeed();
     this.activeSeed = effectiveSeed;
     this.prng = createPrngV1(effectiveSeed);
-    this.metricsTracker = createGridMetricsTracker();
     this.shotTracker.reset();
     this.playerYaw = createAngleUnits(0);
     this.playerPitch = createPitchUnits(0);
@@ -191,10 +185,7 @@ export class PracticeRunController {
     this.exactReplayPreserved = true;
     this.ringBuffer.reset();
 
-    const initialTargets = this.engine.initialize(this.prng);
-    for (const target of initialTargets) {
-      this.metricsTracker.recordTargetSpawn(target.id, 0);
-    }
+    this.adapter.initialize(this.prng);
 
     this.writeSnapshot(0);
 
@@ -286,6 +277,12 @@ export class PracticeRunController {
       }
     }
 
+    this.adapter.onSimulationTick(
+      createTick(tick),
+      this.playerYaw,
+      this.playerPitch,
+    );
+
     this.callbacks.onTickProgress(tick, this.totalDurationTicks);
     this.writeSnapshot(tick);
   }
@@ -293,27 +290,13 @@ export class PracticeRunController {
   public handlePlayerShot(currentTick: number): void {
     if (!this.prng) return;
 
-    const activeTargets = this.engine.getActiveTargets();
-    const hitTarget = findHitTarget(
-      this.playerYaw,
-      this.playerPitch,
-      activeTargets,
-    );
+    const tick = createTick(currentTick);
+    this.adapter.onShot(tick, this.playerYaw, this.playerPitch, this.prng);
 
-    if (hitTarget) {
-      this.metricsTracker.recordShot(currentTick, hitTarget.id);
-      const newTarget = this.engine.onTargetHit(hitTarget.id, this.prng);
-      if (newTarget) {
-        this.metricsTracker.recordTargetSpawn(newTarget.id, currentTick);
-      }
-    } else {
-      this.metricsTracker.recordShot(currentTick, null);
-    }
-
-    const currentMetrics = this.metricsTracker.computeMetrics(currentTick + 1);
-    const devScore = computeGridDevScore(currentMetrics);
+    const currentMetrics = this.adapter.computeMetrics(currentTick + 1);
+    const currentScore = this.adapter.computeScore(currentMetrics);
     this.callbacks.onScoreUpdate(
-      devScore.score,
+      currentScore.score,
       currentMetrics.hits,
       currentMetrics.misses,
     );
@@ -326,7 +309,7 @@ export class PracticeRunController {
       this.playerPitch,
     );
 
-    const active = this.engine.getActiveTargets();
+    const active = this.adapter.getRenderTargets();
     for (const target of active) {
       this.snapshotBuffer.writeTarget(
         target.id,
@@ -347,11 +330,12 @@ export class PracticeRunController {
     this.state = "completed";
     this.callbacks.onStateChange(this.state);
 
-    const finalMetrics = this.metricsTracker.computeMetrics(
-      this.totalDurationTicks,
-    );
-    const finalScore = computeGridDevScore(finalMetrics);
+    const finalMetrics = this.adapter.computeMetrics(this.totalDurationTicks);
+    const finalScore = this.adapter.computeScore(finalMetrics);
 
+    // modeId is hardcoded here (rather than this.adapter.modeId) because
+    // GridPracticeSummary is currently the only union member; this line
+    // becomes mode-driven once a second variant ships (M4).
     localPracticeHistory.save({
       id: `practice-${Date.now()}`,
       modeId: "grid",

@@ -21,6 +21,7 @@
     "@findmysensi/scenarios": "0.1.0",
     "@findmysensi/scoring": "0.1.0",
     "@findmysensi/sensitivity": "0.1.0",
+    "@findmysensi/trainer-runtime": "0.1.0",
     "clsx": "2.1.1",
     "geist": "1.7.2",
     "lucide-react": "1.37.0",

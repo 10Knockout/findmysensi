@@ -1,4 +1,8 @@
-import { createAngleUnits, createPitchUnits, createPrngV1 } from "@findmysensi/aim-core";
+import {
+  createAngleUnits,
+  createPitchUnits,
+  createPrngV1,
+} from "@findmysensi/aim-core";
 import { createTick } from "@findmysensi/protocol";
 import { describe, expect, it } from "vitest";
 import { createGridModeAdapter } from "../src/grid-adapter.js";
@@ -42,7 +46,12 @@ describe("createGridModeAdapter", () => {
     const prng = createPrngV1([9, 8, 7, 6]);
     adapter.initialize(prng);
 
-    adapter.onShot(createTick(1), createAngleUnits(0), createPitchUnits(0), prng);
+    adapter.onShot(
+      createTick(1),
+      createAngleUnits(0),
+      createPitchUnits(0),
+      prng,
+    );
 
     const metrics = adapter.computeMetrics(2);
     expect(metrics.hits).toBe(0);
@@ -73,7 +82,11 @@ describe("createGridModeAdapter", () => {
     const prng = createPrngV1([1, 2, 3, 4]);
     adapter.initialize(prng);
     expect(() =>
-      adapter.onSimulationTick(createTick(0), createAngleUnits(0), createPitchUnits(0)),
+      adapter.onSimulationTick(
+        createTick(0),
+        createAngleUnits(0),
+        createPitchUnits(0),
+      ),
     ).not.toThrow();
   });
 
@@ -81,7 +94,12 @@ describe("createGridModeAdapter", () => {
     const adapter = createGridModeAdapter();
     const prngA = createPrngV1([1, 2, 3, 4]);
     adapter.initialize(prngA);
-    adapter.onShot(createTick(1), createAngleUnits(0), createPitchUnits(0), prngA);
+    adapter.onShot(
+      createTick(1),
+      createAngleUnits(0),
+      createPitchUnits(0),
+      prngA,
+    );
     expect(adapter.computeMetrics(2).shots).toBe(1);
 
     const prngB = createPrngV1([5, 6, 7, 8]);
