@@ -16,11 +16,17 @@ describe("Gridshot runtime configuration", () => {
     );
   });
 
-  it("maps input processing presets into buffer capacities", () => {
+  it("always resolves the safe, 8000 Hz-capable input buffer with no user-facing preset", () => {
+    expect(resolveGridshotRuntimeConfig(defaults).inputBufferCapacity).toBe(
+      16_384,
+    );
+    // The legacy inputProcessing field may still be present on old
+    // persisted settings; it must be accepted but ignored, never consulted
+    // for buffer sizing.
     expect(
       resolveGridshotRuntimeConfig({ ...defaults, inputProcessing: "1000" })
         .inputBufferCapacity,
-    ).toBe(2_048);
+    ).toBe(16_384);
     expect(
       resolveGridshotRuntimeConfig({ ...defaults, inputProcessing: "8000" })
         .inputBufferCapacity,
@@ -28,10 +34,10 @@ describe("Gridshot runtime configuration", () => {
     expect(
       resolveGridshotRuntimeConfig({ ...defaults, inputProcessing: "maximum" })
         .inputBufferCapacity,
-    ).toBe(32_768);
+    ).toBe(16_384);
   });
 
-  it("never changes sensitivity when only input processing changes", () => {
+  it("never changes sensitivity or buffer capacity based on the legacy input processing field", () => {
     const low = resolveGridshotRuntimeConfig({
       ...defaults,
       fmsSensitivity: "1.25",
@@ -44,7 +50,7 @@ describe("Gridshot runtime configuration", () => {
     });
 
     expect(low.inputGain).toEqual(high.inputGain);
-    expect(low.inputBufferCapacity).not.toBe(high.inputBufferCapacity);
+    expect(low.inputBufferCapacity).toBe(high.inputBufferCapacity);
   });
 
   it("preserves presentation settings without creating mechanical target controls", () => {

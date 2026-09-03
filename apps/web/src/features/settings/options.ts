@@ -37,11 +37,3 @@ export const SCALING_OPTIONS = [
   "stretch",
   "black-bars",
 ] as const;
-export const INPUT_PROCESSING_OPTIONS = [
-  "automatic",
-  "1000",
-  "2000",
-  "4000",
-  "8000",
-  "maximum",
-] as const;

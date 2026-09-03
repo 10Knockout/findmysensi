@@ -33,7 +33,7 @@ interface InGameSettingsModalProps {
   ) => Promise<void>;
 }
 
-type SettingsTab = "sensitivity" | "crosshair" | "targets" | "video" | "input";
+type SettingsTab = "sensitivity" | "crosshair" | "targets" | "video";
 
 const TARGET_SWATCHES = [
   { name: "Emerald", hex: "#7CFF6B" },
@@ -203,11 +203,6 @@ export function InGameSettingsModal({
               active={activeTab === "video"}
               onClick={() => setActiveTab("video")}
               label="GRAPHICS / VIDEO"
-            />
-            <TabButton
-              active={activeTab === "input"}
-              onClick={() => setActiveTab("input")}
-              label="INPUT"
             />
           </div>
 
@@ -676,43 +671,6 @@ export function InGameSettingsModal({
                       <option value="high">High</option>
                     </select>
                   </div>
-                </div>
-              </div>
-            </div>
-          ) : null}
-
-          {/* INPUT TAB */}
-          {activeTab === "input" ? (
-            <div className="space-y-6">
-              <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/60 p-5">
-                <h3 className="text-sm font-bold tracking-wide text-white uppercase">
-                  Input Polling & Processing Policy
-                </h3>
-                <p className="mt-1 text-xs text-zinc-400">
-                  Select your mouse polling rate buffer.
-                </p>
-
-                <div className="mt-4 max-w-sm">
-                  <label className="mb-1 block text-xs font-medium text-zinc-400">
-                    Input Polling Rate
-                  </label>
-                  <select
-                    value={settings.inputProcessing}
-                    onChange={(e) =>
-                      updateSetting(
-                        "inputProcessing",
-                        e.target.value as TrainerSettings["inputProcessing"],
-                      )
-                    }
-                    className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white focus:border-cyan-400 focus:outline-none"
-                  >
-                    <option value="automatic">Automatic (Adaptive)</option>
-                    <option value="1000">1000 Hz Standard</option>
-                    <option value="2000">2000 Hz High Speed</option>
-                    <option value="4000">4000 Hz Ultra</option>
-                    <option value="8000">8000 Hz Extreme</option>
-                    <option value="maximum">Maximum Capacity</option>
-                  </select>
                 </div>
               </div>
             </div>

@@ -1,4 +1,3 @@
-import { InputProcessingPreset } from "./processing-policy.js";
 import { DrainStats } from "./ring-buffer.js";
 
 export interface InputPathHealth {
@@ -13,7 +12,6 @@ export interface InputPathHealth {
 export function evaluateInputHealth(
   stats: DrainStats,
   elapsedMs: number,
-  _preset: InputProcessingPreset,
   capacity: number,
 ): InputPathHealth {
   const safeElapsedMs = Math.max(1, elapsedMs);

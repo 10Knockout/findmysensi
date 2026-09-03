@@ -6,13 +6,6 @@ import {
   SyntheticInputEvent,
 } from "../../packages/performance/src/index.js";
 
-function presetForRate(rate: number): 1000 | 2000 | 4000 | 8000 {
-  if (rate >= 8000) return 8000;
-  if (rate >= 4000) return 4000;
-  if (rate >= 2000) return 2000;
-  return 1000;
-}
-
 function distributeIntegerTotal(total: number, count: number): number[] {
   const sign = total < 0 ? -1 : 1;
   const absolute = Math.abs(total);
@@ -63,10 +56,8 @@ describe("Synthetic High-Poll Input Benchmark Harness (125 Hz – 8000 Hz)", () 
         durationMs: 1000,
         shotIntervalMs: 200,
       });
-      const preset = presetForRate(rate);
-
-      const result1 = await runInputPipelineBenchmark(stream, preset);
-      const result2 = await runInputPipelineBenchmark(stream, preset);
+      const result1 = await runInputPipelineBenchmark(stream);
+      const result2 = await runInputPipelineBenchmark(stream);
 
       expect(result1.stateHashHex).toBe(result2.stateHashHex);
       expect(result1.finalYaw).toBe(result2.finalYaw);
@@ -84,10 +75,7 @@ describe("Synthetic High-Poll Input Benchmark Harness (125 Hz – 8000 Hz)", () 
     const equivalenceRates = [125, 1000, 2000, 4000, 8000] as const;
     const results = await Promise.all(
       equivalenceRates.map((rate) =>
-        runInputPipelineBenchmark(
-          createEquivalentIntentStream(rate),
-          presetForRate(rate),
-        ),
+        runInputPipelineBenchmark(createEquivalentIntentStream(rate)),
       ),
     );
 
@@ -111,7 +99,7 @@ describe("Synthetic High-Poll Input Benchmark Harness (125 Hz – 8000 Hz)", () 
       { kind: "move", dx: -5, dy: 0, timeMs: 46 },
     ];
 
-    const result = await runInputPipelineBenchmark(stream, 1000);
+    const result = await runInputPipelineBenchmark(stream);
 
     expect(result.totalShots).toBe(1);
     expect(result.shotTicks).toEqual([5]);
@@ -128,7 +116,7 @@ describe("Synthetic High-Poll Input Benchmark Harness (125 Hz – 8000 Hz)", () 
       totalDurationMs: 1000,
     });
 
-    const result = await runInputPipelineBenchmark(burstStream, 8000);
+    const result = await runInputPipelineBenchmark(burstStream);
 
     expect(result.lostTemporalPrecision).toBe(false);
     expect(result.overflowCount).toBe(0);

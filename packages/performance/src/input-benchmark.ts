@@ -11,7 +11,6 @@ import {
   evaluateInputHealth,
   InputPathHealth,
   InputProcessingPolicy,
-  InputProcessingPreset,
   reduceRawEvents,
   TickBucketer,
 } from "@findmysensi/input-browser";
@@ -77,12 +76,11 @@ function convertBrowserEventsToAngular(
 
 export async function runInputPipelineBenchmark(
   events: readonly SyntheticInputEvent[],
-  preset: InputProcessingPreset = 1000,
   tickRateHz: number = 128,
   inputGain: BrowserInputGain = DEFAULT_BROWSER_INPUT_GAIN,
 ): Promise<BenchmarkResult> {
   const policy: InputProcessingPolicy = createDefaultProcessingPolicy();
-  const capacity = policy.getEffectiveCapacity(preset);
+  const capacity = policy.getEffectiveCapacity();
   const ringBuffer = createInputRingBuffer(capacity);
   const batchTarget = createRawInputBatchTarget(capacity);
   const clock = new StandardTickBucketer(tickRateHz);
@@ -156,12 +154,7 @@ export async function runInputPipelineBenchmark(
     lostTemporalPrecision: anyLostPrecision,
   };
 
-  const health = evaluateInputHealth(
-    finalDrainStats,
-    currentSimTime,
-    preset,
-    capacity,
-  );
+  const health = evaluateInputHealth(finalDrainStats, currentSimTime, capacity);
 
   const canonicalState: CanonicalStateV1 = {
     tick: simulationState.tick,

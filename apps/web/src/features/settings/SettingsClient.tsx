@@ -30,7 +30,6 @@ import { InteractiveCrosshairEditor } from "../crosshair/InteractiveCrosshairEdi
 import {
   ASPECT_OPTIONS,
   GRAPHICS_OPTIONS,
-  INPUT_PROCESSING_OPTIONS,
   PROFILE_AVATARS,
   PROFILE_FRAMES,
   RESOLUTION_OPTIONS,
@@ -681,28 +680,6 @@ export function SettingsClient() {
                 </>
               ) : null}
             </div>
-          </SettingsSection>
-
-          <SettingsSection
-            title="Input"
-            description="This changes FindMySensi input processing strategy only. It does not change your mouse hardware polling rate."
-          >
-            <SelectField
-              label="Input processing"
-              value={trainer.inputProcessing}
-              options={INPUT_PROCESSING_OPTIONS}
-              onChange={(value) =>
-                updateTrainer(
-                  "inputProcessing",
-                  value as TrainerSettings["inputProcessing"],
-                )
-              }
-            />
-            <p className="mt-3 text-xs text-zinc-500">
-              The gameplay input pipeline is designed to preserve very fast
-              movement and click ordering; we do not impose a human
-              reaction-time floor such as 100 ms.
-            </p>
           </SettingsSection>
         </div>
       </div>

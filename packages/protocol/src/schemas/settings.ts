@@ -63,6 +63,10 @@ export const TrainerSettingsSchema = z
     scalingMode: z
       .enum(["fit", "stretch", "black-bars", "fill"])
       .default("fill"),
+    // Deprecated: the trainer no longer exposes a polling-rate/input-processing
+    // choice and always uses the safe, 8000 Hz-capable buffer internally.
+    // Kept accepting legacy literal values only so old persisted settings
+    // rows still parse; never read for runtime behavior.
     inputProcessing: z
       .union([
         z.literal("automatic"),

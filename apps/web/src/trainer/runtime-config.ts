@@ -1,7 +1,4 @@
-import {
-  createDefaultProcessingPolicy,
-  InputProcessingPreset,
-} from "@findmysensi/input-browser";
+import { createDefaultProcessingPolicy } from "@findmysensi/input-browser";
 import { TrainerSettings } from "@findmysensi/protocol";
 import {
   BrowserInputGain,
@@ -23,17 +20,8 @@ export interface GridshotRuntimeConfig {
   readonly customResolutionHeight: number | null;
 }
 
-export function toProcessingPreset(
-  value: TrainerSettings["inputProcessing"],
-): InputProcessingPreset {
-  if (value === "automatic") return "auto";
-  if (value === "maximum") return "maximum";
-  return Number(value) as 1000 | 2000 | 4000 | 8000;
-}
-
 export function resolveGridshotRuntimeConfig(
   settings: TrainerSettings,
-  observedInputRateHz: number = 1000,
 ): GridshotRuntimeConfig {
   if (
     settings.resolution === "custom" &&
@@ -45,16 +33,12 @@ export function resolveGridshotRuntimeConfig(
     );
   }
 
-  const preset = toProcessingPreset(settings.inputProcessing);
   const processingPolicy = createDefaultProcessingPolicy();
 
   return Object.freeze({
     fovDegrees: settings.fovDegrees,
     inputGain: resolveBrowserInputGain(settings.fmsSensitivity),
-    inputBufferCapacity: processingPolicy.getEffectiveCapacity(
-      preset,
-      observedInputRateHz,
-    ),
+    inputBufferCapacity: processingPolicy.getEffectiveCapacity(),
     scalingMode: settings.scalingMode,
     targetColor: settings.targetColor,
     targetOpacity: settings.targetOpacity,
