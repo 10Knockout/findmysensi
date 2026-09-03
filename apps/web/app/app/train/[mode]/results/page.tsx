@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { AuthenticatedPracticeResults } from "../../../../../src/features/results/AuthenticatedPracticeResults.js";
+import { isTrainerModeEnabled } from "../../../../../src/trainer/mode-manifest.js";
 
 export default async function ResultsPage({
   params,
@@ -7,6 +8,6 @@ export default async function ResultsPage({
   params: Promise<{ mode: string }>;
 }) {
   const { mode } = await params;
-  if (mode !== "grid") notFound();
+  if (!isTrainerModeEnabled(mode)) notFound();
   return <AuthenticatedPracticeResults mode={mode} />;
 }

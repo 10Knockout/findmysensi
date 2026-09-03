@@ -24,6 +24,7 @@ import {
   type SensitivityInputVerificationSnapshot,
 } from "../features/training/PracticeRunController.js";
 import { InGameSettingsModal } from "./InGameSettingsModal.js";
+import { trainerModeManifest } from "./mode-manifest.js";
 import { startRunIfPointerLocked } from "./pointer-lock-guard.js";
 import {
   GridshotRuntimeConfig,
@@ -283,6 +284,7 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
         inputGain: runtimeConfig.inputGain,
         inputBufferCapacity: runtimeConfig.inputBufferCapacity,
       },
+      trainerModeManifest.get(mode)?.createAdapter?.(),
     );
 
     controllerRef.current = controller;
@@ -363,7 +365,7 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
     return () => window.clearInterval(interval);
   }, [gameState, router]);
 
-  if (mode !== "grid") {
+  if (!(trainerModeManifest.get(mode)?.enabled ?? false)) {
     return (
       <main className="grid min-h-screen place-items-center bg-zinc-950 p-6 text-zinc-100">
         <div className="max-w-lg rounded-xl border border-zinc-800 bg-zinc-900 p-6 text-center">

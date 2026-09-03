@@ -1,5 +1,5 @@
-import { notFound } from "next/navigation";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { isTrainerModeEnabled } from "../../../src/trainer/mode-manifest.js";
 
 interface TrainPageProps {
   params: Promise<{
@@ -10,7 +10,7 @@ interface TrainPageProps {
 export default async function TrainPage({ params }: TrainPageProps) {
   const { mode } = await params;
 
-  if (mode !== "grid") {
+  if (!isTrainerModeEnabled(mode)) {
     notFound();
   }
 

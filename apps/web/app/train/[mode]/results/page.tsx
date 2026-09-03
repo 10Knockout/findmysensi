@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { isTrainerModeEnabled } from "../../../../src/trainer/mode-manifest.js";
 
 export default async function ResultsPage({
   params,
@@ -6,6 +7,6 @@ export default async function ResultsPage({
   params: Promise<{ mode: string }>;
 }) {
   const { mode } = await params;
-  if (mode !== "grid") notFound();
+  if (!isTrainerModeEnabled(mode)) notFound();
   redirect(`/app/train/${mode}/results`);
 }
