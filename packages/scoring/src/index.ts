@@ -1,5 +1,4 @@
 export * from "./grid/dev-v0.js";
-export * from "./grid/grid-evaluator.js";
 export * from "./pinpoint/dev-v0.js";
 export * from "./multi/dev-v0.js";
 export * from "./headline/dev-v0.js";

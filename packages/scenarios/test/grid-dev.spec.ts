@@ -6,6 +6,11 @@ import {
 } from "../src/grid/dev-v0.js";
 
 describe("Grid Shot Development Scenario (dev-v0)", () => {
+  it("freezes the 60-second run duration at exactly 7,680 ticks (128 Hz)", () => {
+    expect(GRID_DEV_V0_DEFINITION.durationTicks).toBe(7_680);
+    expect(GRID_DEV_V0_DEFINITION.durationTicks).toBe(128 * 60);
+  });
+
   it("initializes with exactly 3 non-overlapping targets on the grid", () => {
     const engine = new GridScenarioEngine();
     const prng = createPrngV1([101, 202, 303, 404]);

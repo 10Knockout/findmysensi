@@ -85,6 +85,42 @@ describe("Grid Practice Run Flow & Lifecycle", () => {
     expect(history[0]?.shots).toBe(2);
   });
 
+  it("surfaces real ring-buffer overflow into the saved result summary", () => {
+    localPracticeHistory.clear();
+
+    const controller = new PracticeRunController(
+      {
+        onStateChange: () => {},
+        onTickProgress: () => {},
+        onScoreUpdate: () => {},
+        onComplete: () => {},
+      },
+      undefined,
+      { durationTicks: 10, inputBufferCapacity: 2 },
+    );
+
+    controller.start([1, 2, 3, 4]);
+
+    // Push more move events than the buffer can hold before any tick
+    // drains it, forcing a genuine overflow rather than a simulated one.
+    const buffer = controller.getRingBuffer();
+    for (let i = 0; i < 5; i++) {
+      buffer.pushMove(1, 1, i);
+    }
+
+    for (let frame = 1; frame <= 15; frame++) {
+      controller.onAnimationFrame(frame * 10);
+    }
+
+    expect(controller.getState()).toBe("completed");
+
+    const history = localPracticeHistory.getAll("grid");
+    expect(history.length).toBe(1);
+    expect(history[0]?.inputOverflowEvents).toBeGreaterThan(0);
+    expect(history[0]?.inputHighWaterMark).toBeGreaterThan(0);
+    expect(history[0]?.exactReplayPreserved).toBe(false);
+  });
+
   it("handles pause and resume without state corruption", () => {
     const states: PracticeRunState[] = [];
     const controller = new PracticeRunController({
