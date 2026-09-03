@@ -1,0 +1,25 @@
+{
+  "name": "@findmysensi/trainer-runtime",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@findmysensi/aim-core": "0.1.0",
+    "@findmysensi/analytics": "0.1.0",
+    "@findmysensi/protocol": "0.1.0",
+    "@findmysensi/scenarios": "0.1.0",
+    "@findmysensi/scoring": "0.1.0"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  }
+}

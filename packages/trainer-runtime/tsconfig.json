@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "composite": true
+  },
+  "include": ["src/**/*"],
+  "references": [
+    { "path": "../aim-core" },
+    { "path": "../analytics" },
+    { "path": "../protocol" },
+    { "path": "../scenarios" },
+    { "path": "../scoring" }
+  ]
+}
