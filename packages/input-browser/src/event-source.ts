@@ -6,11 +6,17 @@ export interface EventSourceCapability {
   readonly preferredSource: InputSource;
   readonly supportsPointerRawUpdate: boolean;
   readonly supportsCoalescedEvents: boolean;
-  readonly supportsUnadjustedMovement: boolean;
+  readonly supportsUnadjustedMovement: "unknown-until-requested";
 }
 
 export interface InputListenerOptions {
   readonly shouldCaptureGameplayInput?: () => boolean;
+  readonly onMovementAccepted?: (sample: {
+    readonly dx: number;
+    readonly dy: number;
+    readonly timeStamp: number;
+    readonly source: InputSource;
+  }) => void;
 }
 
 export function detectInputCapabilities(
@@ -42,7 +48,7 @@ export function detectInputCapabilities(
       : "pointermove",
     supportsPointerRawUpdate,
     supportsCoalescedEvents,
-    supportsUnadjustedMovement: true,
+    supportsUnadjustedMovement: "unknown-until-requested",
   };
 }
 
@@ -67,12 +73,21 @@ export function attachInputListener(
     fractionY -= intY;
     if (intX !== 0 || intY !== 0) {
       ringBuffer.pushMove(intX, intY, timeStamp);
+      options.onMovementAccepted?.({
+        dx: intX,
+        dy: intY,
+        timeStamp,
+        source,
+      });
     }
   };
 
   const onPointerMove = (ev: Event) => {
     if (!shouldCaptureGameplayInput()) return;
-    if (typeof (ev as { preventDefault?: () => void }).preventDefault === "function") {
+    if (
+      typeof (ev as { preventDefault?: () => void }).preventDefault ===
+      "function"
+    ) {
       ev.preventDefault();
     }
 
@@ -95,7 +110,9 @@ export function attachInputListener(
         if (
           Math.abs(sumX - pEv.movementX) <= 1 &&
           Math.abs(sumY - pEv.movementY) <= 1 &&
-          (sumX !== 0 || sumY !== 0 || (pEv.movementX === 0 && pEv.movementY === 0))
+          (sumX !== 0 ||
+            sumY !== 0 ||
+            (pEv.movementX === 0 && pEv.movementY === 0))
         ) {
           for (let i = 0; i < coalesced.length; i++) {
             const subEv = coalesced[i]!;
@@ -111,7 +128,10 @@ export function attachInputListener(
 
   const onPointerDown = (ev: Event) => {
     if (!shouldCaptureGameplayInput()) return;
-    if (typeof (ev as { preventDefault?: () => void }).preventDefault === "function") {
+    if (
+      typeof (ev as { preventDefault?: () => void }).preventDefault ===
+      "function"
+    ) {
       ev.preventDefault();
     }
 
@@ -122,7 +142,11 @@ export function attachInputListener(
   };
 
   const preventGesture = (ev: Event) => {
-    if (shouldCaptureGameplayInput() && typeof (ev as { preventDefault?: () => void }).preventDefault === "function") {
+    if (
+      shouldCaptureGameplayInput() &&
+      typeof (ev as { preventDefault?: () => void }).preventDefault ===
+        "function"
+    ) {
       ev.preventDefault();
     }
   };

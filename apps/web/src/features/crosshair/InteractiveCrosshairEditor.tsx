@@ -60,7 +60,9 @@ export function InteractiveCrosshairEditor({
   };
 
   return (
-    <div className={`grid gap-6 ${compact ? "grid-cols-1" : "lg:grid-cols-[260px_1fr]"}`}>
+    <div
+      className={`grid gap-6 ${compact ? "grid-cols-1" : "lg:grid-cols-[260px_1fr]"}`}
+    >
       {/* Live Preview Box */}
       <div className="flex flex-col items-center gap-3">
         <div className="relative flex aspect-square w-full max-w-[260px] items-center justify-center overflow-hidden rounded-xl border border-zinc-700 bg-zinc-950/90 shadow-inner">
@@ -103,7 +105,9 @@ export function InteractiveCrosshairEditor({
             </button>
           </div>
           {codeMessage ? (
-            <p className="text-center text-[11px] text-zinc-400">{codeMessage}</p>
+            <p className="text-center text-[11px] text-zinc-400">
+              {codeMessage}
+            </p>
           ) : null}
         </div>
       </div>
@@ -117,7 +121,9 @@ export function InteractiveCrosshairEditor({
             </label>
             <select
               onChange={(e) => {
-                const found = CROSSHAIR_PRESETS.find((p) => p.id === e.target.value);
+                const found = CROSSHAIR_PRESETS.find(
+                  (p) => p.id === e.target.value,
+                );
                 if (found) onChange(found.config);
               }}
               className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-white focus:border-cyan-400 focus:outline-none"
@@ -189,7 +195,9 @@ export function InteractiveCrosshairEditor({
             <div>
               <div className="mb-1 flex justify-between text-xs text-zinc-400">
                 <span>Length / Size</span>
-                <span className="font-mono text-cyan-400">{crosshair.size}</span>
+                <span className="font-mono text-cyan-400">
+                  {crosshair.size}
+                </span>
               </div>
               <input
                 type="range"

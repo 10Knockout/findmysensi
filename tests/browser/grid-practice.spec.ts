@@ -1,10 +1,16 @@
 import {
   createAngleUnits,
+  FULL_TURN_UNITS,
   RenderSnapshotView,
   shortestSignedAngleDelta,
   wrapYaw,
 } from "@findmysensi/aim-core";
 import { AimRenderer } from "@findmysensi/render-canvas";
+import {
+  BROWSER_GAIN_FIXED_POINT_SCALE,
+  resolveBrowserInputGain,
+  type BrowserInputGain,
+} from "@findmysensi/sensitivity";
 import { describe, expect, it, vi } from "vitest";
 import { localPracticeHistory } from "../../apps/web/src/features/training/local-history.js";
 import {
@@ -26,6 +32,17 @@ function createCaptureRenderer() {
     renderer,
     latest: () => latest,
   };
+}
+
+function exactIntegerGain(angleUnitsPerInputUnit: number): BrowserInputGain {
+  return Object.freeze({
+    fixedPointAngleUnitsPerInputUnit:
+      angleUnitsPerInputUnit * BROWSER_GAIN_FIXED_POINT_SCALE,
+    fractionBits: 20,
+    fixedPointScale: BROWSER_GAIN_FIXED_POINT_SCALE,
+    degreesPerInputUnit: (angleUnitsPerInputUnit / FULL_TURN_UNITS) * 360,
+    fmsSensitivity: "test-only",
+  });
 }
 
 describe("Grid Practice Run Flow & Lifecycle", () => {
@@ -102,12 +119,13 @@ describe("Grid Practice Run Flow & Lifecycle", () => {
       capture.renderer,
       {
         durationTicks: 100,
-        inputGainAngleUnitsPerUnit: 2_500,
+        inputGain: exactIntegerGain(2_500),
         inputBufferCapacity: 2_048,
       },
     );
 
     controller.start([1, 2, 3, 4]);
+    controller.recordBrowserInputEvent(100, 40);
     controller.getRingBuffer().pushMove(100, 40, 1);
     controller.onAnimationFrame(0);
     controller.onAnimationFrame(8);
@@ -116,6 +134,68 @@ describe("Grid Practice Run Flow & Lifecycle", () => {
     expect(snapshot).not.toBeNull();
     expect(snapshot?.playerYaw).toBe(250_000);
     expect(snapshot?.playerPitch).toBe(-100_000);
+    const verification = controller.getSensitivityInputVerificationSnapshot();
+    expect(verification.movementEventCount).toBe(1);
+    expect(verification.actualEngineYawDegrees).toBeCloseTo(
+      verification.expectedYawDegrees,
+      12,
+    );
+    expect(verification.actualEnginePitchDegrees).toBeCloseTo(
+      verification.expectedPitchDegrees,
+      12,
+    );
+  });
+
+  it("executes FMS 0.175 on the Aimlabs Default angular scale and resets residuals", () => {
+    const controller = new PracticeRunController(
+      {
+        onStateChange: () => {},
+        onTickProgress: () => {},
+        onScoreUpdate: () => {},
+        onComplete: () => {},
+      },
+      undefined,
+      {
+        durationTicks: 100,
+        inputGain: resolveBrowserInputGain("0.175"),
+      },
+    );
+
+    controller.start([1, 2, 3, 4]);
+    controller.recordBrowserInputEvent(1_000, -500);
+    controller.getRingBuffer().pushMove(1_000, -500, 1);
+    controller.onAnimationFrame(0);
+    controller.onAnimationFrame(8);
+
+    const verification = controller.getSensitivityInputVerificationSnapshot();
+    expect(verification.expectedYawDegrees).toBe(8.75);
+    expect(verification.expectedPitchDegrees).toBe(4.375);
+    expect(
+      Math.abs(
+        verification.actualEngineYawDegrees - verification.expectedYawDegrees,
+      ),
+    ).toBeLessThan(360 / FULL_TURN_UNITS);
+    expect(
+      Math.abs(
+        verification.actualEnginePitchDegrees -
+          verification.expectedPitchDegrees,
+      ),
+    ).toBeLessThan(360 / FULL_TURN_UNITS);
+
+    controller.abort();
+    controller.start([5, 6, 7, 8]);
+    expect(controller.getSensitivityInputVerificationSnapshot()).toEqual({
+      totalInputUnitsX: 0,
+      totalInputUnitsY: 0,
+      movementEventCount: 0,
+      expectedYawDegrees: 0,
+      expectedPitchDegrees: 0,
+      actualEngineYawDegrees: 0,
+      actualEnginePitchDegrees: 0,
+      yawResidualFixedPointUnits: 0,
+      pitchResidualFixedPointUnits: 0,
+    });
+    controller.abort();
   });
 
   it("preserves movement-before-shot and movement-after-shot causal ordering", () => {
@@ -133,7 +213,7 @@ describe("Grid Practice Run Flow & Lifecycle", () => {
       capture.renderer,
       {
         durationTicks: 100,
-        inputGainAngleUnitsPerUnit: gain,
+        inputGain: exactIntegerGain(gain),
         inputBufferCapacity: 2_048,
       },
     );

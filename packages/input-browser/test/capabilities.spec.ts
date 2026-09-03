@@ -29,6 +29,7 @@ describe("Event-Source Capability Detection and Adapter Selection", () => {
     expect(caps.supportsPointerRawUpdate).toBe(true);
     expect(caps.supportsCoalescedEvents).toBe(true);
     expect(caps.preferredSource).toBe("pointerrawupdate");
+    expect(caps.supportsUnadjustedMovement).toBe("unknown-until-requested");
   });
 
   it("detects standard browser capabilities (fallback to pointermove without coalesced)", () => {
@@ -47,6 +48,7 @@ describe("Event-Source Capability Detection and Adapter Selection", () => {
     const targetBatch = createRawInputBatchTarget(32);
 
     const listeners: Record<string, (ev: unknown) => void> = {};
+    const accepted: Array<{ dx: number; dy: number; source: string }> = [];
     const mockTarget = {
       addEventListener: (type: string, listener: (ev: unknown) => void) => {
         listeners[type] = listener;
@@ -60,6 +62,11 @@ describe("Event-Source Capability Detection and Adapter Selection", () => {
       mockTarget as unknown as EventTarget,
       ring,
       "pointermove",
+      {
+        onMovementAccepted: ({ dx, dy, source }) => {
+          accepted.push({ dx, dy, source });
+        },
+      },
     );
 
     const moveListener = listeners["pointermove"];
@@ -83,6 +90,11 @@ describe("Event-Source Capability Detection and Adapter Selection", () => {
     expect(targetBatch.dx[0]).toBe(10);
     expect(targetBatch.dx[1]).toBe(12);
     expect(targetBatch.dx[2]).toBe(8);
+    expect(accepted).toEqual([
+      { dx: 10, dy: 5, source: "pointermove" },
+      { dx: 12, dy: 6, source: "pointermove" },
+      { dx: 8, dy: 4, source: "pointermove" },
+    ]);
 
     cleanup();
     expect(Object.keys(listeners).length).toBe(0);
@@ -186,6 +198,23 @@ describe("Pointer Lock Controller & Raw Input Fallbacks", () => {
     expect(mockElement.requestPointerLock).toHaveBeenCalled();
     expect(requestedOptions).toEqual({ unadjustedMovement: true });
     expect(res.rawRequested).toBe(true);
+    expect(res.rawGranted).toBe(true);
+    expect(controller.hasUnadjustedSupport()).toBe(true);
+  });
+
+  it("does not claim raw input for legacy void-returning pointer lock", async () => {
+    const controller = createPointerLockController();
+    const mockElement = {
+      requestPointerLock: vi.fn(() => undefined),
+    };
+
+    const result = await controller.requestLock(
+      mockElement as unknown as HTMLElement,
+      { unadjustedMovement: true },
+    );
+
+    expect(result).toEqual({ rawRequested: true, rawGranted: false });
+    expect(controller.hasUnadjustedSupport()).toBe(false);
   });
 
   it("falls back to standard pointer lock if unadjustedMovement rejects with error", async () => {

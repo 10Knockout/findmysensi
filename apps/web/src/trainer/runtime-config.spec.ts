@@ -5,12 +5,15 @@ import { resolveGridshotRuntimeConfig } from "./runtime-config.js";
 describe("Gridshot runtime configuration", () => {
   const defaults = TrainerSettingsSchema.parse({});
 
-  it("maps FindMySensi sensitivity into one integer browser gain", () => {
+  it("maps FindMySensi sensitivity into the canonical Q20 browser gain", () => {
     const resolved = resolveGridshotRuntimeConfig({
       ...defaults,
       fmsSensitivity: "1.5",
     });
-    expect(resolved.inputGainAngleUnitsPerUnit).toBe(3_750);
+    expect(resolved.inputGain.degreesPerInputUnit).toBe(0.075);
+    expect(resolved.inputGain.fixedPointAngleUnitsPerInputUnit).toBe(
+      3_665_038_759,
+    );
   });
 
   it("maps input processing presets into buffer capacities", () => {
@@ -40,9 +43,7 @@ describe("Gridshot runtime configuration", () => {
       inputProcessing: "8000",
     });
 
-    expect(low.inputGainAngleUnitsPerUnit).toBe(
-      high.inputGainAngleUnitsPerUnit,
-    );
+    expect(low.inputGain).toEqual(high.inputGain);
     expect(low.inputBufferCapacity).not.toBe(high.inputBufferCapacity);
   });
 

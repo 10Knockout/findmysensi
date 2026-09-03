@@ -3,19 +3,23 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
-  GAME_ADAPTERS,
+  SENSITIVITY_PROFILES,
   convertSensitivity,
-  type SupportedGameId,
+  type VerifiedSensitivityProfileId,
 } from "@findmysensi/sensitivity";
 
 const PUBLIC_GAME_IDS = [
   "valorant",
   "cs2",
-] as const satisfies readonly SupportedGameId[];
+  "apex",
+  "aimlab-default",
+] as const satisfies readonly VerifiedSensitivityProfileId[];
 
 export default function SensitivityConverterPage() {
-  const [sourceGame, setSourceGame] = useState<SupportedGameId>("valorant");
-  const [targetGame, setTargetGame] = useState<SupportedGameId>("cs2");
+  const [sourceGame, setSourceGame] =
+    useState<VerifiedSensitivityProfileId>("valorant");
+  const [targetGame, setTargetGame] =
+    useState<VerifiedSensitivityProfileId>("aimlab-default");
   const [sourceSensitivity, setSourceSensitivity] = useState("0.125");
   const [sourceDpi, setSourceDpi] = useState("800");
   const [targetDpi, setTargetDpi] = useState("800");
@@ -48,13 +52,6 @@ export default function SensitivityConverterPage() {
     }
   }, [sourceDpi, sourceGame, sourceSensitivity, targetDpi, targetGame]);
 
-  const sourceEdpi = result
-    ? Number(sourceSensitivity) * Number(sourceDpi)
-    : null;
-  const targetEdpi = result
-    ? result.targetSensitivity * Number(targetDpi)
-    : null;
-
   return (
     <main className="min-h-screen bg-zinc-950 px-6 py-10 text-zinc-100">
       <div className="mx-auto max-w-4xl">
@@ -76,10 +73,10 @@ export default function SensitivityConverterPage() {
         </header>
 
         <div className="mb-6 rounded-xl border border-amber-900/60 bg-amber-950/20 p-4 text-sm leading-6 text-amber-100">
-          This first public release exposes Valorant and CS2 hipfire definitions
-          only. Results use the configured yaw definitions and the DPI you
-          enter. cm/360 is therefore a nominal physical calculation; ADS, scopes
-          and monitor-distance matching are not included yet.
+          FindMySensi sensitivity uses the Aimlabs Default numeric scale: a
+          value of 0.175 here is Aimlabs Default 0.175 in the trainer. These
+          cross-verified hipfire profiles match physical 360-distance; ADS,
+          scopes, and monitor-distance matching are separate systems.
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
@@ -88,13 +85,15 @@ export default function SensitivityConverterPage() {
               <select
                 value={sourceGame}
                 onChange={(event) =>
-                  setSourceGame(event.target.value as SupportedGameId)
+                  setSourceGame(
+                    event.target.value as VerifiedSensitivityProfileId,
+                  )
                 }
                 className={inputClass}
               >
                 {PUBLIC_GAME_IDS.map((id) => (
                   <option key={id} value={id}>
-                    {GAME_ADAPTERS[id].name}
+                    {SENSITIVITY_PROFILES[id].name}
                   </option>
                 ))}
               </select>
@@ -127,13 +126,15 @@ export default function SensitivityConverterPage() {
               <select
                 value={targetGame}
                 onChange={(event) =>
-                  setTargetGame(event.target.value as SupportedGameId)
+                  setTargetGame(
+                    event.target.value as VerifiedSensitivityProfileId,
+                  )
                 }
                 className={inputClass}
               >
                 {PUBLIC_GAME_IDS.map((id) => (
                   <option key={id} value={id}>
-                    {GAME_ADAPTERS[id].name}
+                    {SENSITIVITY_PROFILES[id].name}
                   </option>
                 ))}
               </select>
@@ -161,24 +162,32 @@ export default function SensitivityConverterPage() {
         {result ? (
           <section className="mt-6 rounded-2xl border border-emerald-500/30 bg-zinc-900 p-6 sm:p-8">
             <p className="font-mono text-xs uppercase tracking-[0.2em] text-zinc-500">
-              Converted {GAME_ADAPTERS[targetGame].name} sensitivity
+              Converted {SENSITIVITY_PROFILES[targetGame].name} sensitivity
             </p>
             <div className="mt-2 font-mono text-5xl font-black text-emerald-400 sm:text-6xl">
               {result.formattedTargetSensitivity}
             </div>
 
-            <div className="mt-7 grid gap-3 sm:grid-cols-3">
+            <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
               <Metric
                 label="cm / 360"
                 value={`${result.formattedCmPer360} cm`}
               />
               <Metric
-                label={`${GAME_ADAPTERS[sourceGame].name} eDPI`}
-                value={sourceEdpi?.toFixed(2) ?? "—"}
+                label="in / 360"
+                value={`${result.formattedInPer360} in`}
               />
               <Metric
-                label={`${GAME_ADAPTERS[targetGame].name} eDPI`}
-                value={targetEdpi?.toFixed(2) ?? "—"}
+                label="counts / 360"
+                value={result.countsPer360.toFixed(2)}
+              />
+              <Metric
+                label={`${SENSITIVITY_PROFILES[sourceGame].name} eDPI`}
+                value={result.sourceEdpi.toFixed(2)}
+              />
+              <Metric
+                label={`${SENSITIVITY_PROFILES[targetGame].name} eDPI`}
+                value={result.targetEdpi.toFixed(2)}
               />
             </div>
 
@@ -186,7 +195,9 @@ export default function SensitivityConverterPage() {
               eDPI is sensitivity × DPI and is useful inside a single game. Do
               not compare eDPI numbers across games as though they share the
               same sensitivity scale. FOV is a separate camera setting and is
-              not silently used to rewrite this hipfire cm/360 conversion.
+              not silently used to rewrite this hipfire cm/360 conversion. PUBG
+              is intentionally not exposed until its nonlinear slider curve has
+              current, agreeing forward and reverse test vectors.
             </p>
           </section>
         ) : (

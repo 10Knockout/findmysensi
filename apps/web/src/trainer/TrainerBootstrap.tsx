@@ -11,6 +11,7 @@ import {
 import {
   attachInputListener,
   createPointerLockController,
+  type PointerLockResult,
 } from "@findmysensi/input-browser";
 import { TrainerSettings, TrainerSettingsSchema } from "@findmysensi/protocol";
 import {
@@ -20,6 +21,7 @@ import {
 import {
   PracticeRunController,
   PracticeRunState,
+  type SensitivityInputVerificationSnapshot,
 } from "../features/training/PracticeRunController.js";
 import { InGameSettingsModal } from "./InGameSettingsModal.js";
 import { startRunIfPointerLocked } from "./pointer-lock-guard.js";
@@ -33,6 +35,18 @@ interface TrainerBootstrapProps {
 }
 
 const MAX_PAUSE_MS = 10 * 60 * 1000;
+
+const EMPTY_VERIFICATION_SNAPSHOT: SensitivityInputVerificationSnapshot = {
+  totalInputUnitsX: 0,
+  totalInputUnitsY: 0,
+  movementEventCount: 0,
+  expectedYawDegrees: 0,
+  expectedPitchDegrees: 0,
+  actualEngineYawDegrees: 0,
+  actualEnginePitchDegrees: 0,
+  yawResidualFixedPointUnits: 0,
+  pitchResidualFixedPointUnits: 0,
+};
 
 export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
   const router = useRouter();
@@ -65,12 +79,38 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
   const [lockError, setLockError] = useState<string | null>(null);
   const [pauseSecondsLeft, setPauseSecondsLeft] = useState(MAX_PAUSE_MS / 1000);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [inputDebugEnabled, setInputDebugEnabled] = useState(false);
+  const [pointerLockResult, setPointerLockResult] =
+    useState<PointerLockResult | null>(null);
+  const [verificationSnapshot, setVerificationSnapshot] =
+    useState<SensitivityInputVerificationSnapshot>(EMPTY_VERIFICATION_SNAPSHOT);
 
   useEffect(() => {
-    const onFsChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    const onFsChange = () =>
+      setIsFullscreen(Boolean(document.fullscreenElement));
     document.addEventListener("fullscreenchange", onFsChange);
     return () => document.removeEventListener("fullscreenchange", onFsChange);
   }, []);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "development") return;
+    setInputDebugEnabled(
+      new URLSearchParams(window.location.search).get("inputDebug") === "1",
+    );
+  }, []);
+
+  useEffect(() => {
+    if (!inputDebugEnabled) return;
+    const interval = window.setInterval(() => {
+      const controller = controllerRef.current;
+      if (controller) {
+        setVerificationSnapshot(
+          controller.getSensitivityInputVerificationSnapshot(),
+        );
+      }
+    }, 100);
+    return () => window.clearInterval(interval);
+  }, [inputDebugEnabled]);
 
   const toggleFullscreen = async () => {
     try {
@@ -240,12 +280,15 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
       renderer,
       {
         durationTicks: 60 * 128,
-        inputGainAngleUnitsPerUnit: runtimeConfig.inputGainAngleUnitsPerUnit,
+        inputGain: runtimeConfig.inputGain,
         inputBufferCapacity: runtimeConfig.inputBufferCapacity,
       },
     );
 
     controllerRef.current = controller;
+    const diagnosticsEnabled =
+      process.env.NODE_ENV === "development" &&
+      new URLSearchParams(window.location.search).get("inputDebug") === "1";
     const detachInput = attachInputListener(
       window,
       controller.getRingBuffer(),
@@ -254,6 +297,13 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
         shouldCaptureGameplayInput: () =>
           controller.getState() === "playing" &&
           document.pointerLockElement === canvas,
+        ...(diagnosticsEnabled
+          ? {
+              onMovementAccepted: ({ dx, dy }: { dx: number; dy: number }) => {
+                controller.recordBrowserInputEvent(dx, dy);
+              },
+            }
+          : {}),
       },
     );
 
@@ -294,7 +344,8 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
       renderer.dispose();
       if (controllerRef.current === controller) controllerRef.current = null;
       if (rendererRef.current === renderer) rendererRef.current = null;
-      if (handleResizeRef.current === handleResize) handleResizeRef.current = null;
+      if (handleResizeRef.current === handleResize)
+        handleResizeRef.current = null;
     };
   }, [mode, router, initialConfigLoaded]);
 
@@ -378,8 +429,9 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
     }
 
     setLockError(null);
-    const locked = await acquirePointerLock(canvas);
-    if (!locked) {
+    const acquisition = await acquirePointerLock(canvas);
+    setPointerLockResult(acquisition);
+    if (!acquisition.locked) {
       setLockError(
         "Mouse lock was not granted. Click again and allow Pointer Lock in your browser.",
       );
@@ -423,8 +475,9 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
   const handleResume = async () => {
     if (!canvasRef.current) return;
     setLockError(null);
-    const locked = await acquirePointerLock(canvasRef.current);
-    if (!locked) {
+    const acquisition = await acquirePointerLock(canvasRef.current);
+    setPointerLockResult(acquisition);
+    if (!acquisition.locked) {
       setLockError("Mouse lock was not granted. The run remains paused.");
       return;
     }
@@ -452,9 +505,7 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
     savedCrosshairRef.current = newCrosshair;
 
     if (controllerRef.current) {
-      controllerRef.current.setInputGainAngleUnitsPerUnit(
-        resolved.inputGainAngleUnitsPerUnit,
-      );
+      controllerRef.current.setInputGain(resolved.inputGain);
     }
 
     if (handleResizeRef.current) {
@@ -558,7 +609,8 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
               </p>
             ) : null}
             <p className="font-mono text-[11px] text-zinc-500">
-              Esc releases mouse capture and pauses the run. Fullscreen is recommended for best mouse precision.
+              Esc releases mouse capture and pauses the run. Fullscreen is
+              recommended for best mouse precision.
             </p>
           </div>
         </div>
@@ -636,6 +688,15 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
           onSaveAndApply={handleSaveAndApply}
         />
       ) : null}
+
+      {inputDebugEnabled && runtimeConfig ? (
+        <InputVerificationOverlay
+          snapshot={verificationSnapshot}
+          sensitivity={runtimeConfig.inputGain.fmsSensitivity}
+          pointerLockResult={pointerLockResult}
+          pointerLockActive={document.pointerLockElement === canvasRef.current}
+        />
+      ) : null}
     </div>
   );
 }
@@ -705,17 +766,28 @@ function formatPauseTime(seconds: number): string {
   return `${minutes}:${rest.toString().padStart(2, "0")}`;
 }
 
-async function acquirePointerLock(canvas: HTMLCanvasElement): Promise<boolean> {
+interface PointerLockAcquisition extends PointerLockResult {
+  readonly locked: boolean;
+}
+
+async function acquirePointerLock(
+  canvas: HTMLCanvasElement,
+): Promise<PointerLockAcquisition> {
   const controller = createPointerLockController();
+  let result: PointerLockResult;
   try {
-    await controller.requestLock(canvas, { unadjustedMovement: true });
+    result = await controller.requestLock(canvas, {
+      unadjustedMovement: true,
+    });
   } catch {
-    return false;
+    return { locked: false, rawRequested: true, rawGranted: false };
   }
 
-  if (document.pointerLockElement === canvas) return true;
+  if (document.pointerLockElement === canvas) {
+    return { ...result, locked: true };
+  }
 
-  return new Promise<boolean>((resolve) => {
+  const locked = await new Promise<boolean>((resolve) => {
     let settled = false;
     const finish = (locked: boolean) => {
       if (settled) return;
@@ -731,4 +803,72 @@ async function acquirePointerLock(canvas: HTMLCanvasElement): Promise<boolean> {
     document.addEventListener("pointerlockchange", onChange);
     document.addEventListener("pointerlockerror", onError);
   });
+  return { ...result, locked };
+}
+
+function InputVerificationOverlay({
+  snapshot,
+  sensitivity,
+  pointerLockResult,
+  pointerLockActive,
+}: {
+  snapshot: SensitivityInputVerificationSnapshot;
+  sensitivity: string;
+  pointerLockResult: PointerLockResult | null;
+  pointerLockActive: boolean;
+}) {
+  const rows: readonly (readonly [string, string])[] = [
+    ["FMS / Aimlabs Default", sensitivity],
+    ["Input source", "pointermove (trainer path)"],
+    ["Movement events", snapshot.movementEventCount.toLocaleString()],
+    [
+      "Input units X / Y",
+      `${snapshot.totalInputUnitsX} / ${snapshot.totalInputUnitsY}`,
+    ],
+    ["Expected yaw", `${snapshot.expectedYawDegrees.toFixed(6)}°`],
+    ["Engine yaw", `${snapshot.actualEngineYawDegrees.toFixed(6)}°`],
+    ["Expected pitch", `${snapshot.expectedPitchDegrees.toFixed(6)}°`],
+    ["Engine pitch", `${snapshot.actualEnginePitchDegrees.toFixed(6)}°`],
+    ["Raw requested", pointerLockResult?.rawRequested ? "yes" : "not yet"],
+    [
+      "Raw option accepted",
+      pointerLockResult
+        ? pointerLockResult.rawGranted
+          ? "yes"
+          : "no"
+        : "not yet",
+    ],
+    ["Pointer lock active", pointerLockActive ? "yes" : "no"],
+    ["Platform", navigator.platform || "unknown"],
+    ["Browser", navigator.userAgent],
+  ];
+
+  return (
+    <aside
+      data-testid="input-verification-overlay"
+      className="pointer-events-none absolute bottom-4 left-4 z-50 w-[min(30rem,calc(100vw-2rem))] rounded-xl border border-cyan-500/50 bg-zinc-950/95 p-4 font-mono text-[10px] text-zinc-300 shadow-2xl"
+    >
+      <div className="mb-2 flex items-center justify-between gap-4">
+        <strong className="text-xs uppercase tracking-wider text-cyan-300">
+          Sensitivity verification · development
+        </strong>
+        <span className="text-zinc-500">?inputDebug=1</span>
+      </div>
+      <div className="grid grid-cols-[8.5rem_1fr] gap-x-3 gap-y-1">
+        {rows.map(([label, value]) => (
+          <React.Fragment key={label}>
+            <span className="text-zinc-500">{label}</span>
+            <span className="truncate text-right text-zinc-200" title={value}>
+              {value}
+            </span>
+          </React.Fragment>
+        ))}
+      </div>
+      <p className="mt-2 text-zinc-500">
+        Raw support is recorded only after the Pointer Lock promise accepts the
+        unadjustedMovement request. Compare the same physical sweep in Aimlabs
+        before claiming device-level 1:1 parity.
+      </p>
+    </aside>
+  );
 }

@@ -60,7 +60,9 @@ export const TrainerSettingsSchema = z
     aspectRatio: z
       .enum(["16:9", "16:10", "4:3", "5:4", "custom"])
       .default("16:9"),
-    scalingMode: z.enum(["fit", "stretch", "black-bars", "fill"]).default("fill"),
+    scalingMode: z
+      .enum(["fit", "stretch", "black-bars", "fill"])
+      .default("fill"),
     inputProcessing: z
       .union([
         z.literal("automatic"),

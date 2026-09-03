@@ -44,7 +44,7 @@ export default function RegisterPage() {
   }, [resendCooldown]);
 
   useEffect(() => {
-    if (!verificationEmail) {
+    if (process.env.NODE_ENV !== "development" || !verificationEmail) {
       setDevOtp(null);
       return;
     }

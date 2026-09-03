@@ -3,11 +3,14 @@ import {
   InputProcessingPreset,
 } from "@findmysensi/input-browser";
 import { TrainerSettings } from "@findmysensi/protocol";
-import { resolveBrowserGainAngleUnits } from "@findmysensi/sensitivity";
+import {
+  BrowserInputGain,
+  resolveBrowserInputGain,
+} from "@findmysensi/sensitivity";
 
 export interface GridshotRuntimeConfig {
   readonly fovDegrees: number;
-  readonly inputGainAngleUnitsPerUnit: number;
+  readonly inputGain: BrowserInputGain;
   readonly inputBufferCapacity: number;
   readonly scalingMode: "fit" | "fill" | "stretch" | "black-bars";
   readonly targetColor: string;
@@ -47,9 +50,7 @@ export function resolveGridshotRuntimeConfig(
 
   return Object.freeze({
     fovDegrees: settings.fovDegrees,
-    inputGainAngleUnitsPerUnit: resolveBrowserGainAngleUnits(
-      settings.fmsSensitivity,
-    ),
+    inputGain: resolveBrowserInputGain(settings.fmsSensitivity),
     inputBufferCapacity: processingPolicy.getEffectiveCapacity(
       preset,
       observedInputRateHz,

@@ -9,6 +9,7 @@
   "references": [
     { "path": "../protocol" },
     { "path": "../aim-core" },
-    { "path": "../input-browser" }
+    { "path": "../input-browser" },
+    { "path": "../sensitivity" }
   ]
 }

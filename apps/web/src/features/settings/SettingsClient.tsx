@@ -17,10 +17,13 @@ import {
   type CrosshairConfig,
 } from "@findmysensi/crosshair";
 import {
-  GAME_ADAPTERS,
-  SupportedGameId,
+  SENSITIVITY_PROFILES,
+  VERIFIED_SENSITIVITY_PROFILE_IDS,
+  type VerifiedSensitivityProfileId,
   gameSensitivityToFms,
   fmsToGameSensitivity,
+  isVerifiedSensitivityProfileId,
+  normalizeSensitivityProfileId,
   sensitivityToCmPer360,
 } from "@findmysensi/sensitivity";
 import { InteractiveCrosshairEditor } from "../crosshair/InteractiveCrosshairEditor.js";
@@ -39,13 +42,17 @@ export function SettingsClient() {
   const client = useMemo(() => new BrowserApiClient(), []);
   const [profile, setProfile] = useState<ProfileSettings | null>(null);
   const [trainer, setTrainer] = useState<TrainerSettings | null>(null);
-  const [selectedGame, setSelectedGame] = useState<SupportedGameId>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("findmysensi:selected_game");
-      if (saved && saved in GAME_ADAPTERS) return saved as SupportedGameId;
-    }
-    return "valorant";
-  });
+  const [selectedGame, setSelectedGame] =
+    useState<VerifiedSensitivityProfileId>(() => {
+      if (typeof window !== "undefined") {
+        const saved = localStorage.getItem("findmysensi:selected_game");
+        const normalized = saved ? normalizeSensitivityProfileId(saved) : null;
+        if (normalized && isVerifiedSensitivityProfileId(normalized)) {
+          return normalized;
+        }
+      }
+      return "valorant";
+    });
   const [gameSens, setGameSens] = useState<number>(0.35);
   const [crosshair, setCrosshair] = useState<CrosshairConfig>(
     CROSSHAIR_PRESETS[0]!.config,
@@ -93,7 +100,10 @@ export function SettingsClient() {
       }
       if (parsedSettings.fmsSensitivity) {
         try {
-          const sens = fmsToGameSensitivity("valorant", parsedSettings.fmsSensitivity);
+          const sens = fmsToGameSensitivity(
+            selectedGame,
+            parsedSettings.fmsSensitivity,
+          );
           setGameSens(sens);
         } catch {
           setGameSens(0.35);
@@ -104,7 +114,7 @@ export function SettingsClient() {
     return () => {
       active = false;
     };
-  }, [client, router]);
+  }, [client, router, selectedGame]);
 
   const updateTrainer = <K extends keyof TrainerSettings>(
     key: K,
@@ -113,7 +123,7 @@ export function SettingsClient() {
     setTrainer((current) => (current ? { ...current, [key]: value } : current));
   };
 
-  const handleGameChange = (game: SupportedGameId) => {
+  const handleGameChange = (game: VerifiedSensitivityProfileId) => {
     setSelectedGame(game);
     if (typeof window !== "undefined") {
       localStorage.setItem("findmysensi:selected_game", game);
@@ -308,13 +318,15 @@ export function SettingsClient() {
                     <select
                       value={selectedGame}
                       onChange={(e) =>
-                        handleGameChange(e.target.value as SupportedGameId)
+                        handleGameChange(
+                          e.target.value as VerifiedSensitivityProfileId,
+                        )
                       }
                       className={inputClass}
                     >
-                      {Object.values(GAME_ADAPTERS).map((g) => (
-                        <option key={g.id} value={g.id}>
-                          {g.name}
+                      {VERIFIED_SENSITIVITY_PROFILE_IDS.map((id) => (
+                        <option key={id} value={id}>
+                          {SENSITIVITY_PROFILES[id].name}
                         </option>
                       ))}
                     </select>
@@ -341,7 +353,8 @@ export function SettingsClient() {
                 <div className="mt-4">
                   <div className="mb-2 flex items-center justify-between">
                     <span className="text-xs font-semibold text-zinc-300">
-                      In-Game Sensitivity ({GAME_ADAPTERS[selectedGame]?.name ?? "Game"})
+                      In-Game Sensitivity (
+                      {SENSITIVITY_PROFILES[selectedGame].name})
                     </span>
                     <input
                       type="number"
@@ -388,10 +401,13 @@ export function SettingsClient() {
                   </div>
                   <div>
                     <span className="block text-[10px] uppercase tracking-wider text-zinc-500">
-                      FMS Browser Gain
+                      FMS Sensitivity
                     </span>
                     <span className="font-mono text-sm font-bold text-emerald-400">
                       {trainer.fmsSensitivity ?? "1.0"}
+                    </span>
+                    <span className="mt-0.5 block text-[9px] text-zinc-600">
+                      Aimlabs Default scale
                     </span>
                   </div>
                 </div>
@@ -399,40 +415,54 @@ export function SettingsClient() {
                 {/* Cross-Game Parity (GamingSmart / mouse-sensitivity.com Parity) */}
                 <div className="mt-4 rounded-lg border border-zinc-800 bg-zinc-950/80 p-3">
                   <div className="mb-2 flex items-center justify-between text-[11px] font-semibold text-zinc-400">
-                    <span className="uppercase tracking-wider">Cross-Game Equivalent Sensitivities</span>
-                    <span className="font-mono text-xs text-cyan-400">{calcCmPer360}</span>
+                    <span className="uppercase tracking-wider">
+                      Cross-Game Equivalent Sensitivities
+                    </span>
+                    <span className="font-mono text-xs text-cyan-400">
+                      {calcCmPer360}
+                    </span>
                   </div>
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    {[
-                      { id: "valorant", label: "Valorant" },
-                      { id: "aimlab", label: "Aim Lab" },
-                      { id: "cs2", label: "CS2 / Apex" },
-                      { id: "pubg", label: "PUBG" },
-                    ].map((g) => {
+                    {(
+                      [
+                        { id: "valorant", label: "Valorant" },
+                        {
+                          id: "aimlab-default",
+                          label: "FMS / Aimlabs Default",
+                        },
+                        { id: "cs2", label: "CS2" },
+                        { id: "apex", label: "Apex" },
+                      ] as const
+                    ).map((g) => {
                       const sens = fmsToGameSensitivity(
-                        g.id as SupportedGameId,
-                        trainer.fmsSensitivity ?? "0.1631",
+                        g.id,
+                        trainer.fmsSensitivity ?? "1",
                       );
                       const isCurrent = selectedGame === g.id;
                       return (
                         <button
                           key={g.id}
                           type="button"
-                          onClick={() => handleGameChange(g.id as SupportedGameId)}
+                          onClick={() => handleGameChange(g.id)}
                           className={`flex flex-col items-center rounded-lg border p-2 transition ${
                             isCurrent
                               ? "border-cyan-500 bg-cyan-950/40 text-cyan-300"
                               : "border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:border-zinc-700 hover:text-white"
                           }`}
                         >
-                          <span className="text-[10px] font-medium uppercase text-zinc-400">{g.label}</span>
-                          <span className="font-mono text-sm font-bold">{sens}</span>
+                          <span className="text-[10px] font-medium uppercase text-zinc-400">
+                            {g.label}
+                          </span>
+                          <span className="font-mono text-sm font-bold">
+                            {sens}
+                          </span>
                         </button>
                       );
                     })}
                   </div>
                   <p className="mt-2 text-center text-[10px] text-zinc-500">
-                    Click any game to switch profile. All game sensitivities above produce identical {calcCmPer360} turn distance.
+                    Click any verified game to switch profile. PUBG remains
+                    unavailable until its nonlinear curve is cross-verified.
                   </p>
                 </div>
               </div>
@@ -518,7 +548,9 @@ export function SettingsClient() {
                 <Field label="Target color">
                   <input
                     value={trainer.targetColor}
-                    onChange={(e) => updateTrainer("targetColor", e.target.value)}
+                    onChange={(e) =>
+                      updateTrainer("targetColor", e.target.value)
+                    }
                     type="color"
                     className="h-11 w-full rounded-lg border border-zinc-700 bg-black p-1"
                   />

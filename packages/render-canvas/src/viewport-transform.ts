@@ -128,8 +128,8 @@ export class CanonicalViewportTransform implements ViewportTransform {
     this.centerY = this.displayRect.y + this.displayRect.height / 2;
 
     const vFovRad = (this.vFovUnits / FULL_TURN_UNITS) * (2 * Math.PI);
-    this.focalLengthX = (this.displayRect.width / 2) / Math.tan(hFovRad / 2);
-    this.focalLengthY = (this.displayRect.height / 2) / Math.tan(vFovRad / 2);
+    this.focalLengthX = this.displayRect.width / 2 / Math.tan(hFovRad / 2);
+    this.focalLengthY = this.displayRect.height / 2 / Math.tan(vFovRad / 2);
   }
 
   public simToDisplay(

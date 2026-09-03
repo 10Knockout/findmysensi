@@ -34,11 +34,18 @@ export class BrowserPointerLockController implements PointerLockController {
           }
         ).requestPointerLock({ unadjustedMovement: true });
 
-        if (result instanceof Promise) {
+        if (
+          result &&
+          typeof (result as PromiseLike<void>).then === "function"
+        ) {
           await result;
+          this.rawGranted = true;
+        } else {
+          // Legacy void-returning implementations cannot prove that the raw
+          // option was honored, even if pointer lock itself succeeds.
+          this.rawGranted = false;
         }
-        this.rawGranted = true;
-        return { rawRequested: true, rawGranted: true };
+        return { rawRequested: true, rawGranted: this.rawGranted };
       } catch {
         // Falling back to standard pointer lock if unadjustedMovement was rejected
         this.rawGranted = false;
@@ -52,7 +59,10 @@ export class BrowserPointerLockController implements PointerLockController {
       }
     ).requestPointerLock();
 
-    if (fallbackResult instanceof Promise) {
+    if (
+      fallbackResult &&
+      typeof (fallbackResult as PromiseLike<void>).then === "function"
+    ) {
       await fallbackResult;
     }
 

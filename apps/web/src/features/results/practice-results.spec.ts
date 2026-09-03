@@ -24,7 +24,9 @@ describe("results terminology integrity", () => {
     expect(normalizedSource).toContain(
       "This run is stored locally. Official leaderboard verification is not enabled yet.",
     );
-    expect(normalizedSource).toContain("No recent local Gridshot result found.");
+    expect(normalizedSource).toContain(
+      "No recent local Gridshot result found.",
+    );
   });
 
   it("login page describes access as Gridshot training rather than practice", () => {

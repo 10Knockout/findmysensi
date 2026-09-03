@@ -21,6 +21,11 @@ import {
   hashCanonicalStateV1,
   Tick,
 } from "@findmysensi/protocol";
+import {
+  BrowserInputGain,
+  createBrowserInputScaler,
+  DEFAULT_BROWSER_INPUT_GAIN,
+} from "@findmysensi/sensitivity";
 import { SyntheticInputEvent } from "./input-stream.js";
 
 export interface BenchmarkResult {
@@ -55,36 +60,17 @@ function bytesToHex(bytes: Uint8Array): string {
     .join("");
 }
 
-function safeScale(value: number, gain: number): number {
-  if (
-    !Number.isSafeInteger(value) ||
-    !Number.isSafeInteger(gain) ||
-    gain <= 0
-  ) {
-    throw new RangeError(
-      `Unsafe benchmark input conversion: ${value} x ${gain}`,
-    );
-  }
-  const result = value * gain;
-  if (!Number.isSafeInteger(result)) {
-    throw new RangeError(
-      "Benchmark input conversion exceeds safe integer precision.",
-    );
-  }
-  return result;
-}
-
 function convertBrowserEventsToAngular(
   events: readonly CanonicalInputEvent[],
-  gain: number,
+  scaler: ReturnType<typeof createBrowserInputScaler>,
 ): CanonicalInputEvent[] {
   return events.map((event) => {
     if (event.kind !== "move") return event;
     return createMoveEvent(
       event.tick,
       event.order,
-      safeScale(event.dx, gain),
-      safeScale(-event.dy, gain),
+      scaler.scaleYaw(event.dx),
+      scaler.scalePitch(-event.dy),
     );
   });
 }
@@ -93,13 +79,14 @@ export async function runInputPipelineBenchmark(
   events: readonly SyntheticInputEvent[],
   preset: InputProcessingPreset = 1000,
   tickRateHz: number = 128,
-  inputGainAngleUnitsPerUnit: number = 2_500,
+  inputGain: BrowserInputGain = DEFAULT_BROWSER_INPUT_GAIN,
 ): Promise<BenchmarkResult> {
   const policy: InputProcessingPolicy = createDefaultProcessingPolicy();
   const capacity = policy.getEffectiveCapacity(preset);
   const ringBuffer = createInputRingBuffer(capacity);
   const batchTarget = createRawInputBatchTarget(capacity);
   const clock = new StandardTickBucketer(tickRateHz);
+  const inputScaler = createBrowserInputScaler(inputGain);
 
   let simulationState = createInitialSimulationState(0, 0);
 
@@ -154,10 +141,7 @@ export async function runInputPipelineBenchmark(
       for (const segment of segments) {
         simulationState = stepSimulation(
           simulationState,
-          convertBrowserEventsToAngular(
-            segment.events,
-            inputGainAngleUnitsPerUnit,
-          ),
+          convertBrowserEventsToAngular(segment.events, inputScaler),
         );
       }
     }

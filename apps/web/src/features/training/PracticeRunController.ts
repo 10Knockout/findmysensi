@@ -7,6 +7,7 @@ import {
   createShotTracker,
   createSnapshotBuffer,
   findHitTarget,
+  FULL_TURN_UNITS,
   PitchUnits,
   PrngV1,
   SnapshotBuffer,
@@ -29,7 +30,12 @@ import {
   GRID_DEV_V0_DEFINITION,
   GridScenarioEngine,
 } from "@findmysensi/scenarios";
-import { BASE_BROWSER_GAIN_ANGLE_UNITS } from "@findmysensi/sensitivity";
+import {
+  BrowserInputGain,
+  createBrowserInputScaler,
+  DEFAULT_BROWSER_INPUT_GAIN,
+  DeterministicBrowserInputScaler,
+} from "@findmysensi/sensitivity";
 import { computeGridDevScore, ScoreResult } from "@findmysensi/scoring";
 import {
   createFixedTickRunner,
@@ -50,27 +56,20 @@ export interface PracticeRunCallbacks {
 
 export interface PracticeRunOptions {
   readonly durationTicks?: number;
-  readonly inputGainAngleUnitsPerUnit?: number;
+  readonly inputGain?: BrowserInputGain;
   readonly inputBufferCapacity?: number;
 }
 
-function safeScaledInputDelta(rawDelta: number, gain: number): number {
-  if (
-    !Number.isSafeInteger(rawDelta) ||
-    !Number.isSafeInteger(gain) ||
-    gain <= 0
-  ) {
-    throw new RangeError(
-      `Unsafe Gridshot input conversion: raw=${rawDelta}, gain=${gain}`,
-    );
-  }
-  const scaled = rawDelta * gain;
-  if (!Number.isSafeInteger(scaled)) {
-    throw new RangeError(
-      "Gridshot input delta exceeds safe integer precision.",
-    );
-  }
-  return scaled;
+export interface SensitivityInputVerificationSnapshot {
+  readonly totalInputUnitsX: number;
+  readonly totalInputUnitsY: number;
+  readonly movementEventCount: number;
+  readonly expectedYawDegrees: number;
+  readonly expectedPitchDegrees: number;
+  readonly actualEngineYawDegrees: number;
+  readonly actualEnginePitchDegrees: number;
+  readonly yawResidualFixedPointUnits: number;
+  readonly pitchResidualFixedPointUnits: number;
 }
 
 export class PracticeRunController {
@@ -87,9 +86,14 @@ export class PracticeRunController {
   private callbacks: PracticeRunCallbacks;
 
   private readonly totalDurationTicks: number;
-  private inputGainAngleUnitsPerUnit: number;
+  private inputScaler: DeterministicBrowserInputScaler;
   private playerYaw: AngleUnits = createAngleUnits(0);
   private playerPitch: PitchUnits = createPitchUnits(0);
+  private totalInputUnitsX: number = 0;
+  private totalInputUnitsY: number = 0;
+  private movementEventCount: number = 0;
+  private cumulativeEngineYawAngleUnits: number = 0;
+  private cumulativeEnginePitchAngleUnits: number = 0;
   private totalOverflowEvents: number = 0;
   private highWaterMark: number = 0;
   private exactReplayPreserved: boolean = true;
@@ -105,21 +109,16 @@ export class PracticeRunController {
         ? { durationTicks: optionsOrDuration }
         : optionsOrDuration;
     const capacity = options.inputBufferCapacity ?? 4096;
-    const gain =
-      options.inputGainAngleUnitsPerUnit ?? BASE_BROWSER_GAIN_ANGLE_UNITS;
+    const gain = options.inputGain ?? DEFAULT_BROWSER_INPUT_GAIN;
 
     if (!Number.isSafeInteger(capacity) || capacity < 2) {
       throw new RangeError("Input buffer capacity must be an integer >= 2.");
     }
-    if (!Number.isSafeInteger(gain) || gain <= 0) {
-      throw new RangeError("Input gain must be a positive safe integer.");
-    }
-
     this.callbacks = callbacks;
     this.renderer = renderer ?? null;
     this.totalDurationTicks =
       options.durationTicks ?? GRID_DEV_V0_DEFINITION.durationTicks;
-    this.inputGainAngleUnitsPerUnit = gain;
+    this.inputScaler = createBrowserInputScaler(gain);
     this.engine = new GridScenarioEngine(GRID_DEV_V0_DEFINITION);
     this.metricsTracker = createGridMetricsTracker();
     this.ringBuffer = createInputRingBuffer(capacity);
@@ -139,11 +138,38 @@ export class PracticeRunController {
     return this.activeSeed;
   }
 
-  public setInputGainAngleUnitsPerUnit(newGain: number): void {
-    if (!Number.isSafeInteger(newGain) || newGain <= 0) {
-      throw new RangeError("Input gain must be a positive safe integer.");
+  public setInputGain(newGain: BrowserInputGain): void {
+    this.inputScaler = createBrowserInputScaler(newGain);
+  }
+
+  public recordBrowserInputEvent(dx: number, dy: number): void {
+    if (!Number.isSafeInteger(dx) || !Number.isSafeInteger(dy)) {
+      throw new RangeError("Diagnostic browser input must use safe integers.");
     }
-    this.inputGainAngleUnitsPerUnit = newGain;
+    this.totalInputUnitsX += dx;
+    this.totalInputUnitsY += dy;
+    this.movementEventCount++;
+  }
+
+  public getSensitivityInputVerificationSnapshot(): SensitivityInputVerificationSnapshot {
+    const gain = this.inputScaler.getGain();
+    const residuals = this.inputScaler.getResiduals();
+    return Object.freeze({
+      totalInputUnitsX: this.totalInputUnitsX,
+      totalInputUnitsY: this.totalInputUnitsY,
+      movementEventCount: this.movementEventCount,
+      expectedYawDegrees: this.totalInputUnitsX * gain.degreesPerInputUnit,
+      expectedPitchDegrees:
+        this.totalInputUnitsY === 0
+          ? 0
+          : -this.totalInputUnitsY * gain.degreesPerInputUnit,
+      actualEngineYawDegrees:
+        (this.cumulativeEngineYawAngleUnits / FULL_TURN_UNITS) * 360,
+      actualEnginePitchDegrees:
+        (this.cumulativeEnginePitchAngleUnits / FULL_TURN_UNITS) * 360,
+      yawResidualFixedPointUnits: residuals.yaw,
+      pitchResidualFixedPointUnits: residuals.pitch,
+    });
   }
 
   public start(seed?: readonly [number, number, number, number]): void {
@@ -154,6 +180,12 @@ export class PracticeRunController {
     this.shotTracker.reset();
     this.playerYaw = createAngleUnits(0);
     this.playerPitch = createPitchUnits(0);
+    this.inputScaler.reset();
+    this.totalInputUnitsX = 0;
+    this.totalInputUnitsY = 0;
+    this.movementEventCount = 0;
+    this.cumulativeEngineYawAngleUnits = 0;
+    this.cumulativeEnginePitchAngleUnits = 0;
     this.totalOverflowEvents = 0;
     this.highWaterMark = 0;
     this.exactReplayPreserved = true;
@@ -239,16 +271,12 @@ export class PracticeRunController {
       for (const segment of segments) {
         for (const event of segment.events) {
           if (event.kind === "move") {
-            const yawDelta = safeScaledInputDelta(
-              event.dx,
-              this.inputGainAngleUnitsPerUnit,
-            );
-            const pitchDelta = safeScaledInputDelta(
-              event.dy,
-              this.inputGainAngleUnitsPerUnit,
-            );
+            const yawDelta = this.inputScaler.scaleYaw(event.dx);
+            const pitchDelta = this.inputScaler.scalePitch(event.dy);
             this.playerYaw = wrapYaw(this.playerYaw + yawDelta);
             this.playerPitch = clampPitch(this.playerPitch - pitchDelta);
+            this.cumulativeEngineYawAngleUnits += yawDelta;
+            this.cumulativeEnginePitchAngleUnits -= pitchDelta;
           } else if (event.kind === "shot") {
             this.handlePlayerShot(tick);
           } else if (event.kind === "invalidate") {

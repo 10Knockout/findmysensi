@@ -16,6 +16,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@findmysensi/aim-core": "0.1.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {

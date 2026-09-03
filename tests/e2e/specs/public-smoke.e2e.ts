@@ -193,12 +193,35 @@ test("authenticated Trainer Home renders user greeting, Gridshot play link, and 
       expiresAt: "2026-09-02T00:00:00.000Z",
     },
   };
+  const trainerSettings = {
+    fmsSensitivity: "1.0",
+    nominalDpi: 800,
+    fovDegrees: 103,
+    targetColor: "#7CFF6B",
+    targetOpacity: 1,
+    targetOutline: false,
+    crosshairCode: null,
+    graphicsPreset: "automatic",
+    resolution: "native",
+    customResolutionWidth: null,
+    customResolutionHeight: null,
+    aspectRatio: "16:9",
+    scalingMode: "fit",
+    inputProcessing: "automatic",
+  };
 
   await page.route("**/api/auth/get-session", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify(session),
+    });
+  });
+  await page.route("**/api/v1/me/settings", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(trainerSettings),
     });
   });
 

@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { BrowserApiClient } from "@findmysensi/api-client";
 import { TrainerSettings } from "@findmysensi/protocol";
 import {
-  SupportedGameId,
+  type VerifiedSensitivityProfileId,
   gameSensitivityToFms,
   sensitivityToCmPer360,
 } from "@findmysensi/sensitivity";
@@ -16,15 +16,11 @@ interface QuickSetupModalProps {
   onSaved: (updated: TrainerSettings) => void;
 }
 
-const GAME_RECOMMENDED_FOV: Record<SupportedGameId, number> = {
+const GAME_RECOMMENDED_FOV: Record<VerifiedSensitivityProfileId, number> = {
   valorant: 103,
   cs2: 106,
-  csgo: 106,
   apex: 90,
-  overwatch2: 103,
-  rainbow6: 90,
-  fortnite: 103,
-  callofduty: 120,
+  "aimlab-default": 103,
 };
 
 export function QuickSetupModal({
@@ -33,7 +29,8 @@ export function QuickSetupModal({
   currentSettings,
   onSaved,
 }: QuickSetupModalProps) {
-  const [selectedGame, setSelectedGame] = useState<SupportedGameId>("valorant");
+  const [selectedGame, setSelectedGame] =
+    useState<VerifiedSensitivityProfileId>("valorant");
   const [inGameSens, setInGameSens] = useState<number>(0.35);
   const [dpi, setDpi] = useState<number>(800);
   const [saving, setSaving] = useState(false);
@@ -41,14 +38,12 @@ export function QuickSetupModal({
 
   if (!isOpen) return null;
 
-  const handleGameSelect = (gameId: SupportedGameId) => {
+  const handleGameSelect = (gameId: VerifiedSensitivityProfileId) => {
     setSelectedGame(gameId);
     if (gameId === "valorant") setInGameSens(0.35);
-    else if (gameId === "cs2" || gameId === "csgo") setInGameSens(1.2);
+    else if (gameId === "cs2") setInGameSens(1.2);
     else if (gameId === "apex") setInGameSens(1.4);
-    else if (gameId === "overwatch2") setInGameSens(4.0);
-    else if (gameId === "callofduty") setInGameSens(4.5);
-    else setInGameSens(1.0);
+    else setInGameSens(0.5);
   };
 
   const cmPer360 =
@@ -129,7 +124,7 @@ export function QuickSetupModal({
                   ["valorant", "Valorant"],
                   ["cs2", "CS2"],
                   ["apex", "Apex"],
-                  ["callofduty", "Warzone"],
+                  ["aimlab-default", "FMS / Aimlabs"],
                 ] as const
               ).map(([id, label]) => (
                 <button
