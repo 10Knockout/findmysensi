@@ -38,6 +38,16 @@ export class FlickMetricsTracker {
     }
   }
 
+  /**
+   * A target expired without ever being clicked (e.g. Pinpoint's
+   * lifetime-based despawn). Counts as a miss without inflating shots,
+   * since the player never fired -- shots/accuracy must reflect only
+   * actual click attempts.
+   */
+  public recordExpiration(_tick: number): void {
+    this.misses++;
+  }
+
   public computeMetrics(
     totalDurationTicks: number,
     tickRateHz: number = 128,
