@@ -1,4 +1,4 @@
-import { PrngV1 } from "@findmysensi/aim-core";
+import { PrngV1, wrapYaw } from "@findmysensi/aim-core";
 import { defaultScenarioRegistry } from "../registry.js";
 import {
   RankedScenarioDefinition,
@@ -143,7 +143,12 @@ export class PinpointScenarioEngine {
     let y: number;
     let attempts = 0;
     do {
-      x = prng.nextRange(-halfW, halfW + 1);
+      // Wrap immediately: collision testing requires every stored target's
+      // xAngleUnits to already be in [0, FULL_TURN_UNITS), matching Grid's
+      // slot generation. Wrapping here (not after the loop) keeps this
+      // separation check consistent with previously-stored, already-wrapped
+      // targets.
+      x = wrapYaw(prng.nextRange(-halfW, halfW + 1));
       y = prng.nextRange(-halfH, halfH + 1);
       attempts++;
     } while (attempts < 100 && this.tooClose(x, y));
