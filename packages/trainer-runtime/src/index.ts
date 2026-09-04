@@ -16,3 +16,5 @@ export * from "./benchmarks.js";
 export * from "./workouts.js";
 export * from "./find-my-sensi.js";
 export * from "./sensi-battle.js";
+export * from "./achievements.js";
+export * from "./cosmetics.js";

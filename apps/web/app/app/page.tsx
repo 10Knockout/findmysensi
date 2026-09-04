@@ -147,6 +147,12 @@ export default function AppDashboardPage() {
               Workouts
             </Link>
             <Link
+              href="/app/profile"
+              className="rounded-lg border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-200 hover:bg-zinc-900"
+            >
+              Profile
+            </Link>
+            <Link
               href="/app/settings"
               className="rounded-lg border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-200 hover:bg-zinc-900"
             >

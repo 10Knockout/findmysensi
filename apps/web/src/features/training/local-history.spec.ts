@@ -60,6 +60,66 @@ describe("Privacy-Safe Local Practice History", () => {
     expect(history.getAll().length).toBe(0);
   });
 
+  it("tracks lifetime stats independently of the capped history window", () => {
+    const history = new LocalPracticeHistory();
+    history.clear();
+
+    for (let i = 0; i < 3; i++) {
+      history.save({
+        id: `run-${i}`,
+        modeId: "grid",
+        timestamp: i,
+        score: 1000,
+        hits: 40,
+        shots: 50,
+        misses: 10,
+        accuracyPercentage: 80,
+        durationSeconds: 60,
+        killsPerSecond: 0.66,
+        exactReplayPreserved: true,
+        inputOverflowEvents: 0,
+        inputHighWaterMark: 0,
+      });
+    }
+
+    const stats = history.getLifetimeStats();
+    expect(stats.totalSessions).toBe(3);
+    expect(stats.totalShots).toBe(150);
+    expect(stats.totalPracticeSeconds).toBe(180);
+
+    history.clear();
+    const cleared = history.getLifetimeStats();
+    expect(cleared.totalSessions).toBe(0);
+    expect(cleared.totalShots).toBe(0);
+    expect(cleared.totalPracticeSeconds).toBe(0);
+  });
+
+  it("keeps lifetime stats growing past the 100-record capped history window", () => {
+    const history = new LocalPracticeHistory();
+    history.clear();
+
+    for (let i = 0; i < 105; i++) {
+      history.save({
+        id: `run-${i}`,
+        modeId: "smooth-track",
+        timestamp: i,
+        score: 100,
+        durationSeconds: 10,
+        onTargetTicks: 5,
+        totalTicks: 10,
+        onTargetPercentage: 50,
+        averageErrorUnits: 1,
+        maxErrorUnits: 2,
+        exactReplayPreserved: true,
+        inputOverflowEvents: 0,
+        inputHighWaterMark: 0,
+      });
+    }
+
+    expect(history.getAll().length).toBe(100);
+    expect(history.getLifetimeStats().totalSessions).toBe(105);
+  });
+
   it("treats corrupted or wrong-shaped persisted history as empty instead of crashing results", () => {
     const localStorage = {
       getItem: vi.fn(() => JSON.stringify({ not: "an array" })),

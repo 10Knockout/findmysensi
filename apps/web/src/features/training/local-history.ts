@@ -1,8 +1,12 @@
-import type { PracticeSummaryRecord } from "@findmysensi/trainer-runtime";
+import type {
+  LifetimeStats,
+  PracticeSummaryRecord,
+} from "@findmysensi/trainer-runtime";
 
-export type { PracticeSummaryRecord };
+export type { PracticeSummaryRecord, LifetimeStats };
 
 const STORAGE_KEY = "findmysensi:practice_history:v1";
+const STATS_KEY = "findmysensi:practice_stats:v1";
 const CLICK_MODE_IDS = new Set<PracticeSummaryRecord["modeId"]>([
   "grid",
   "pinpoint",
@@ -12,6 +16,22 @@ const CLICK_MODE_IDS = new Set<PracticeSummaryRecord["modeId"]>([
   "microshot",
   "reaction",
 ]);
+
+const ZERO_LIFETIME_STATS: LifetimeStats = {
+  totalSessions: 0,
+  totalShots: 0,
+  totalPracticeSeconds: 0,
+};
+
+function isLifetimeStats(value: unknown): value is LifetimeStats {
+  if (typeof value !== "object" || value === null) return false;
+  const s = value as Record<string, unknown>;
+  return (
+    isFiniteNumber(s.totalSessions) &&
+    isFiniteNumber(s.totalShots) &&
+    isFiniteNumber(s.totalPracticeSeconds)
+  );
+}
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
@@ -90,6 +110,7 @@ function parseStoredHistory(raw: string): PracticeSummaryRecord[] | null {
 
 export class LocalPracticeHistory {
   private memoryFallback: PracticeSummaryRecord[] = [];
+  private memoryStatsFallback: LifetimeStats = { ...ZERO_LIFETIME_STATS };
 
   private isLocalStorageAvailable(): boolean {
     return (
@@ -105,12 +126,53 @@ export class LocalPracticeHistory {
     if (this.isLocalStorageAvailable()) {
       try {
         window.localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      } catch {
+        this.memoryFallback = updated;
+      }
+    } else {
+      this.memoryFallback = updated;
+    }
+
+    const shots =
+      "shots" in record && isFiniteNumber(record.shots) ? record.shots : 0;
+    const prevStats = this.getLifetimeStats();
+    const nextStats: LifetimeStats = {
+      totalSessions: prevStats.totalSessions + 1,
+      totalShots: prevStats.totalShots + shots,
+      totalPracticeSeconds:
+        prevStats.totalPracticeSeconds + record.durationSeconds,
+    };
+    if (this.isLocalStorageAvailable()) {
+      try {
+        window.localStorage.setItem(STATS_KEY, JSON.stringify(nextStats));
         return;
       } catch {
-        // Fall back to in-memory summaries when browser storage is unavailable.
+        // Fall back to in-memory stats when browser storage is unavailable.
       }
     }
-    this.memoryFallback = updated;
+    this.memoryStatsFallback = nextStats;
+  }
+
+  /**
+   * Uncapped lifetime totals -- unlike getAll(), never pruned to the most
+   * recent 100 records. Volume-based achievements read this, not
+   * history.length, since a real player can (and should be able to) exceed
+   * 100 sessions.
+   */
+  public getLifetimeStats(): LifetimeStats {
+    if (this.isLocalStorageAvailable()) {
+      try {
+        const raw = window.localStorage.getItem(STATS_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw) as unknown;
+          if (isLifetimeStats(parsed)) return parsed;
+        }
+        return this.memoryStatsFallback;
+      } catch {
+        return this.memoryStatsFallback;
+      }
+    }
+    return this.memoryStatsFallback;
   }
 
   public getAll(modeId?: string): readonly PracticeSummaryRecord[] {
@@ -135,9 +197,11 @@ export class LocalPracticeHistory {
 
   public clear(): void {
     this.memoryFallback = [];
+    this.memoryStatsFallback = { ...ZERO_LIFETIME_STATS };
     if (this.isLocalStorageAvailable()) {
       try {
         window.localStorage.removeItem(STORAGE_KEY);
+        window.localStorage.removeItem(STATS_KEY);
       } catch {
         // Ignore storage cleanup failures.
       }
