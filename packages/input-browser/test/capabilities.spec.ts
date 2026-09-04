@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   attachInputListener,
   detectInputCapabilities,
+  POINTER_LOCK_MOVEMENT_SOURCE,
 } from "../src/event-source.js";
 import {
   createPointerLockController,
@@ -100,7 +101,7 @@ describe("Event-Source Capability Detection and Adapter Selection", () => {
     expect(Object.keys(listeners).length).toBe(0);
   });
 
-  it("captures shots and invalidations on pointerdown and blur", () => {
+  it("captures pointer-locked shots through the guaranteed mousedown event", () => {
     const ring = createInputRingBuffer(32);
     const targetBatch = createRawInputBatchTarget(32);
 
@@ -120,12 +121,46 @@ describe("Event-Source Capability Detection and Adapter Selection", () => {
       "pointermove",
     );
 
-    listeners["pointerdown"]!({ button: 0, timeStamp: 5.0 });
+    listeners["mousedown"]!({ button: 0, timeStamp: 5.0 });
 
     const stats = ring.drainInto(targetBatch);
     expect(stats.drainedCount).toBe(1);
     expect(targetBatch.kinds[0]).toBe(EVENT_KIND_SHOT);
     expect(targetBatch.buttons[0]).toBe(0);
+
+    cleanup();
+  });
+
+  it("uses the Pointer Lock mousemove contract without clipping at viewport edges", () => {
+    const ring = createInputRingBuffer(32);
+    const targetBatch = createRawInputBatchTarget(32);
+    const listeners: Record<string, (ev: unknown) => void> = {};
+    const mockTarget = {
+      addEventListener: (type: string, listener: (ev: unknown) => void) => {
+        listeners[type] = listener;
+      },
+      removeEventListener: (type: string) => {
+        delete listeners[type];
+      },
+    };
+
+    const cleanup = attachInputListener(
+      mockTarget as unknown as EventTarget,
+      ring,
+      POINTER_LOCK_MOVEMENT_SOURCE,
+    );
+
+    expect(listeners.mousemove).toBeDefined();
+    listeners.mousemove!({
+      movementX: -2_400,
+      movementY: 1_600,
+      timeStamp: 7,
+    });
+
+    const stats = ring.drainInto(targetBatch);
+    expect(stats.drainedCount).toBe(1);
+    expect(targetBatch.dx[0]).toBe(-2_400);
+    expect(targetBatch.dy[0]).toBe(1_600);
 
     cleanup();
   });
@@ -157,7 +192,7 @@ describe("Event-Source Capability Detection and Adapter Selection", () => {
       movementY: -20,
       timeStamp: 1,
     });
-    listeners["pointerdown"]!({ button: 0, timeStamp: 2 });
+    listeners["mousedown"]!({ button: 0, timeStamp: 2 });
     listeners["blur"]!({ timeStamp: 3 });
 
     let stats = ring.drainInto(targetBatch);
@@ -166,7 +201,7 @@ describe("Event-Source Capability Detection and Adapter Selection", () => {
 
     gameplayCaptureActive = true;
     listeners["pointermove"]!({ movementX: 12, movementY: 6, timeStamp: 4 });
-    listeners["pointerdown"]!({ button: 0, timeStamp: 5 });
+    listeners["mousedown"]!({ button: 0, timeStamp: 5 });
 
     stats = ring.drainInto(targetBatch);
     expect(stats.drainedCount).toBe(2);
@@ -240,5 +275,23 @@ describe("Pointer Lock Controller & Raw Input Fallbacks", () => {
     expect(callCount).toBe(2);
     expect(res.rawRequested).toBe(true);
     expect(res.rawGranted).toBe(false);
+  });
+
+  it("does not fall back to sensitivity-changing adjusted movement when disabled", async () => {
+    const controller = createPointerLockController();
+    const requestPointerLock = vi.fn(async () => {
+      throw new Error("unadjustedMovement not supported");
+    });
+
+    const result = await controller.requestLock(
+      { requestPointerLock } as unknown as HTMLElement,
+      {
+        unadjustedMovement: true,
+        fallbackToAdjustedMovement: false,
+      },
+    );
+
+    expect(requestPointerLock).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ rawRequested: true, rawGranted: false });
   });
 });

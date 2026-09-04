@@ -1,6 +1,9 @@
 import { defaultScenarioRegistry, ScenarioEntry } from "@findmysensi/scenarios";
 import {
   createGridModeAdapter,
+  createHeadlineModeAdapter,
+  createMultiModeAdapter,
+  createPinpointModeAdapter,
   ModeRuntimeAdapter,
 } from "@findmysensi/trainer-runtime";
 
@@ -35,9 +38,9 @@ export const trainerModeManifest: ReadonlyMap<
   TrainerModeManifestEntry
 > = new Map([
   ["grid", buildEntry("grid", true, createGridModeAdapter)],
-  ["pinpoint", buildEntry("pinpoint", false)],
-  ["multi", buildEntry("multi", false)],
-  ["headline", buildEntry("headline", false)],
+  ["pinpoint", buildEntry("pinpoint", true, createPinpointModeAdapter)],
+  ["multi", buildEntry("multi", true, createMultiModeAdapter)],
+  ["headline", buildEntry("headline", true, createHeadlineModeAdapter)],
   ["strafe", buildEntry("strafe", false)],
   ["smooth-track", buildEntry("smooth-track", false)],
   ["tempo", buildEntry("tempo", false)],

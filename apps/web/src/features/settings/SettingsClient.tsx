@@ -17,13 +17,7 @@ import {
   type CrosshairConfig,
 } from "@findmysensi/crosshair";
 import {
-  SENSITIVITY_PROFILES,
-  VERIFIED_SENSITIVITY_PROFILE_IDS,
-  type VerifiedSensitivityProfileId,
-  gameSensitivityToFms,
   fmsToGameSensitivity,
-  isVerifiedSensitivityProfileId,
-  normalizeSensitivityProfileId,
   sensitivityToCmPer360,
 } from "@findmysensi/sensitivity";
 import { InteractiveCrosshairEditor } from "../crosshair/InteractiveCrosshairEditor.js";
@@ -41,18 +35,6 @@ export function SettingsClient() {
   const client = useMemo(() => new BrowserApiClient(), []);
   const [profile, setProfile] = useState<ProfileSettings | null>(null);
   const [trainer, setTrainer] = useState<TrainerSettings | null>(null);
-  const [selectedGame, setSelectedGame] =
-    useState<VerifiedSensitivityProfileId>(() => {
-      if (typeof window !== "undefined") {
-        const saved = localStorage.getItem("findmysensi:selected_game");
-        const normalized = saved ? normalizeSensitivityProfileId(saved) : null;
-        if (normalized && isVerifiedSensitivityProfileId(normalized)) {
-          return normalized;
-        }
-      }
-      return "valorant";
-    });
-  const [gameSens, setGameSens] = useState<number>(0.35);
   const [crosshair, setCrosshair] = useState<CrosshairConfig>(
     CROSSHAIR_PRESETS[0]!.config,
   );
@@ -97,23 +79,12 @@ export function SettingsClient() {
           );
         }
       }
-      if (parsedSettings.fmsSensitivity) {
-        try {
-          const sens = fmsToGameSensitivity(
-            selectedGame,
-            parsedSettings.fmsSensitivity,
-          );
-          setGameSens(sens);
-        } catch {
-          setGameSens(0.35);
-        }
-      }
     })();
 
     return () => {
       active = false;
     };
-  }, [client, router, selectedGame]);
+  }, [client, router]);
 
   const updateTrainer = <K extends keyof TrainerSettings>(
     key: K,
@@ -122,37 +93,25 @@ export function SettingsClient() {
     setTrainer((current) => (current ? { ...current, [key]: value } : current));
   };
 
-  const handleGameChange = (game: VerifiedSensitivityProfileId) => {
-    setSelectedGame(game);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("findmysensi:selected_game", game);
-    }
-    if (trainer?.fmsSensitivity) {
-      try {
-        setGameSens(fmsToGameSensitivity(game, trainer.fmsSensitivity));
-      } catch {
-        setGameSens(0.35);
-      }
-    }
-  };
+  const aimlabsSensitivity = Number(trainer?.fmsSensitivity ?? "1");
 
-  const handleGameSensChange = (val: number) => {
-    setGameSens(val);
-    try {
-      const fms = gameSensitivityToFms(selectedGame, val);
-      updateTrainer("fmsSensitivity", fms);
-    } catch {
-      // ignore
-    }
+  const handleAimlabsSensitivityChange = (value: number) => {
+    if (!Number.isFinite(value) || value <= 0) return;
+    updateTrainer("fmsSensitivity", String(value));
   };
 
   let calcCmPer360 = "N/A";
   let calcEdpi = "N/A";
+  let valorantEquivalent = "N/A";
   try {
     const effDpi = trainer?.nominalDpi ?? 800;
-    if (gameSens > 0 && effDpi > 0) {
-      calcCmPer360 = `${sensitivityToCmPer360(selectedGame, gameSens, effDpi).toFixed(1)} cm / 360°`;
-      calcEdpi = `${(gameSens * effDpi).toFixed(0)}`;
+    if (aimlabsSensitivity > 0 && effDpi > 0) {
+      calcCmPer360 = `${sensitivityToCmPer360("aimlab-default", aimlabsSensitivity, effDpi).toFixed(1)} cm / 360°`;
+      calcEdpi = `${(aimlabsSensitivity * effDpi).toFixed(0)}`;
+      valorantEquivalent = fmsToGameSensitivity(
+        "valorant",
+        trainer?.fmsSensitivity ?? "1",
+      ).toFixed(3);
     }
   } catch {
     // ignore
@@ -307,28 +266,16 @@ export function SettingsClient() {
 
           <SettingsSection
             title="Aim & Sensitivity"
-            description="Select your main game profile to calibrate physical turn distances. FOV adjusts camera angle without altering physical sensitivity."
+            description="Gridshot uses the Aimlabs sensitivity scale directly. FOV adjusts camera angle without altering physical sensitivity."
           >
             <div className="space-y-6">
-              {/* Game Profile & Mouse Sensitivity */}
+              {/* Aimlabs-native Mouse Sensitivity */}
               <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/60 p-5">
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="Game Profile">
-                    <select
-                      value={selectedGame}
-                      onChange={(e) =>
-                        handleGameChange(
-                          e.target.value as VerifiedSensitivityProfileId,
-                        )
-                      }
-                      className={inputClass}
-                    >
-                      {VERIFIED_SENSITIVITY_PROFILE_IDS.map((id) => (
-                        <option key={id} value={id}>
-                          {SENSITIVITY_PROFILES[id].name}
-                        </option>
-                      ))}
-                    </select>
+                  <Field label="Sensitivity Scale">
+                    <div className={`${inputClass} text-cyan-300`}>
+                      Aimlabs (native)
+                    </div>
                   </Field>
                   <Field label="Mouse DPI">
                     <input
@@ -348,36 +295,42 @@ export function SettingsClient() {
                   </Field>
                 </div>
 
-                {/* In-Game Sensitivity Slider */}
+                {/* Aimlabs Sensitivity Slider */}
                 <div className="mt-4">
                   <div className="mb-2 flex items-center justify-between">
                     <span className="text-xs font-semibold text-zinc-300">
-                      In-Game Sensitivity (
-                      {SENSITIVITY_PROFILES[selectedGame].name})
+                      Aimlabs Sensitivity
                     </span>
                     <input
                       type="number"
-                      min={0.01}
+                      min={0.005}
                       max={10.0}
                       step={0.005}
-                      value={gameSens}
+                      value={aimlabsSensitivity}
                       onChange={(e) =>
-                        handleGameSensChange(parseFloat(e.target.value) || 0.1)
+                        handleAimlabsSensitivityChange(Number(e.target.value))
                       }
                       className="w-24 rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-1 text-right font-mono text-sm text-cyan-400 focus:border-cyan-400 focus:outline-none"
                     />
                   </div>
                   <input
                     type="range"
-                    min={0.01}
-                    max={selectedGame === "valorant" ? 2.0 : 6.0}
+                    min={0.005}
+                    max={2}
                     step={0.005}
-                    value={gameSens}
+                    value={Math.min(aimlabsSensitivity, 2)}
                     onChange={(e) =>
-                      handleGameSensChange(parseFloat(e.target.value))
+                      handleAimlabsSensitivityChange(Number(e.target.value))
                     }
                     className="w-full accent-cyan-400"
                   />
+                  <p className="mt-2 text-[11px] leading-relaxed text-zinc-500">
+                    The value is applied directly with no game-profile
+                    conversion. At the same DPI, Valorant{" "}
+                    <span className="font-mono text-zinc-300">0.125</span> is
+                    Aimlabs{" "}
+                    <span className="font-mono text-zinc-300">0.175</span>.
+                  </p>
                 </div>
 
                 {/* Physical Turn Metrics */}
@@ -400,68 +353,22 @@ export function SettingsClient() {
                   </div>
                   <div>
                     <span className="block text-[10px] uppercase tracking-wider text-zinc-500">
-                      FMS Sensitivity
+                      Valorant Equivalent
                     </span>
                     <span className="font-mono text-sm font-bold text-emerald-400">
-                      {trainer.fmsSensitivity ?? "1.0"}
+                      {valorantEquivalent}
                     </span>
                     <span className="mt-0.5 block text-[9px] text-zinc-600">
-                      Aimlabs Default scale
+                      same DPI / cm per 360
                     </span>
                   </div>
                 </div>
 
-                {/* Cross-Game Parity (GamingSmart / mouse-sensitivity.com Parity) */}
                 <div className="mt-4 rounded-lg border border-zinc-800 bg-zinc-950/80 p-3">
-                  <div className="mb-2 flex items-center justify-between text-[11px] font-semibold text-zinc-400">
-                    <span className="uppercase tracking-wider">
-                      Cross-Game Equivalent Sensitivities
-                    </span>
-                    <span className="font-mono text-xs text-cyan-400">
-                      {calcCmPer360}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    {(
-                      [
-                        { id: "valorant", label: "Valorant" },
-                        {
-                          id: "aimlab-default",
-                          label: "FMS / Aimlabs Default",
-                        },
-                        { id: "cs2", label: "CS2" },
-                        { id: "apex", label: "Apex" },
-                      ] as const
-                    ).map((g) => {
-                      const sens = fmsToGameSensitivity(
-                        g.id,
-                        trainer.fmsSensitivity ?? "1",
-                      );
-                      const isCurrent = selectedGame === g.id;
-                      return (
-                        <button
-                          key={g.id}
-                          type="button"
-                          onClick={() => handleGameChange(g.id)}
-                          className={`flex flex-col items-center rounded-lg border p-2 transition ${
-                            isCurrent
-                              ? "border-cyan-500 bg-cyan-950/40 text-cyan-300"
-                              : "border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:border-zinc-700 hover:text-white"
-                          }`}
-                        >
-                          <span className="text-[10px] font-medium uppercase text-zinc-400">
-                            {g.label}
-                          </span>
-                          <span className="font-mono text-sm font-bold">
-                            {sens}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <p className="mt-2 text-center text-[10px] text-zinc-500">
-                    Click any verified game to switch profile. PUBG remains
-                    unavailable until its nonlinear curve is cross-verified.
+                  <p className="text-center text-[10px] leading-relaxed text-zinc-500">
+                    Use the same numeric value as Aimlabs Default. Confirm
+                    physical parity with repeated 180° or 360° sweeps before
+                    changing the value by feel.
                   </p>
                 </div>
               </div>

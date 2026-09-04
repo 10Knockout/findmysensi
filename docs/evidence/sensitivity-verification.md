@@ -41,10 +41,18 @@ was copied.
 
 - [Aimlabs official converter](https://aimlabs.com/mouse-sensitivity-converter)
   describes cm/360 as the universal physical comparison and lists Aimlabs,
-  Valorant, CS2, Apex Legends, and PUBG as distinct game choices.
+  Valorant, CS2, Apex Legends, and PUBG as distinct game choices. Its current
+  live result for Aimlabs `0.175` at 2400 DPI is Valorant `0.125` and
+  `43.543 cm/360`, matching the frozen implementation vector.
 - [Aimlabs official profile guide](https://aimlabs.com/articles/aimlabs/how-to-configure-and-convert-your-sensitivity-in-aimlabs/)
   explains that switching Game Profiles preserves physical mouse distance and
-  that CPI/DPI must be entered correctly.
+  that CPI/DPI and FOV must be entered correctly.
+- [W3C Pointer Lock 2.0](https://www.w3.org/TR/pointerlock-2/) defines locked
+  `mousemove` deltas as unbounded by the browser or screen edge and defines
+  `unadjustedMovement: true` as bypassing platform mouse acceleration. The
+  trainer therefore uses locked `mousemove` as its gameplay source, requests
+  unadjusted input first, and falls back to ordinary Pointer Lock when raw input
+  is unavailable. The UI warns when the fallback is active.
 - [GamingSmart converter](https://gamingsmart.com/mouse-sensitivity-converter/)
   documents the same 360-distance method and same-DPI behavior. The product
   owner supplied a current screenshot with the exact golden observation:
@@ -115,5 +123,6 @@ Before native device-level 1:1 parity is claimed, perform and record this test:
    event loss, DPI, fixed-point error, or projection before changing the
    canonical `0.05` coefficient.
 
-Status: pending execution on the product owner's physical 2400-DPI setup. The
-software must not claim device-level parity until that evidence is recorded.
+Status: raw input is requested with an ordinary Pointer Lock fallback. Physical
+comparison on the product owner's 2400-DPI setup remains pending, so
+device-level parity must not be claimed until that evidence is recorded.

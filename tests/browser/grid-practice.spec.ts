@@ -6,6 +6,7 @@ import {
   wrapYaw,
 } from "@findmysensi/aim-core";
 import { AimRenderer } from "@findmysensi/render-canvas";
+import { createMultiModeAdapter } from "@findmysensi/trainer-runtime";
 import {
   BROWSER_GAIN_FIXED_POINT_SCALE,
   resolveBrowserInputGain,
@@ -83,6 +84,29 @@ describe("Grid Practice Run Flow & Lifecycle", () => {
     expect(history.length).toBe(1);
     expect(history[0]?.modeId).toBe("grid");
     expect(history[0]?.shots).toBe(2);
+  });
+
+  it("persists the active adapter mode instead of hardcoding grid", () => {
+    localPracticeHistory.clear();
+    const controller = new PracticeRunController(
+      {
+        onStateChange: () => {},
+        onTickProgress: () => {},
+        onScoreUpdate: () => {},
+        onComplete: () => {},
+      },
+      undefined,
+      { durationTicks: 1 },
+      createMultiModeAdapter(),
+    );
+
+    controller.start([1, 2, 3, 4]);
+    controller.onAnimationFrame(0);
+    controller.onAnimationFrame(10);
+    controller.onAnimationFrame(20);
+
+    expect(localPracticeHistory.getAll("multi")[0]?.modeId).toBe("multi");
+    expect(localPracticeHistory.getAll("grid")).toEqual([]);
   });
 
   it("surfaces real ring-buffer overflow into the saved result summary", () => {

@@ -4,6 +4,10 @@ if (process.env.NODE_ENV === "production" && process.env.USE_MOCK_API) {
 }
 
 const nextConfig = {
+  // The development indicator is a clickable bottom-left overlay. Gridshot
+  // uses the entire viewport as its aim surface, so the indicator must not
+  // intercept movement or shots during local development.
+  devIndicators: false,
   async rewrites() {
     // Development can point to the private API or the explicit local test mock.
     // Production is structurally forbidden from enabling the mock above.

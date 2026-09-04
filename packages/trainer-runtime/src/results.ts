@@ -8,8 +8,7 @@ export interface PracticeRunSummaryBase {
   readonly inputHighWaterMark: number;
 }
 
-export interface GridPracticeSummary extends PracticeRunSummaryBase {
-  readonly modeId: "grid";
+interface ClickPracticeSummaryBase extends PracticeRunSummaryBase {
   readonly hits: number;
   readonly shots: number;
   readonly misses: number;
@@ -17,7 +16,24 @@ export interface GridPracticeSummary extends PracticeRunSummaryBase {
   readonly killsPerSecond: number;
 }
 
-// More variants join this union as each mode ships (M4/M5). Kept as a
-// 1-member union rather than a plain interface so future modes are additive,
-// not a breaking reshape.
-export type PracticeSummaryRecord = GridPracticeSummary;
+export interface GridPracticeSummary extends ClickPracticeSummaryBase {
+  readonly modeId: "grid";
+}
+
+export interface PinpointPracticeSummary extends ClickPracticeSummaryBase {
+  readonly modeId: "pinpoint";
+}
+
+export interface MultiPracticeSummary extends ClickPracticeSummaryBase {
+  readonly modeId: "multi";
+}
+
+export interface HeadlinePracticeSummary extends ClickPracticeSummaryBase {
+  readonly modeId: "headline";
+}
+
+export type PracticeSummaryRecord =
+  | GridPracticeSummary
+  | PinpointPracticeSummary
+  | MultiPracticeSummary
+  | HeadlinePracticeSummary;

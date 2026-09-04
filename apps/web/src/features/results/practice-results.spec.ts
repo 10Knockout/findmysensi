@@ -25,7 +25,7 @@ describe("results terminology integrity", () => {
       "This run is stored locally. Official leaderboard verification is not enabled yet.",
     );
     expect(normalizedSource).toContain(
-      "No recent local Gridshot result found.",
+      "No recent local {modeLabel} result found.",
     );
   });
 

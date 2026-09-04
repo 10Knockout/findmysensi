@@ -17,11 +17,11 @@ describe("Trainer mode manifest", () => {
     }
   });
 
-  it("enables only grid; every other mode is present but disabled", () => {
+  it("enables the four completed click modes", () => {
     expect(isTrainerModeEnabled("grid")).toBe(true);
-    expect(isTrainerModeEnabled("pinpoint")).toBe(false);
-    expect(isTrainerModeEnabled("multi")).toBe(false);
-    expect(isTrainerModeEnabled("headline")).toBe(false);
+    expect(isTrainerModeEnabled("pinpoint")).toBe(true);
+    expect(isTrainerModeEnabled("multi")).toBe(true);
+    expect(isTrainerModeEnabled("headline")).toBe(true);
     expect(isTrainerModeEnabled("strafe")).toBe(false);
     expect(isTrainerModeEnabled("smooth-track")).toBe(false);
     expect(isTrainerModeEnabled("tempo")).toBe(false);
@@ -31,10 +31,19 @@ describe("Trainer mode manifest", () => {
     expect(isTrainerModeEnabled("not-a-real-mode")).toBe(false);
   });
 
-  it("only grid carries an adapter factory", () => {
-    expect(typeof trainerModeManifest.get("grid")?.createAdapter).toBe(
-      "function",
-    );
-    expect(trainerModeManifest.get("pinpoint")?.createAdapter).toBeUndefined();
-  });
+  it.each(["grid", "pinpoint", "multi", "headline"])(
+    "%s carries an adapter factory",
+    (modeId) => {
+      expect(typeof trainerModeManifest.get(modeId)?.createAdapter).toBe(
+        "function",
+      );
+    },
+  );
+
+  it.each(["strafe", "smooth-track", "tempo"])(
+    "%s stays disabled without an adapter factory",
+    (modeId) => {
+      expect(trainerModeManifest.get(modeId)?.createAdapter).toBeUndefined();
+    },
+  );
 });

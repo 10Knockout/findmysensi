@@ -1,6 +1,13 @@
 import { InputRingBuffer } from "./ring-buffer.js";
 
-export type InputSource = "pointerrawupdate" | "pointermove";
+export type InputSource = "pointerrawupdate" | "pointermove" | "mousemove";
+
+/**
+ * Pointer Lock defines unbounded relative motion on MouseEvent `mousemove`.
+ * Pointer Events are useful for unlocked UI, but are not the authoritative
+ * cross-browser delivery contract for a locked FPS camera.
+ */
+export const POINTER_LOCK_MOVEMENT_SOURCE = "mousemove" as const;
 
 export interface EventSourceCapability {
   readonly preferredSource: InputSource;
@@ -55,7 +62,7 @@ export function detectInputCapabilities(
 export function attachInputListener(
   target: EventTarget,
   ringBuffer: InputRingBuffer,
-  source: InputSource = "pointermove",
+  source: InputSource = POINTER_LOCK_MOVEMENT_SOURCE,
   options: InputListenerOptions = {},
 ): () => void {
   const shouldCaptureGameplayInput =
@@ -126,7 +133,7 @@ export function attachInputListener(
     pushMovement(pEv.movementX, pEv.movementY, pEv.timeStamp);
   };
 
-  const onPointerDown = (ev: Event) => {
+  const onMouseDown = (ev: Event) => {
     if (!shouldCaptureGameplayInput()) return;
     if (
       typeof (ev as { preventDefault?: () => void }).preventDefault ===
@@ -163,8 +170,10 @@ export function attachInputListener(
   };
 
   target.addEventListener(source, onPointerMove as EventListener);
-  target.addEventListener("pointerdown", onPointerDown as EventListener);
-  target.addEventListener("mousedown", preventGesture as EventListener);
+  // Pointer Lock guarantees compatibility mouse events on the lock target.
+  // Use the same Mouse Events contract for shots as for locked movement so a
+  // browser that suppresses Pointer Events while locked cannot lose clicks.
+  target.addEventListener("mousedown", onMouseDown as EventListener);
   target.addEventListener("mouseup", preventGesture as EventListener);
   target.addEventListener("click", preventGesture as EventListener);
   target.addEventListener("dblclick", preventGesture as EventListener);
@@ -179,8 +188,7 @@ export function attachInputListener(
 
   return () => {
     target.removeEventListener(source, onPointerMove as EventListener);
-    target.removeEventListener("pointerdown", onPointerDown as EventListener);
-    target.removeEventListener("mousedown", preventGesture as EventListener);
+    target.removeEventListener("mousedown", onMouseDown as EventListener);
     target.removeEventListener("mouseup", preventGesture as EventListener);
     target.removeEventListener("click", preventGesture as EventListener);
     target.removeEventListener("dblclick", preventGesture as EventListener);

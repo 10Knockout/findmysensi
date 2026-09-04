@@ -11,6 +11,7 @@ import {
 import {
   attachInputListener,
   createPointerLockController,
+  POINTER_LOCK_MOVEMENT_SOURCE,
   type PointerLockResult,
 } from "@findmysensi/input-browser";
 import { TrainerSettings, TrainerSettingsSchema } from "@findmysensi/protocol";
@@ -51,6 +52,14 @@ const EMPTY_VERIFICATION_SNAPSHOT: SensitivityInputVerificationSnapshot = {
 
 export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
   const router = useRouter();
+  const modeEntry = trainerModeManifest.get(mode);
+  const modeTitle =
+    modeEntry?.scenarioEntry.presentation.title.replace(/ \(Dev v0\)$/, "") ??
+    mode;
+  const modeDescription = modeEntry?.scenarioEntry.presentation.description;
+  const modeDurationTicks =
+    modeEntry?.scenarioEntry.definition.durationTicks ?? 60 * 128;
+  const modeDurationSeconds = Math.round(modeDurationTicks / 128);
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const controllerRef = useRef<PracticeRunController | null>(null);
@@ -71,7 +80,7 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
   const [settingsError, setSettingsError] = useState<string | null>(null);
   const [settingsAttempt, setSettingsAttempt] = useState(0);
   const [gameState, setGameState] = useState<PracticeRunState>("ready");
-  const [remainingSeconds, setRemainingSeconds] = useState(60);
+  const [remainingSeconds, setRemainingSeconds] = useState(modeDurationSeconds);
   const [score, setScore] = useState(0);
   const [hits, setHits] = useState(0);
   const [misses, setMisses] = useState(0);
@@ -162,7 +171,7 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
         setInitialConfigLoaded(true);
       } catch {
         setSettingsError(
-          "Saved trainer settings are invalid. Open Settings and save valid values before starting Gridshot.",
+          `Saved trainer settings are invalid. Open Settings and save valid values before starting ${modeTitle}.`,
         );
       }
     })();
@@ -170,11 +179,12 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
     return () => {
       active = false;
     };
-  }, [mode, router, settingsAttempt]);
+  }, [mode, modeTitle, router, settingsAttempt]);
 
   useEffect(() => {
     if (
       !initialConfigLoaded ||
+      !modeEntry?.createAdapter ||
       !runtimeConfigRef.current ||
       !canvasRef.current ||
       !containerRef.current
@@ -182,6 +192,7 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
       return;
 
     const runtimeConfig = runtimeConfigRef.current;
+    const adapter = modeEntry.createAdapter();
     const canvas = canvasRef.current;
     const container = containerRef.current;
     const renderer = createAimRenderer();
@@ -244,6 +255,7 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
     handleResize();
     const resizeObserver = new ResizeObserver(handleResize);
     resizeObserver.observe(container);
+    setRemainingSeconds(modeDurationSeconds);
 
     const controller = new PracticeRunController(
       {
@@ -280,11 +292,11 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
       },
       renderer,
       {
-        durationTicks: 60 * 128,
+        durationTicks: modeDurationTicks,
         inputGain: runtimeConfig.inputGain,
         inputBufferCapacity: runtimeConfig.inputBufferCapacity,
       },
-      trainerModeManifest.get(mode)?.createAdapter?.(),
+      adapter,
     );
 
     controllerRef.current = controller;
@@ -294,7 +306,7 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
     const detachInput = attachInputListener(
       window,
       controller.getRingBuffer(),
-      "pointermove",
+      POINTER_LOCK_MOVEMENT_SOURCE,
       {
         shouldCaptureGameplayInput: () =>
           controller.getState() === "playing" &&
@@ -349,7 +361,14 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
       if (handleResizeRef.current === handleResize)
         handleResizeRef.current = null;
     };
-  }, [mode, router, initialConfigLoaded]);
+  }, [
+    mode,
+    modeDurationSeconds,
+    modeDurationTicks,
+    modeEntry,
+    router,
+    initialConfigLoaded,
+  ]);
 
   useEffect(() => {
     if (gameState !== "paused") return;
@@ -365,14 +384,13 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
     return () => window.clearInterval(interval);
   }, [gameState, router]);
 
-  if (!(trainerModeManifest.get(mode)?.enabled ?? false)) {
+  if (!modeEntry?.enabled || !modeEntry.createAdapter) {
     return (
       <main className="grid min-h-screen place-items-center bg-zinc-950 p-6 text-zinc-100">
         <div className="max-w-lg rounded-xl border border-zinc-800 bg-zinc-900 p-6 text-center">
           <h1 className="text-xl font-bold">Mode not available yet</h1>
           <p className="mt-2 text-sm text-zinc-400">
-            Phase 2 is stabilizing Gridshot before any additional training mode
-            is exposed.
+            This training mode is not enabled in the current release.
           </p>
           <button
             onClick={() => router.replace("/app")}
@@ -392,7 +410,7 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
           role="alert"
           className="max-w-lg rounded-xl border border-red-900 bg-red-950/30 p-6"
         >
-          <h1 className="font-bold text-red-100">Gridshot cannot start</h1>
+          <h1 className="font-bold text-red-100">{modeTitle} cannot start</h1>
           <p className="mt-2 text-sm text-red-200">{settingsError}</p>
           <div className="mt-5 flex gap-3">
             <button
@@ -416,7 +434,7 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
   if (!runtimeConfig) {
     return (
       <main className="grid min-h-screen place-items-center bg-zinc-950 text-zinc-300">
-        <p className="font-mono text-sm">Loading Gridshot settings…</p>
+        <p className="font-mono text-sm">Loading {modeTitle} settings…</p>
       </main>
     );
   }
@@ -438,6 +456,11 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
         "Mouse lock was not granted. Click again and allow Pointer Lock in your browser.",
       );
       return;
+    }
+    if (!acquisition.rawGranted) {
+      setLockError(
+        "Raw mouse input could not be confirmed in this browser; training will continue on adjusted input.",
+      );
     }
 
     setCountdown(3);
@@ -482,6 +505,11 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
     if (!acquisition.locked) {
       setLockError("Mouse lock was not granted. The run remains paused.");
       return;
+    }
+    if (!acquisition.rawGranted) {
+      setLockError(
+        "Raw mouse input could not be confirmed in this browser; training will continue on adjusted input.",
+      );
     }
     controllerRef.current?.resume();
   };
@@ -529,7 +557,7 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
         id="simulation-canvas"
         className="block cursor-crosshair focus:outline-none"
         tabIndex={0}
-        aria-label="FindMySensi Gridshot simulation"
+        aria-label={`FindMySensi ${modeTitle} simulation`}
         onContextMenu={(e) => e.preventDefault()}
         onDragStart={(e) => e.preventDefault()}
       />
@@ -579,14 +607,14 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
           <div className="w-full max-w-md space-y-6 rounded-2xl border border-zinc-800 bg-zinc-900 p-8 text-center shadow-2xl">
             <div>
               <span className="rounded border border-emerald-500/30 bg-emerald-950 px-2.5 py-1 font-mono text-xs font-bold uppercase tracking-wider text-emerald-400">
-                GRIDSHOT
+                {modeTitle}
               </span>
               <h1 className="mt-3 text-3xl font-black tracking-tight text-white">
-                Gridshot
+                {modeTitle}
               </h1>
               <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                Three medium static targets. Click start to capture the mouse
-                and begin the 60-second run.
+                {modeDescription} Click start to capture the mouse and begin the{" "}
+                {modeDurationSeconds}-second run.
               </p>
             </div>
             <div className="flex gap-2">
@@ -594,7 +622,7 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
                 onClick={startCountdownAndLock}
                 className="flex-1 rounded-xl bg-emerald-400 py-4 text-lg font-black text-zinc-950 hover:bg-emerald-300"
               >
-                START GRIDSHOT
+                START {modeTitle.toUpperCase()}
               </button>
               <button
                 type="button"
@@ -611,8 +639,8 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
               </p>
             ) : null}
             <p className="font-mono text-[11px] text-zinc-500">
-              Esc releases mouse capture and pauses the run. Fullscreen is
-              recommended for best mouse precision.
+              Esc releases mouse capture and pauses the run. Raw input is used
+              when supported; ordinary Pointer Lock remains available.
             </p>
           </div>
         </div>
@@ -626,7 +654,7 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
                 PAUSED
               </span>
               <h2 className="mt-1 text-2xl font-bold text-white">
-                Gridshot paused
+                {modeTitle} paused
               </h2>
               <p className="mt-2 text-xs text-zinc-500">
                 Pause time does not advance simulation time. This run closes
@@ -696,7 +724,11 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
           snapshot={verificationSnapshot}
           sensitivity={runtimeConfig.inputGain.fmsSensitivity}
           pointerLockResult={pointerLockResult}
-          pointerLockActive={document.pointerLockElement === canvasRef.current}
+          pointerLockActive={Boolean(
+            canvasRef.current &&
+            document.pointerLockElement === canvasRef.current,
+          )}
+          inputSource={POINTER_LOCK_MOVEMENT_SOURCE}
         />
       ) : null}
     </div>
@@ -780,6 +812,7 @@ async function acquirePointerLock(
   try {
     result = await controller.requestLock(canvas, {
       unadjustedMovement: true,
+      fallbackToAdjustedMovement: true,
     });
   } catch {
     return { locked: false, rawRequested: true, rawGranted: false };
@@ -813,15 +846,17 @@ function InputVerificationOverlay({
   sensitivity,
   pointerLockResult,
   pointerLockActive,
+  inputSource,
 }: {
   snapshot: SensitivityInputVerificationSnapshot;
   sensitivity: string;
   pointerLockResult: PointerLockResult | null;
   pointerLockActive: boolean;
+  inputSource: string;
 }) {
   const rows: readonly (readonly [string, string])[] = [
     ["FMS / Aimlabs Default", sensitivity],
-    ["Input source", "pointermove (trainer path)"],
+    ["Input source", `${inputSource} (Pointer Lock contract)`],
     ["Movement events", snapshot.movementEventCount.toLocaleString()],
     [
       "Input units X / Y",

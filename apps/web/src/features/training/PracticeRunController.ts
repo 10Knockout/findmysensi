@@ -37,7 +37,10 @@ import {
   createFixedTickRunner,
   FixedTickRunner,
 } from "../../trainer/fixed-tick-runner.js";
-import { localPracticeHistory } from "./local-history.js";
+import {
+  localPracticeHistory,
+  type PracticeSummaryRecord,
+} from "./local-history.js";
 import { generateRunSeed } from "./seed.js";
 
 export type PracticeRunState =
@@ -333,12 +336,9 @@ export class PracticeRunController {
     const finalMetrics = this.adapter.computeMetrics(this.totalDurationTicks);
     const finalScore = this.adapter.computeScore(finalMetrics);
 
-    // modeId is hardcoded here (rather than this.adapter.modeId) because
-    // GridPracticeSummary is currently the only union member; this line
-    // becomes mode-driven once a second variant ships (M4).
     localPracticeHistory.save({
       id: `practice-${Date.now()}`,
-      modeId: "grid",
+      modeId: this.adapter.modeId as PracticeSummaryRecord["modeId"],
       timestamp: Date.now(),
       score: finalScore.score,
       hits: finalMetrics.hits,

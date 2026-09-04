@@ -12,6 +12,10 @@ export function PracticeResults({ mode = "grid" }: { mode?: string }) {
     null,
   );
   const routes = getPracticeResultsRoutes(mode);
+  const modeLabel = mode
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 
   useEffect(() => {
     const history = localPracticeHistory.getAll(mode);
@@ -158,7 +162,7 @@ export function PracticeResults({ mode = "grid" }: { mode?: string }) {
         </div>
       ) : (
         <div style={{ color: "#94a3b8" }}>
-          No recent local Gridshot result found.
+          No recent local {modeLabel} result found.
         </div>
       )}
 

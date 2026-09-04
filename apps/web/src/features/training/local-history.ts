@@ -3,6 +3,12 @@ import type { PracticeSummaryRecord } from "@findmysensi/trainer-runtime";
 export type { PracticeSummaryRecord };
 
 const STORAGE_KEY = "findmysensi:practice_history:v1";
+const CLICK_MODE_IDS = new Set<PracticeSummaryRecord["modeId"]>([
+  "grid",
+  "pinpoint",
+  "multi",
+  "headline",
+]);
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
@@ -18,7 +24,7 @@ function isPracticeSummaryRecord(
     typeof record.id === "string" &&
     record.id.length > 0 &&
     typeof record.modeId === "string" &&
-    record.modeId.length > 0 &&
+    CLICK_MODE_IDS.has(record.modeId as PracticeSummaryRecord["modeId"]) &&
     isFiniteNumber(record.timestamp) &&
     isFiniteNumber(record.score) &&
     isFiniteNumber(record.hits) &&

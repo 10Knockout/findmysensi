@@ -1,5 +1,6 @@
 export interface PointerLockOptions {
   unadjustedMovement?: boolean;
+  fallbackToAdjustedMovement?: boolean;
 }
 
 export interface PointerLockResult {
@@ -25,6 +26,8 @@ export class BrowserPointerLockController implements PointerLockController {
     options: PointerLockOptions = { unadjustedMovement: true },
   ): Promise<PointerLockResult> {
     const rawRequested = Boolean(options.unadjustedMovement);
+    const fallbackToAdjustedMovement =
+      options.fallbackToAdjustedMovement ?? true;
 
     if (rawRequested) {
       try {
@@ -47,8 +50,10 @@ export class BrowserPointerLockController implements PointerLockController {
         }
         return { rawRequested: true, rawGranted: this.rawGranted };
       } catch {
-        // Falling back to standard pointer lock if unadjustedMovement was rejected
         this.rawGranted = false;
+        if (!fallbackToAdjustedMovement) {
+          return { rawRequested: true, rawGranted: false };
+        }
       }
     }
 
