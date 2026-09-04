@@ -1,13 +1,16 @@
 import {
   AngleUnits,
   findHitTarget,
+  findNearestTarget,
   PitchUnits,
   PrngV1,
 } from "@findmysensi/aim-core";
 import {
+  classifyMiss,
   createGridMetricsTracker,
   GridMetrics,
   GridMetricsTracker,
+  MissDirection,
 } from "@findmysensi/analytics";
 import { Tick } from "@findmysensi/protocol";
 import {
@@ -16,21 +19,33 @@ import {
   TargetSpawnSpec,
 } from "@findmysensi/scenarios";
 import { computeGridDevScore, ScoreResult } from "@findmysensi/scoring";
-import { ModeRuntimeAdapter } from "./adapter.js";
+import { MissBreakdownCapable, ModeRuntimeAdapter } from "./adapter.js";
 
-class GridModeAdapter implements ModeRuntimeAdapter<GridMetrics> {
+function emptyMissBreakdown(): Record<MissDirection, number> {
+  return { left: 0, right: 0, up: 0, down: 0, unclear: 0 };
+}
+
+class GridModeAdapter
+  implements ModeRuntimeAdapter<GridMetrics>, MissBreakdownCapable
+{
   public readonly modeId = "grid";
   public readonly definition = GRID_DEV_V0_DEFINITION;
 
   private readonly engine = new GridScenarioEngine(GRID_DEV_V0_DEFINITION);
   private metricsTracker: GridMetricsTracker = createGridMetricsTracker();
+  private missBreakdown: Record<MissDirection, number> = emptyMissBreakdown();
 
   public initialize(prng: PrngV1): void {
     this.metricsTracker = createGridMetricsTracker();
+    this.missBreakdown = emptyMissBreakdown();
     const initialTargets = this.engine.initialize(prng);
     for (const target of initialTargets) {
       this.metricsTracker.recordTargetSpawn(target.id, 0);
     }
+  }
+
+  public getMissBreakdown(): Readonly<Record<MissDirection, number>> {
+    return this.missBreakdown;
   }
 
   public onSimulationTick(
@@ -58,6 +73,15 @@ class GridModeAdapter implements ModeRuntimeAdapter<GridMetrics> {
       }
     } else {
       this.metricsTracker.recordShot(tick, null);
+      const nearest = findNearestTarget(playerYaw, playerPitch, activeTargets);
+      if (nearest) {
+        const { direction } = classifyMiss(
+          nearest.dx,
+          nearest.dy,
+          nearest.target.radiusAngleUnits,
+        );
+        this.missBreakdown[direction]++;
+      }
     }
   }
 

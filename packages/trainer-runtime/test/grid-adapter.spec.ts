@@ -2,6 +2,7 @@ import {
   createAngleUnits,
   createPitchUnits,
   createPrngV1,
+  wrapYaw,
 } from "@findmysensi/aim-core";
 import { createTick } from "@findmysensi/protocol";
 import { describe, expect, it } from "vitest";
@@ -88,6 +89,26 @@ describe("createGridModeAdapter", () => {
         createPitchUnits(0),
       ),
     ).not.toThrow();
+  });
+
+  it("classifies a miss's direction and exposes it via getMissBreakdown", () => {
+    const adapter = createGridModeAdapter();
+    const prng = createPrngV1([1, 2, 3, 4]);
+    adapter.initialize(prng);
+
+    const target = adapter.getRenderTargets()[0]!;
+    // Aim well to the right of the target (higher yaw): overshot right, so
+    // the correction direction back to the target is "left".
+    adapter.onShot(
+      createTick(1),
+      createAngleUnits(wrapYaw(target.xAngleUnits + 200_000)),
+      createPitchUnits(target.yAngleUnits),
+      prng,
+    );
+
+    const breakdown = adapter.getMissBreakdown();
+    expect(breakdown.left).toBe(1);
+    expect(breakdown.right).toBe(0);
   });
 
   it("re-initializing resets metrics and target state for a second run", () => {

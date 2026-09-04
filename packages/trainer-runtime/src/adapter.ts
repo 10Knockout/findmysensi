@@ -1,6 +1,7 @@
 import type { AngleUnits, PitchUnits, PrngV1 } from "@findmysensi/aim-core";
 import type {
   GridMetrics,
+  MissDirection,
   SwitchTrackMetrics,
   TempoMetrics,
   TrackingMetrics,
@@ -48,4 +49,16 @@ export interface ModeRuntimeAdapter<
   computeMetrics(elapsedTicks: number): TMetrics;
 
   computeScore(metrics: TMetrics): RuntimeScoreResult<TMetrics>;
+}
+
+/**
+ * Optional capability: adapters for click-discrete modes with a meaningful
+ * spatial miss (a shot fired at open space, near a real target) can
+ * implement this to expose a "why did I miss" breakdown. Not part of
+ * ModeRuntimeAdapter itself -- modes without a spatial miss concept (Tempo's
+ * timing judgement, Smooth Track's continuous tracking) never implement it.
+ * Callers feature-detect with `"getMissBreakdown" in adapter`.
+ */
+export interface MissBreakdownCapable {
+  getMissBreakdown(): Readonly<Record<MissDirection, number>>;
 }
