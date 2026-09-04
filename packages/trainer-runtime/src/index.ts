@@ -11,3 +11,5 @@ export * from "./microshot-adapter.js";
 export * from "./reaction-adapter.js";
 export * from "./switch-track-adapter.js";
 export * from "./recommendation.js";
+export * from "./ranks.js";
+export * from "./benchmarks.js";
