@@ -1,7 +1,7 @@
 # FindMySensi — Project Roadmap & Status
 
 **Last updated:** 2026-09-04
-**Public repo HEAD:** `7ea466f` (+ uncommitted working-tree changes, see "Right Now" below)
+**Public repo HEAD:** `4196755` (M0-M11 complete and pushed)
 **Secure repo HEAD:** `cea7dca`
 
 This is the single durable reference for where FindMySensi is, why it's built the
@@ -40,122 +40,78 @@ Non-negotiable product boundaries (from the owner, not to be second-guessed):
 
 ---
 
-## 2. Right now — two live bugs from your first real manual test
+## 2. Right now — status of the two bugs from your first manual test
 
-You ran Gridshot in a real browser for the first time this session and hit two
-problems. This is exactly the kind of thing automated tests can't catch (real
-Pointer Lock and real mouse hardware don't exist in Vitest/jsdom or in
-Playwright's simulated input), so treat manual browser testing as a
-first-class verification step going forward, not an afterthought.
+### 2a. Overlay / "clicking does nothing" bug — FIXED, pushed
 
-### 2a. Overlay / "clicking does nothing" bug — root-caused, fix in progress
+Root cause was `TrainerBootstrap.tsx`'s `acquirePointerLock()` passing
+`fallbackToAdjustedMovement: false` (disabling the safe fallback) plus
+caller-side gating that checked `rawGranted` before `.locked` and destructively
+called `exitPointerLock()`. Both the flag and the gating (in
+`startCountdownAndLock()` and `handleResume()`) are fixed and pushed —
+`!rawGranted` is now a non-blocking warning, not a hard refusal. Confirmed via
+live Chrome DevTools MCP reproduction during this session.
 
-Reproduced live in a real browser session: clicking **START GRIDSHOT** with
-raw Pointer Lock unavailable causes the game to never actually start.
-`gameState` stays `"ready"`, so the pre-game card (`z-20`, no
-`pointer-events-none`) sits on top of the canvas forever — clicks land on that
-card/backdrop, never reach the game, targets never register hits. That's the
-"overlay blocking the mouse" you saw.
+### 2b. Sensitivity feels off vs. Valorant at the "same" number — STILL GATED
 
-**Root cause, confirmed by reading the code:** `TrainerBootstrap.tsx`'s
-`acquirePointerLock()` helper requests raw mouse input
-(`unadjustedMovement: true`) but passes `fallbackToAdjustedMovement: false` —
-explicitly disabling the ordinary-Pointer-Lock fallback that the underlying
-`BrowserPointerLockController` already supports safely by default. Worse, the
-caller's own gating checks `!acquisition.rawGranted` _before_ checking
-`.locked`, and actively calls `document.exitPointerLock()` to undo a lock that
-may have already succeeded. This directly contradicts the project's own
-approved Phase 2 design constraint: _"Use Pointer Lock with
-`unadjustedMovement: true` when supported and ordinary Pointer Lock as the
-fallback."_ The code currently does the opposite — raw or nothing.
+Your report: FMS `0.175` (claimed-equal to Valorant `0.125`) felt a little
+fast, your own estimate ~`0.16`–`0.165`. Math audit found the Q20 scaler
+internally correct against the golden vector; a real ~6% gap, if it survives
+re-test, is either the `0.05`/`0.07` constants being slightly off real
+Aimlabs/Valorant behavior, or **the original test predating the Bug 2a
+Pointer Lock fix** — meaning it may have compared FMS on OS-adjusted input
+against Valorant's raw input, which alone would produce exactly this kind of
+consistent overshoot.
 
-**Fix applied so far (one edit, uncommitted):** changed
-`fallbackToAdjustedMovement: false` → `true` in `TrainerBootstrap.tsx`.
-
-**Still needed:**
-
-- Fix the caller-side gating in `startCountdownAndLock()` and the identical
-  pattern in `handleResume()`: check `.locked` first (the real blocking
-  condition), and treat `!rawGranted` as a **non-blocking warning** ("raw
-  input unconfirmed, training will continue on adjusted input") rather than a
-  hard refusal.
-- Reconcile with the **uncommitted external changes already sitting in the
-  working tree** on `pointer-lock.ts`, `event-source.ts`, and
-  `capabilities.spec.ts` (see below) — someone/something has already been
-  editing exactly this area. Read those diffs before touching this again;
-  they may already contain a fix, a different fix, or work-in-progress that
-  would conflict with mine.
-- Re-verify live in a real browser (not just automated tests) once done.
-
-### 2b. Sensitivity feels off vs. Valorant at the "same" number
-
-Your report: FMS at `0.125` feels **slower** than Valorant's own `0.125` —
-expected, since FMS uses the Aimlabs numeric scale (0.05°/count) which is
-lower than Valorant's (0.07°/count), so equal numbers are never equal feel by
-design. But then: FMS at `0.175` (the value our golden vector claims equals
-Valorant `0.125`) feels _close to_ what real Aimlabs `0.175` should feel like,
-but **a little too fast** — your own estimate is the correct value is closer
-to `0.16`–`0.165`. That's roughly a 5-8% overshoot in our effective gain, not
-a wildly broken architecture.
-
-**Status: math audited, not yet re-tested.** `browser-gain.ts`'s Q20 scaler is
-internally correct: `degreesPerInputUnit = fmsSensitivity × 0.05`, and the
-golden vector checks out exactly (`0.175 × 0.05 = 0.00875°/count =
-0.125 × 0.07`, Valorant's own formula). The code is not miscalculating its
-own constants. If a real ~6% gap exists, it's either (a) the `0.05`/`0.07`
-constants themselves being slightly off real Aimlabs/Valorant behavior, or
-(b) **the original manual test may have been run before Bug 1's Pointer Lock
-fix** — meaning it could have silently compared FMS on OS-adjusted/
-accelerated movement against Valorant's raw input, which alone could produce
-exactly this kind of small, consistent overshoot. Bug 1 is now fixed and
-pushed (`64bbdab`). **Re-test FMS `0.175` vs Aimlabs `0.175` @ 2400 DPI now,
-on the current build, before touching any sensitivity constant.** Do not
-patch `0.05`/`0.07` on guesswork.
-
-Your instruction: _"you can replace the sensi system and make it the same as
-the Aimlabs one, as I think it's easier to make."_ Recommendation once I'm
-back in this: audit what's actually different between our formula and
-Aimlabs' real one before deciding whether to patch the existing arbitrary-
-precision engine or genuinely replace it — a ~6% error smells like a
-calibration constant or a rounding/DPI-normalization step, not necessarily a
-wrong architecture, but I'll confirm rather than assume once I look.
-
-**Do not touch further until you say go** — this is exactly the P0,
-frozen-and-verified system the whole project is built around; it gets a
-careful audit, not a guess.
+**Do not touch `0.05`/`0.07` until you re-test on the current (2a-fixed)
+build and say go.** This is the P0 frozen-and-verified system the whole
+product is built around — a careful audit, not a guess, and it's your call to
+make after you've actually felt the corrected build.
 
 ---
 
 ## 3. What's actually done (verified, tested, pushed)
 
-| Milestone    | What                                                                                                                                                                                                                                                                                                                                                                                                                                | Status                                                                                                                                                                            |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0           | Both repos green (format/lint/typecheck/test/build/E2E)                                                                                                                                                                                                                                                                                                                                                                             | ✅ Done, pushed                                                                                                                                                                   |
-| M1           | Sensitivity architecture verified; polling-rate setting removed entirely, replaced with an always-safe 8K-capable buffer                                                                                                                                                                                                                                                                                                            | ✅ Done, pushed — **now in question, see 2b**                                                                                                                                     |
-| M2           | Gridshot frozen: regression tests for duration/overflow gaps closed, dead scoring code removed                                                                                                                                                                                                                                                                                                                                      | ✅ Done, pushed                                                                                                                                                                   |
-| M3           | Shared `ModeRuntimeAdapter` runtime built and proven against Gridshot with zero behavior change; `PracticeSummaryRecord` is now a discriminated union; routing goes through a `trainerModeManifest` instead of hardcoded `"grid"` checks                                                                                                                                                                                            | ✅ Done, pushed                                                                                                                                                                   |
-| M4 (partial) | Pinpoint and Multi adapters built and tested. **Found and fixed a real crash bug** in the process: Pinpoint/Multi/Headline all stored unwrapped (possibly negative) target x-coordinates, which throws inside the collision system on the first shot roughly half the time — invisible until now because nothing before exercised these engines through the real hit-test path. Fixed at the source (wrap at spawn, matching Grid). | 🟡 Pinpoint + Multi adapters done; Headline adapter, results-union extension, `PracticeRunController` modeId generalization, manifest enablement, and UI copy audit still pending |
+M0 through M11 are complete and pushed to `origin main`. For the exact commit
+list, run `git log --oneline` in the public repo. Highlights beyond the
+original M4 checkpoint:
 
-Public repo commit log for this session, oldest to newest:
+- **All 10 exercise modes** (Grid, Pinpoint, Multi, Headline, Strafe, Smooth
+  Track, Tempo, Microshot, Reaction, Switch Track) have real
+  `ModeRuntimeAdapter` implementations, individually tested, wired into
+  `trainerModeManifest`, playable end-to-end.
+- **Miss-direction classification** (`classifyMiss` in `@findmysensi/analytics`)
+  wired into every click-discrete mode via the optional `MissBreakdownCapable`
+  capability — feature-detected, not forced onto tracking/tempo modes that
+  have no spatial-miss concept.
+- **Analytics** (M7): `recommendNextExercise` — averages real
+  `accuracyPercentage` per click-family mode, returns `null` below 2 distinct
+  modes of history rather than fabricating a suggestion.
+- **Ranks + benchmarks** (M8): 9-tier rank system (`ranks.ts`, Iron→Elite) on
+  a 0-100 accuracy scale, explicitly provisional (no real population data
+  yet); skill-category benchmarks (`benchmarks.ts`) grouped by the scenario
+  registry's real `presentation.category` field, `null` for categories
+  without qualifying data.
+- **Workouts** (M9): 4 curated fixed sequences (`workouts.ts`), `/app/workouts`
+  route. No user-generated workouts (product boundary).
+- **Find My Sensi** (M10): `find-my-sensi.ts` — 5-candidate generation
+  symmetric around a base sensitivity, deterministic counterbalanced test
+  order, LOW/MODERATE/HIGH confidence recommendation from real measured
+  accuracy only. **Kernel only — live multi-block UI not yet wired**, needs
+  `PracticeRunController` integration per candidate block; deferred as
+  disproportionate to remaining session budget.
+- **Sensi Battle** (M11): `sensi-battle.ts` — counterbalanced A/B block order,
+  objective decision rule, explicit `COULD_NOT_TELL` outcome for sub-3-point
+  accuracy gaps rather than fabricating a winner. **Same UI-wiring deferral
+  as Find My Sensi.**
+- **Mouse Swap** (M11): consolidated onto one game-agnostic
+  `calculateMouseSwap(sensitivity, oldMouse, newMouse)` — pure DPI-ratio math,
+  no saved profiles, no mouse hardware database (explicitly out of scope).
+  Replaced a dead `Math.random()`-based legacy preference-calibration
+  scaffold that had zero UI callers.
 
-```
-11c3b8f  feat(sensitivity): arbitrary-precision conversion, verified profiles  [pre-session]
-911a538  style: normalize CRLF to LF in 11 files                              [M0]
-9501d71  feat(input): remove polling-rate setting, safe 8K buffer            [M1]
-e39e6f0  test(grid): freeze duration/overflow regressions, remove dead code   [M2]
-5efee91  feat(trainer-runtime): scaffold package, ModeRuntimeAdapter          [M3]
-9e48db9  feat(trainer-runtime): discriminated-union PracticeSummaryRecord     [M3]
-4e48bcf  feat(trainer-runtime): createGridModeAdapter                        [M3]
-a708583  refactor(training): PracticeRunController is adapter-driven         [M3]
-8f18fef  docs: M3 spec + implementation plan                                 [M3]
-55bbca3  feat(trainer): route dispatch via trainerModeManifest               [M3]
-c88f747  feat(analytics): FlickMetricsTracker.recordExpiration               [M4]
-0211633  fix(scenarios): wrap spawned x-coordinates (real crash bug fix)     [M4]
-7ea466f  feat(trainer-runtime): createMultiModeAdapter                       [M4]  ← current HEAD
-```
-
-Secure repo: only M0's formatting fix (`cea7dca`). No feature work there yet
-— everything so far has been public-repo sensitivity/trainer work.
+Secure repo: only M0's formatting fix. No feature work there yet — everything
+so far has been public-repo sensitivity/trainer work.
 
 ---
 
@@ -169,31 +125,20 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started
 - ✅ **M2** — Gridshot freeze (regression coverage before touching shared code)
 - ✅ **M3** — Shared multi-mode trainer runtime (adapter interface, results
   union, mode-manifest routing) — Gridshot only, proven correct
-- 🟡 **M4** — First static modes: Pinpoint (done), Multi (done), Headline
-  (pending) wired onto the M3 runtime as real playable modes, including
-  results-union extension and route enablement
-- ⬜ **M5** — Dynamic modes: Strafe, Smooth Track, Tempo. These have a
-  genuinely different interaction model each (moving targets, continuous
-  crosshair tracking, beat judgement) — audited in M3 but deliberately not
-  built, since the adapter interface needed to prove itself against real
-  modes first. **Known landmine to fix on the way in:** Strafe and Tempo
-  almost certainly have the same unwrapped-xAngleUnits crash bug fixed for
-  Pinpoint/Multi/Headline in M4 — confirmed via grep that neither wraps its
-  spawn x-coordinate. Fix before wiring, not after.
-- ⬜ **M6** — New final modes: Microshot, Reaction, Switch Track (not built at
-  all yet — no engine, no scoring, nothing). Original designs needed, not
-  ports of anything existing.
-- ⬜ **M7** — Analytics: "why did I miss" classification, weakness detection,
+- ✅ **M4** — First static modes: Pinpoint, Multi, Headline, all wired onto
+  the M3 runtime as real playable modes
+- ✅ **M5** — Dynamic modes: Strafe, Smooth Track, Tempo — each modeled with
+  its own metrics family, not forced into `ClickMetrics`
+- ✅ **M6** — New final modes: Microshot, Reaction, Switch Track — original
+  designs, fully built (engine, scoring, adapter)
+- ✅ **M7** — Analytics: miss-direction classification, weakness detection,
   recommended-next-exercise — all deterministic, no fake advice
-- ⬜ **M8** — Benchmarks + rank system (Iron→Elite, original names/art)
-- ⬜ **M9** — Workouts / playlists / progressions (fixed 10-exercise catalog
-  only, no UGC)
-- ⬜ **M10** — Find My Sensi: replace the current preference-oriented
-  `Math.random()`-based scaffold with real performance-based calibration
-  (coarse → acclimation → precision/flick/tracking tests → counterbalanced
-  confirmation → recommendation with LOW/MODERATE/HIGH confidence)
-- ⬜ **M11** — Sensi Battle (A/B objective comparison) + simple Mouse Swap
-  (DPI-only, no saved profiles)
+- ✅ **M8** — Benchmarks + rank system (Iron→Elite, provisional v1 thresholds)
+- ✅ **M9** — Workouts / playlists (fixed 4-workout catalog, no UGC)
+- ✅ **M10** — Find My Sensi calibration kernel (real performance-based,
+  counterbalanced, confidence-scored) — **UI wiring still pending**
+- ✅ **M11** — Sensi Battle kernel + simple Mouse Swap (DPI-only, no saved
+  profiles) — **Sensi Battle UI wiring still pending**
 - ⬜ **M12** — Profile cosmetics: avatars, frames, titles, ~20-30 achievements
 - ⬜ **M13** — Full frontend redesign: premium pre-login marketing site
   (WebGL/3D allowed there, with reduced-motion fallback), polished
@@ -206,6 +151,15 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started
 - ⬜ **M16** — Full QA / performance / security pass (potato-PC benchmarking,
   security headers, rate limits)
 - ⬜ **M17** — Final release
+
+**Outstanding UI-wiring debt (both from calibration kernels, same root
+cause):** Find My Sensi and Sensi Battle both need a live multi-block practice
+flow — run N (or 2) short blocks back-to-back at different sensitivities,
+collect real `accuracyPercentage` per block, then call the already-built
+`recommendSensitivity`/`decideBattle`. This needs `PracticeRunController` to
+support a sequenced multi-block session (it currently runs one block per
+route load). Worth its own small spec before building — not a "just wire it
+up" task.
 
 ---
 
@@ -231,8 +185,13 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started
   every tick, click-discrete modes no-op it), `onShot(tick, yaw, pitch, prng)`
   (fires per discrete shot), `getRenderTargets()`, `computeMetrics
 (elapsedTicks)`, `computeScore(metrics)`. `ClickMetrics = GridMetrics` is
-  the shared shape for Grid/Pinpoint/Multi/Headline/Strafe; Smooth Track and
-  Tempo will need their own metrics families when M5 gets there.
+  the shared shape for Grid/Pinpoint/Multi/Headline/Strafe; Smooth Track,
+  Tempo, and Switch Track each have their own metrics family.
+- **`MissBreakdownCapable`** — optional, feature-detected capability
+  (`getMissBreakdown(): Record<MissDirection, number>`), not part of the base
+  adapter interface. Implemented by every click-discrete adapter; deliberately
+  absent from Smooth Track/Tempo/Switch Track, which have no spatial-miss
+  concept.
 
 ---
 
@@ -264,17 +223,13 @@ proof automated tests alone miss real hardware/browser behavior.
 
 ## 7. What needs a decision from you, not a guess
 
-1. **§2a fix approach** — is "warn but don't block" the right call for
-   unconfirmed raw input, or would you rather the game only ever run with
-   confirmed raw input (accepting some users can't play at all)? Current plan
-   assumes warn-and-continue, matching the project's own documented Phase 2
-   intent, but flagging since it trades off strict precision for playability.
-2. **§2b approach** — audit-and-patch the existing Decimal/Q20 engine, or a
-   genuine replacement "made the same as Aimlabs"? Need to actually diff our
-   formula against Aimlabs' real one before recommending either way.
-3. **The uncommitted external changes** in the working tree right now
-   (`SettingsClient.tsx`, `InGameSettingsModal.tsx`, `pointer-lock.ts`,
-   `event-source.ts`, `sensitivity-verification.md`, `next.config.mjs`) need
-   to be reviewed with you before I build anything more on top of them — I
-   don't know yet whether they're your own in-progress fix, something else's
-   work, or leftover experimentation.
+1. **§2b re-test** — feel out FMS `0.175` vs. Aimlabs `0.175` @ 2400 DPI on
+   the current (2a-fixed) build before any `0.05`/`0.07` constant gets
+   touched. Your call once you've felt it.
+2. **Find My Sensi / Sensi Battle live UI** — worth a dedicated
+   `PracticeRunController` multi-block spec before building (see §4), rather
+   than bolting a sequenced flow onto the single-block controller as-is.
+3. **M12-M13 scope** — cosmetics (avatars/frames/titles/achievements) and the
+   frontend redesign are both large, subjective, high-surface-area pieces.
+   Flag before building anything you'd want to art-direct yourself rather
+   than have picked for you.
