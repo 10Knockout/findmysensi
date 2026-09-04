@@ -2,6 +2,7 @@ import {
   createAngleUnits,
   createPitchUnits,
   createPrngV1,
+  wrapYaw,
 } from "@findmysensi/aim-core";
 import { createTick } from "@findmysensi/protocol";
 import { describe, expect, it } from "vitest";
@@ -104,6 +105,20 @@ describe("createMultiModeAdapter", () => {
     const metrics = adapter.computeMetrics(tick);
     expect(metrics.hits).toBe(60);
     expect(adapter.getRenderTargets().length).toBe(0);
+  });
+
+  it("classifies a miss's direction via getMissBreakdown", () => {
+    const adapter = createMultiModeAdapter();
+    const prng = createPrngV1([1, 2, 3, 4]);
+    adapter.initialize(prng);
+    const target = adapter.getRenderTargets()[0]!;
+    adapter.onShot(
+      createTick(1),
+      createAngleUnits(wrapYaw(target.xAngleUnits + 100_000)),
+      createPitchUnits(target.yAngleUnits),
+      prng,
+    );
+    expect(adapter.getMissBreakdown().left).toBe(1);
   });
 
   it("re-initializing resets metrics and target state for a second run", () => {

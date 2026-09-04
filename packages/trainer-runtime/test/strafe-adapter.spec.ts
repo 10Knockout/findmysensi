@@ -2,6 +2,7 @@ import {
   createAngleUnits,
   createPitchUnits,
   createPrngV1,
+  wrapYaw,
 } from "@findmysensi/aim-core";
 import { createTick } from "@findmysensi/protocol";
 import { describe, expect, it } from "vitest";
@@ -72,6 +73,20 @@ describe("createStrafeModeAdapter", () => {
       prng,
     );
     expect(adapter.computeScore(adapter.computeMetrics(3)).score).toBe(950);
+  });
+
+  it("classifies a miss's direction via getMissBreakdown", () => {
+    const adapter = createStrafeModeAdapter();
+    const prng = createPrngV1([1, 2, 3, 4]);
+    adapter.initialize(prng);
+    const target = adapter.getRenderTargets()[0]!;
+    adapter.onShot(
+      createTick(1),
+      createAngleUnits(wrapYaw(target.xAngleUnits + 100_000)),
+      createPitchUnits(target.yAngleUnits),
+      prng,
+    );
+    expect(adapter.getMissBreakdown().left).toBe(1);
   });
 
   it("resets metrics on re-initialization", () => {

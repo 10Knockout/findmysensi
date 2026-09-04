@@ -14,4 +14,18 @@ describe("Microshot adapter", () => {
     expect(adapter.getRenderTargets()[0]!.id).not.toBe(first.id);
     expect(adapter.computeMetrics(128).hits).toBe(1);
   });
+
+  it("classifies a miss's direction via getMissBreakdown", () => {
+    const adapter = createMicroshotModeAdapter();
+    const prng = createPrngV1([1, 2, 3, 4]);
+    adapter.initialize(prng);
+    const target = adapter.getRenderTargets()[0]!;
+    adapter.onShot(
+      createTick(1),
+      target.xAngleUnits + 50_000,
+      target.yAngleUnits,
+      prng,
+    );
+    expect(adapter.getMissBreakdown().left).toBe(1);
+  });
 });

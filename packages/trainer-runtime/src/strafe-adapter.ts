@@ -1,13 +1,16 @@
 import {
   AngleUnits,
   findHitTarget,
+  findNearestTarget,
   PitchUnits,
   PrngV1,
 } from "@findmysensi/aim-core";
 import {
+  classifyMiss,
   createFlickMetricsTracker,
   FlickMetricsTracker,
   GridMetrics,
+  MissDirection,
 } from "@findmysensi/analytics";
 import { Tick } from "@findmysensi/protocol";
 import {
@@ -16,19 +19,31 @@ import {
   TargetSpawnSpec,
 } from "@findmysensi/scenarios";
 import { computeStrafeDevScore, ScoreResult } from "@findmysensi/scoring";
-import { ModeRuntimeAdapter } from "./adapter.js";
+import { MissBreakdownCapable, ModeRuntimeAdapter } from "./adapter.js";
 
-class StrafeModeAdapter implements ModeRuntimeAdapter<GridMetrics> {
+function emptyMissBreakdown(): Record<MissDirection, number> {
+  return { left: 0, right: 0, up: 0, down: 0, unclear: 0 };
+}
+
+class StrafeModeAdapter
+  implements ModeRuntimeAdapter<GridMetrics>, MissBreakdownCapable
+{
   public readonly modeId = "strafe";
   public readonly definition = STRAFE_DEV_V0_DEFINITION;
   private readonly engine = new StrafeScenarioEngine(STRAFE_DEV_V0_DEFINITION);
   private metricsTracker: FlickMetricsTracker = createFlickMetricsTracker();
+  private missBreakdown: Record<MissDirection, number> = emptyMissBreakdown();
 
   public initialize(prng: PrngV1): void {
     this.metricsTracker = createFlickMetricsTracker();
+    this.missBreakdown = emptyMissBreakdown();
     for (const target of this.engine.initialize(prng, 0)) {
       this.metricsTracker.recordTargetSpawn(target.id, 0);
     }
+  }
+
+  public getMissBreakdown(): Readonly<Record<MissDirection, number>> {
+    return this.missBreakdown;
   }
 
   public onSimulationTick(
@@ -45,13 +60,19 @@ class StrafeModeAdapter implements ModeRuntimeAdapter<GridMetrics> {
     playerPitch: PitchUnits,
     prng: PrngV1,
   ): void {
-    const hitTarget = findHitTarget(
-      playerYaw,
-      playerPitch,
-      this.engine.getPositionsForHitTest(),
-    );
+    const positions = this.engine.getPositionsForHitTest();
+    const hitTarget = findHitTarget(playerYaw, playerPitch, positions);
     if (!hitTarget) {
       this.metricsTracker.recordShot(tick, null);
+      const nearest = findNearestTarget(playerYaw, playerPitch, positions);
+      if (nearest) {
+        const { direction } = classifyMiss(
+          nearest.dx,
+          nearest.dy,
+          nearest.target.radiusAngleUnits,
+        );
+        this.missBreakdown[direction]++;
+      }
       return;
     }
 

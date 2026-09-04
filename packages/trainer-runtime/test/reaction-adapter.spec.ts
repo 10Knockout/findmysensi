@@ -29,4 +29,26 @@ describe("Reaction adapter", () => {
     expect(metrics.hits).toBe(1);
     expect(metrics.avgAcquisitionTicks).toBeGreaterThan(0);
   });
+
+  it("classifies a miss's direction via getMissBreakdown", () => {
+    const adapter = createReactionModeAdapter();
+    const prng = createPrngV1([1, 2, 3, 4]);
+    adapter.initialize(prng);
+    let tick = 0;
+    while (
+      adapter.getRenderTargets().length === 0 &&
+      tick <= REACTION_MAX_DELAY_TICKS
+    ) {
+      adapter.onSimulationTick(createTick(tick), 0, 0);
+      tick++;
+    }
+    const target = adapter.getRenderTargets()[0]!;
+    adapter.onShot(
+      createTick(tick + 10),
+      target.xAngleUnits + 50_000,
+      target.yAngleUnits,
+      prng,
+    );
+    expect(adapter.getMissBreakdown().left).toBe(1);
+  });
 });

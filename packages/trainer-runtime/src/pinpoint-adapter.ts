@@ -1,13 +1,16 @@
 import {
   AngleUnits,
   findHitTarget,
+  findNearestTarget,
   PitchUnits,
   PrngV1,
 } from "@findmysensi/aim-core";
 import {
+  classifyMiss,
   createFlickMetricsTracker,
   FlickMetricsTracker,
   GridMetrics,
+  MissDirection,
 } from "@findmysensi/analytics";
 import { Tick } from "@findmysensi/protocol";
 import {
@@ -16,9 +19,15 @@ import {
   TargetSpawnSpec,
 } from "@findmysensi/scenarios";
 import { computePinpointDevScore, ScoreResult } from "@findmysensi/scoring";
-import { ModeRuntimeAdapter } from "./adapter.js";
+import { MissBreakdownCapable, ModeRuntimeAdapter } from "./adapter.js";
 
-class PinpointModeAdapter implements ModeRuntimeAdapter<GridMetrics> {
+function emptyMissBreakdown(): Record<MissDirection, number> {
+  return { left: 0, right: 0, up: 0, down: 0, unclear: 0 };
+}
+
+class PinpointModeAdapter
+  implements ModeRuntimeAdapter<GridMetrics>, MissBreakdownCapable
+{
   public readonly modeId = "pinpoint";
   public readonly definition = PINPOINT_DEV_V0_DEFINITION;
 
@@ -27,14 +36,20 @@ class PinpointModeAdapter implements ModeRuntimeAdapter<GridMetrics> {
   );
   private metricsTracker: FlickMetricsTracker = createFlickMetricsTracker();
   private prng: PrngV1 | null = null;
+  private missBreakdown: Record<MissDirection, number> = emptyMissBreakdown();
 
   public initialize(prng: PrngV1): void {
     this.prng = prng;
     this.metricsTracker = createFlickMetricsTracker();
+    this.missBreakdown = emptyMissBreakdown();
     const initialTargets = this.engine.initialize(prng, 0);
     for (const target of initialTargets) {
       this.metricsTracker.recordTargetSpawn(target.id, 0);
     }
+  }
+
+  public getMissBreakdown(): Readonly<Record<MissDirection, number>> {
+    return this.missBreakdown;
   }
 
   public onSimulationTick(
@@ -70,6 +85,15 @@ class PinpointModeAdapter implements ModeRuntimeAdapter<GridMetrics> {
       }
     } else {
       this.metricsTracker.recordShot(tick, null);
+      const nearest = findNearestTarget(playerYaw, playerPitch, activeTargets);
+      if (nearest) {
+        const { direction } = classifyMiss(
+          nearest.dx,
+          nearest.dy,
+          nearest.target.radiusAngleUnits,
+        );
+        this.missBreakdown[direction]++;
+      }
     }
   }
 

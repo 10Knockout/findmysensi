@@ -98,6 +98,20 @@ describe("createPinpointModeAdapter", () => {
     expect(result.score).toBe(2250);
   });
 
+  it("classifies a miss's direction via getMissBreakdown", () => {
+    const adapter = createPinpointModeAdapter();
+    const prng = createPrngV1([1, 2, 3, 4]);
+    adapter.initialize(prng);
+    const target = adapter.getRenderTargets()[0]!;
+    adapter.onShot(
+      createTick(1),
+      createAngleUnits(wrapYaw(target.xAngleUnits + 100_000)),
+      createPitchUnits(target.yAngleUnits),
+      prng,
+    );
+    expect(adapter.getMissBreakdown().left).toBe(1);
+  });
+
   it("re-initializing resets metrics and target state for a second run", () => {
     const adapter = createPinpointModeAdapter();
     const prngA = createPrngV1([1, 2, 3, 4]);
