@@ -2,6 +2,17 @@
 if (process.env.NODE_ENV === "production" && process.env.USE_MOCK_API) {
   throw new Error("USE_MOCK_API must never be enabled in production.");
 }
+// NOTE: API_URL is required in production (must point at the deployed
+// private backend API's origin) -- see docs/DEPLOYMENT.md. It is
+// deliberately NOT enforced with a hard throw here: unlike the backend's
+// own required-env-var guards (which only run at request time, never
+// during a type-check-only build step), this file is *executed* by
+// `next build` itself, so a throw here would also break local/CI builds
+// that legitimately verify the frontend compiles without a live backend
+// deployed. Omitting API_URL in a real deployment fails loudly and
+// immediately (every /api/* call 502s against an unreachable localhost
+// target) rather than silently -- see DEPLOYMENT.md's pre-deploy
+// checklist for the actual enforcement.
 
 const nextConfig = {
   // The development indicator is a clickable bottom-left overlay. Gridshot

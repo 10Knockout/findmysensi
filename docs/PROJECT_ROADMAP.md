@@ -139,10 +139,16 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started
   counterbalanced, confidence-scored) — **UI wiring still pending**
 - ✅ **M11** — Sensi Battle kernel + simple Mouse Swap (DPI-only, no saved
   profiles) — **Sensi Battle UI wiring still pending**
-- ⬜ **M12** — Profile cosmetics: avatars, frames, titles, ~20-30 achievements
+- ✅ **M12** — Profile cosmetics: avatars (12 free presets), frames + titles
+  (derived from `RANK_TIERS`), 25 real deterministic achievements. New
+  `/app/profile` route.
 - ⬜ **M13** — Full frontend redesign: premium pre-login marketing site
   (WebGL/3D allowed there, with reduced-motion fallback), polished
-  authenticated dashboard — trainer itself stays Canvas2D-only
+  authenticated dashboard — trainer itself stays Canvas2D-only.
+  **Deliberately skipped for now (your call, 2026-09-04):** underspecified
+  vs. M0-M12 (no brand direction in the brief beyond "premium"), you chose
+  to defer it rather than have me guess a visual identity. Revisit with
+  reference sites/mockups or explicit art direction when ready.
 - ⬜ **M14** — Serverless deployment: public + secure Vercel projects, Turso,
   Resend, same-origin `/api/v1/*` rewrite
 - ⬜ **M15** — Verified Gridshot competition pipeline (server-issued ticket →
