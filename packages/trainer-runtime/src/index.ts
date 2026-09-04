@@ -13,3 +13,4 @@ export * from "./switch-track-adapter.js";
 export * from "./recommendation.js";
 export * from "./ranks.js";
 export * from "./benchmarks.js";
+export * from "./workouts.js";
