@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { BrowserApiClient } from "@findmysensi/api-client";
 import { TrainerSettings, TrainerSettingsSchema } from "@findmysensi/protocol";
 import type { SessionUser } from "@findmysensi/protocol";
+import { recommendNextExercise } from "@findmysensi/trainer-runtime";
+import { localPracticeHistory } from "../../src/features/training/local-history.js";
 import { QuickSetupModal } from "../../src/features/onboarding/QuickSetupModal.js";
 
 const TRAINING_MODES = [
@@ -40,6 +42,15 @@ export default function AppDashboardPage() {
     useState<TrainerSettings | null>(null);
   const [showQuickSetup, setShowQuickSetup] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [recommendation, setRecommendation] = useState<{
+    modeId: string;
+    reason: string;
+  } | null>(null);
+
+  useEffect(() => {
+    // Local-only, per-device recommendation from real practice history.
+    setRecommendation(recommendNextExercise(localPracticeHistory.getAll()));
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -136,6 +147,26 @@ export default function AppDashboardPage() {
             </button>
           </div>
         </header>
+
+        {recommendation ? (
+          <div className="mb-8 rounded-xl border border-cyan-500/30 bg-cyan-950/20 p-4">
+            <p className="font-mono text-xs font-bold uppercase tracking-widest text-cyan-400">
+              Recommended next
+            </p>
+            <p className="mt-1 text-sm text-zinc-200">
+              Train{" "}
+              <Link
+                href={`/app/train/${recommendation.modeId}`}
+                className="font-bold text-cyan-300 underline hover:text-cyan-200"
+              >
+                {TRAINING_MODES.find(
+                  ([id]) => id === recommendation.modeId,
+                )?.[1] ?? recommendation.modeId}
+              </Link>{" "}
+              next. {recommendation.reason}
+            </p>
+          </div>
+        ) : null}
 
         <section>
           <p className="mb-2 font-mono text-xs font-bold uppercase tracking-[0.25em] text-emerald-400">
