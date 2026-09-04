@@ -6,7 +6,11 @@ import { useRouter } from "next/navigation";
 import { BrowserApiClient } from "@findmysensi/api-client";
 import { TrainerSettings, TrainerSettingsSchema } from "@findmysensi/protocol";
 import type { SessionUser } from "@findmysensi/protocol";
-import { recommendNextExercise } from "@findmysensi/trainer-runtime";
+import {
+  computeSkillBenchmarks,
+  recommendNextExercise,
+  type SkillBenchmarks,
+} from "@findmysensi/trainer-runtime";
 import { localPracticeHistory } from "../../src/features/training/local-history.js";
 import { QuickSetupModal } from "../../src/features/onboarding/QuickSetupModal.js";
 
@@ -46,10 +50,13 @@ export default function AppDashboardPage() {
     modeId: string;
     reason: string;
   } | null>(null);
+  const [benchmarks, setBenchmarks] = useState<SkillBenchmarks | null>(null);
 
   useEffect(() => {
-    // Local-only, per-device recommendation from real practice history.
-    setRecommendation(recommendNextExercise(localPracticeHistory.getAll()));
+    // Local-only, per-device data from real practice history.
+    const history = localPracticeHistory.getAll();
+    setRecommendation(recommendNextExercise(history));
+    setBenchmarks(computeSkillBenchmarks(history));
   }, []);
 
   useEffect(() => {
@@ -165,6 +172,35 @@ export default function AppDashboardPage() {
               </Link>{" "}
               next. {recommendation.reason}
             </p>
+          </div>
+        ) : null}
+
+        {benchmarks &&
+        Object.values(benchmarks).some((entry) => entry !== null) ? (
+          <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {(
+              Object.entries(benchmarks) as [
+                string,
+                (typeof benchmarks)[keyof typeof benchmarks],
+              ][]
+            ).map(([category, entry]) =>
+              entry ? (
+                <div
+                  key={category}
+                  className="rounded-xl border border-zinc-800 bg-zinc-900 p-4"
+                >
+                  <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                    {category}
+                  </p>
+                  <p className="mt-1 text-lg font-black text-white">
+                    {entry.rank.name}
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    {entry.averageAccuracyPercentage.toFixed(1)}% accuracy
+                  </p>
+                </div>
+              ) : null,
+            )}
           </div>
         ) : null}
 
