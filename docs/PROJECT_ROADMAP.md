@@ -98,12 +98,19 @@ but **a little too fast** — your own estimate is the correct value is closer
 to `0.16`–`0.165`. That's roughly a 5-8% overshoot in our effective gain, not
 a wildly broken architecture.
 
-**Status: not yet investigated.** This needs a careful re-audit of the Q20
-fixed-point browser-gain scaler (`packages/sensitivity/src/browser-gain.ts`)
-and the DPI/counts-per-360 math, ideally cross-checked against
-`docs/evidence/sensitivity-verification.md` — which is _also_ one of the
-files with uncommitted external changes right now, so it may already reflect
-someone's in-progress recalibration attempt. Read that diff first.
+**Status: math audited, not yet re-tested.** `browser-gain.ts`'s Q20 scaler is
+internally correct: `degreesPerInputUnit = fmsSensitivity × 0.05`, and the
+golden vector checks out exactly (`0.175 × 0.05 = 0.00875°/count =
+0.125 × 0.07`, Valorant's own formula). The code is not miscalculating its
+own constants. If a real ~6% gap exists, it's either (a) the `0.05`/`0.07`
+constants themselves being slightly off real Aimlabs/Valorant behavior, or
+(b) **the original manual test may have been run before Bug 1's Pointer Lock
+fix** — meaning it could have silently compared FMS on OS-adjusted/
+accelerated movement against Valorant's raw input, which alone could produce
+exactly this kind of small, consistent overshoot. Bug 1 is now fixed and
+pushed (`64bbdab`). **Re-test FMS `0.175` vs Aimlabs `0.175` @ 2400 DPI now,
+on the current build, before touching any sensitivity constant.** Do not
+patch `0.05`/`0.07` on guesswork.
 
 Your instruction: _"you can replace the sensi system and make it the same as
 the Aimlabs one, as I think it's easier to make."_ Recommendation once I'm
