@@ -10,3 +10,4 @@ export * from "./tempo-adapter.js";
 export * from "./microshot-adapter.js";
 export * from "./reaction-adapter.js";
 export * from "./switch-track-adapter.js";
+export * from "./recommendation.js";
