@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BrowserApiClient } from "@findmysensi/api-client";
-import type { SessionUser } from "@findmysensi/protocol";
+import type { ProfileSettings, SessionUser } from "@findmysensi/protocol";
 import {
   ACHIEVEMENT_DEFINITIONS,
   AVATAR_OPTIONS,
@@ -35,6 +35,9 @@ export default function ProfilePage() {
   const [bestAccuracy, setBestAccuracy] = useState(0);
   const [lifetime, setLifetime] = useState<LifetimeStats>(ZERO_LIFETIME);
   const [unlocked, setUnlocked] = useState<ReadonlySet<string>>(new Set());
+  const [remoteProfile, setRemoteProfile] = useState<ProfileSettings | null>(
+    null,
+  );
 
   useEffect(() => {
     let active = true;
@@ -48,6 +51,19 @@ export default function ProfilePage() {
           return;
         }
         setUser(session.user);
+
+        // Cross-device avatar sync: the account is the source of truth once
+        // authenticated. A failed/empty fetch just means we stay on the
+        // local-device selection -- never fabricated, never blocking.
+        return client.getProfileSettings();
+      })
+      .then((res) => {
+        if (!active || !res) return;
+        if (res.ok && res.data) {
+          setRemoteProfile(res.data);
+          setAvatarId(res.data.avatarId);
+          setSelectedAvatarId(res.data.avatarId);
+        }
       })
       .catch(() => {
         if (active) setError("Could not load your session.");
@@ -69,8 +85,27 @@ export default function ProfilePage() {
   }, []);
 
   const selectAvatar = (id: string) => {
+    // Update the local device immediately -- instant feedback, and the
+    // fallback of record if the account sync below can't complete.
     setSelectedAvatarId(id);
     setAvatarId(id);
+
+    if (!user?.username) return; // No valid username yet: stay local-only.
+    const client = new BrowserApiClient();
+    const nextProfile: ProfileSettings = {
+      username: user.username,
+      avatarId: id,
+      frameId: remoteProfile?.frameId ?? "frame-none",
+    };
+    client
+      .saveProfileSettings(nextProfile)
+      .then((res) => {
+        if (res.ok && res.data) setRemoteProfile(res.data);
+      })
+      .catch(() => {
+        // Best-effort cross-device sync; the local selection above already
+        // took effect, so a failed sync here doesn't block the user.
+      });
   };
 
   if (error) {
