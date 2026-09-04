@@ -9,6 +9,8 @@ const CLICK_MODE_IDS = new Set<PracticeSummaryRecord["modeId"]>([
   "multi",
   "headline",
   "strafe",
+  "microshot",
+  "reaction",
 ]);
 
 function isFiniteNumber(value: unknown): value is number {
@@ -60,6 +62,17 @@ function isPracticeSummaryRecord(
       isFiniteNumber(record.totalBeats) &&
       isFiniteNumber(record.perfectPercentage) &&
       isFiniteNumber(record.hitPercentage)
+    );
+  }
+  if (record.modeId === "switch-track") {
+    return (
+      isFiniteNumber(record.switchesCompleted) &&
+      isFiniteNumber(record.onTargetTicks) &&
+      isFiniteNumber(record.totalTicks) &&
+      isFiniteNumber(record.onTargetPercentage) &&
+      isFiniteNumber(record.averageErrorUnits) &&
+      isFiniteNumber(record.maxErrorUnits) &&
+      isFiniteNumber(record.averageAcquisitionTicks)
     );
   }
   return false;

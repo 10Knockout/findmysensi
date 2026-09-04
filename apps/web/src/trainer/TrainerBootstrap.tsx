@@ -799,6 +799,12 @@ function getRuntimeHudItems(
       ["HITS / MISS", `${metrics.hits} / ${metrics.misses}`],
     ];
   }
+  if ("switchesCompleted" in metrics) {
+    return [
+      ["SWITCHES", String(metrics.switchesCompleted)],
+      ["ON TARGET", `${metrics.onTargetPercentage}%`],
+    ];
+  }
   if ("onTargetTicks" in metrics) {
     return [
       ["ON TARGET", `${metrics.onTargetPercentage}%`],

@@ -137,6 +137,14 @@ function getResultStats(record: PracticeSummaryRecord): [string, string][] {
       ["Late / Miss", `${record.late} / ${record.miss}`],
     ];
   }
+  if (record.modeId === "switch-track") {
+    return [
+      score,
+      ["Switches", String(record.switchesCompleted)],
+      ["On Target", `${record.onTargetPercentage}%`],
+      ["Avg Acquisition", `${record.averageAcquisitionTicks} ticks`],
+    ];
+  }
   return [
     score,
     ["Accuracy", `${record.accuracyPercentage}%`],

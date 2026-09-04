@@ -23,28 +23,32 @@ describe("PracticeSummaryRecord discriminated union", () => {
     expect(record.hits).toBe(60);
   });
 
-  it.each(["pinpoint", "multi", "headline", "strafe"] as const)(
-    "accepts a %s click-mode summary",
-    (modeId) => {
-      const record: PracticeSummaryRecord = {
-        id: `run-${modeId}`,
-        modeId,
-        timestamp: 1_000_000,
-        score: 1_000,
-        hits: 1,
-        shots: 1,
-        misses: 0,
-        accuracyPercentage: 100,
-        durationSeconds: 60,
-        killsPerSecond: 1 / 60,
-        exactReplayPreserved: true,
-        inputOverflowEvents: 0,
-        inputHighWaterMark: 1,
-      };
+  it.each([
+    "pinpoint",
+    "multi",
+    "headline",
+    "strafe",
+    "microshot",
+    "reaction",
+  ] as const)("accepts a %s click-mode summary", (modeId) => {
+    const record: PracticeSummaryRecord = {
+      id: `run-${modeId}`,
+      modeId,
+      timestamp: 1_000_000,
+      score: 1_000,
+      hits: 1,
+      shots: 1,
+      misses: 0,
+      accuracyPercentage: 100,
+      durationSeconds: 60,
+      killsPerSecond: 1 / 60,
+      exactReplayPreserved: true,
+      inputOverflowEvents: 0,
+      inputHighWaterMark: 1,
+    };
 
-      expect(record.modeId).toBe(modeId);
-    },
-  );
+    expect(record.modeId).toBe(modeId);
+  });
 
   it("accepts tracking and tempo summaries without click-only fields", () => {
     const tracking: PracticeSummaryRecord = {
@@ -82,5 +86,26 @@ describe("PracticeSummaryRecord discriminated union", () => {
 
     expect(tracking.modeId).toBe("smooth-track");
     expect(tempo.modeId).toBe("tempo");
+  });
+
+  it("accepts a switch-tracking summary", () => {
+    const record: PracticeSummaryRecord = {
+      id: "run-switch",
+      modeId: "switch-track",
+      timestamp: 1,
+      score: 2_000,
+      durationSeconds: 60,
+      switchesCompleted: 1,
+      onTargetTicks: 32,
+      totalTicks: 64,
+      onTargetPercentage: 50,
+      averageErrorUnits: 10_000,
+      maxErrorUnits: 50_000,
+      averageAcquisitionTicks: 20,
+      exactReplayPreserved: true,
+      inputOverflowEvents: 0,
+      inputHighWaterMark: 1,
+    };
+    expect(record.switchesCompleted).toBe(1);
   });
 });

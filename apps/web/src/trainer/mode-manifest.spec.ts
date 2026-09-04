@@ -11,6 +11,9 @@ describe("Trainer mode manifest", () => {
       "strafe",
       "smooth-track",
       "tempo",
+      "microshot",
+      "reaction",
+      "switch-track",
     ];
     for (const id of ids) {
       expect(trainerModeManifest.has(id)).toBe(true);
@@ -25,6 +28,9 @@ describe("Trainer mode manifest", () => {
     expect(isTrainerModeEnabled("strafe")).toBe(true);
     expect(isTrainerModeEnabled("smooth-track")).toBe(true);
     expect(isTrainerModeEnabled("tempo")).toBe(true);
+    expect(isTrainerModeEnabled("microshot")).toBe(true);
+    expect(isTrainerModeEnabled("reaction")).toBe(true);
+    expect(isTrainerModeEnabled("switch-track")).toBe(true);
   });
 
   it("returns false for an unknown mode id rather than throwing", () => {
@@ -39,6 +45,9 @@ describe("Trainer mode manifest", () => {
     "strafe",
     "smooth-track",
     "tempo",
+    "microshot",
+    "reaction",
+    "switch-track",
   ])("%s carries an adapter factory", (modeId) => {
     expect(typeof trainerModeManifest.get(modeId)?.createAdapter).toBe(
       "function",

@@ -8,7 +8,10 @@ import {
 import { AimRenderer } from "@findmysensi/render-canvas";
 import {
   createMultiModeAdapter,
+  createMicroshotModeAdapter,
+  createReactionModeAdapter,
   createSmoothTrackModeAdapter,
+  createSwitchTrackModeAdapter,
   createTempoModeAdapter,
 } from "@findmysensi/trainer-runtime";
 import {
@@ -116,6 +119,9 @@ describe("Grid Practice Run Flow & Lifecycle", () => {
   it.each([
     ["smooth-track", createSmoothTrackModeAdapter],
     ["tempo", createTempoModeAdapter],
+    ["microshot", createMicroshotModeAdapter],
+    ["reaction", createReactionModeAdapter],
+    ["switch-track", createSwitchTrackModeAdapter],
   ] as const)("persists a real %s metric summary", (modeId, createAdapter) => {
     localPracticeHistory.clear();
     const controller = new PracticeRunController(

@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "FindMySensi — Gridshot Aim Trainer",
+  title: "FindMySensi — Aim Trainer",
   description:
     "Universal, deterministic aim trainer and sensitivity matching engine across modern competitive FPS games.",
 };

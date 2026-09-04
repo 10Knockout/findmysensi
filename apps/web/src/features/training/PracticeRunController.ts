@@ -353,6 +353,12 @@ export class PracticeRunController {
         misses: finalMetrics.misses,
         accuracyPercentage: finalMetrics.accuracyPercentage,
         killsPerSecond: finalMetrics.killsPerSecond,
+      } as PracticeSummaryRecord;
+    } else if (isSwitchTrackMetrics(finalMetrics)) {
+      summary = {
+        ...summaryBase,
+        modeId: "switch-track",
+        ...finalMetrics,
       };
     } else if (isTrackingMetrics(finalMetrics)) {
       summary = {
@@ -383,7 +389,7 @@ export class PracticeRunController {
 
 type ClickModeId = Exclude<
   PracticeSummaryRecord["modeId"],
-  "smooth-track" | "tempo"
+  "smooth-track" | "tempo" | "switch-track"
 >;
 
 function isClickMetrics(
@@ -396,4 +402,10 @@ function isTrackingMetrics(
   metrics: RuntimeMetrics,
 ): metrics is Extract<RuntimeMetrics, { readonly onTargetTicks: number }> {
   return "onTargetTicks" in metrics;
+}
+
+function isSwitchTrackMetrics(
+  metrics: RuntimeMetrics,
+): metrics is Extract<RuntimeMetrics, { readonly switchesCompleted: number }> {
+  return "switchesCompleted" in metrics;
 }

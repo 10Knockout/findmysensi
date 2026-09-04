@@ -266,7 +266,7 @@ export function SettingsClient() {
 
           <SettingsSection
             title="Aim & Sensitivity"
-            description="Gridshot uses the Aimlabs sensitivity scale directly. FOV adjusts camera angle without altering physical sensitivity."
+            description="The trainer uses the Aimlabs sensitivity scale directly. FOV adjusts camera angle without altering physical sensitivity."
           >
             <div className="space-y-6">
               {/* Aimlabs-native Mouse Sensitivity */}

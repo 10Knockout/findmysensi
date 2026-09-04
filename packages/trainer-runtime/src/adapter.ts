@@ -1,6 +1,7 @@
 import type { AngleUnits, PitchUnits, PrngV1 } from "@findmysensi/aim-core";
 import type {
   GridMetrics,
+  SwitchTrackMetrics,
   TempoMetrics,
   TrackingMetrics,
 } from "@findmysensi/analytics";
@@ -11,7 +12,8 @@ import type {
 } from "@findmysensi/scenarios";
 
 export type ClickMetrics = GridMetrics;
-export type RuntimeMetrics = ClickMetrics | TrackingMetrics | TempoMetrics;
+export type RuntimeMetrics =
+  ClickMetrics | TrackingMetrics | TempoMetrics | SwitchTrackMetrics;
 
 export interface RuntimeScoreResult<
   TMetrics extends RuntimeMetrics = RuntimeMetrics,

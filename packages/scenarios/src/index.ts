@@ -8,3 +8,6 @@ export * from "./headline/dev-v0.js";
 export * from "./strafe/dev-v0.js";
 export * from "./smooth-track/dev-v0.js";
 export * from "./tempo/dev-v0.js";
+export * from "./microshot/dev-v0.js";
+export * from "./reaction/dev-v0.js";
+export * from "./switch-track/dev-v0.js";

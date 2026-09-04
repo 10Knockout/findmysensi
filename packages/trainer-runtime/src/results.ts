@@ -36,6 +36,14 @@ export interface StrafePracticeSummary extends ClickPracticeSummaryBase {
   readonly modeId: "strafe";
 }
 
+export interface MicroshotPracticeSummary extends ClickPracticeSummaryBase {
+  readonly modeId: "microshot";
+}
+
+export interface ReactionPracticeSummary extends ClickPracticeSummaryBase {
+  readonly modeId: "reaction";
+}
+
 export interface SmoothTrackPracticeSummary extends PracticeRunSummaryBase {
   readonly modeId: "smooth-track";
   readonly onTargetTicks: number;
@@ -56,11 +64,25 @@ export interface TempoPracticeSummary extends PracticeRunSummaryBase {
   readonly hitPercentage: number;
 }
 
+export interface SwitchTrackPracticeSummary extends PracticeRunSummaryBase {
+  readonly modeId: "switch-track";
+  readonly switchesCompleted: number;
+  readonly onTargetTicks: number;
+  readonly totalTicks: number;
+  readonly onTargetPercentage: number;
+  readonly averageErrorUnits: number;
+  readonly maxErrorUnits: number;
+  readonly averageAcquisitionTicks: number;
+}
+
 export type PracticeSummaryRecord =
   | GridPracticeSummary
   | PinpointPracticeSummary
   | MultiPracticeSummary
   | HeadlinePracticeSummary
   | StrafePracticeSummary
+  | MicroshotPracticeSummary
+  | ReactionPracticeSummary
   | SmoothTrackPracticeSummary
-  | TempoPracticeSummary;
+  | TempoPracticeSummary
+  | SwitchTrackPracticeSummary;

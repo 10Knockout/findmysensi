@@ -3,9 +3,12 @@ import {
   createGridModeAdapter,
   createHeadlineModeAdapter,
   createMultiModeAdapter,
+  createMicroshotModeAdapter,
   createPinpointModeAdapter,
+  createReactionModeAdapter,
   createSmoothTrackModeAdapter,
   createStrafeModeAdapter,
+  createSwitchTrackModeAdapter,
   createTempoModeAdapter,
   ModeRuntimeAdapter,
 } from "@findmysensi/trainer-runtime";
@@ -50,6 +53,12 @@ export const trainerModeManifest: ReadonlyMap<
     buildEntry("smooth-track", true, createSmoothTrackModeAdapter),
   ],
   ["tempo", buildEntry("tempo", true, createTempoModeAdapter)],
+  ["microshot", buildEntry("microshot", true, createMicroshotModeAdapter)],
+  ["reaction", buildEntry("reaction", true, createReactionModeAdapter)],
+  [
+    "switch-track",
+    buildEntry("switch-track", true, createSwitchTrackModeAdapter),
+  ],
 ]);
 
 export function isTrainerModeEnabled(modeId: string): boolean {

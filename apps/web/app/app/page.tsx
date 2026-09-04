@@ -8,6 +8,31 @@ import { TrainerSettings, TrainerSettingsSchema } from "@findmysensi/protocol";
 import type { SessionUser } from "@findmysensi/protocol";
 import { QuickSetupModal } from "../../src/features/onboarding/QuickSetupModal.js";
 
+const TRAINING_MODES = [
+  ["grid", "Gridshot", "Three targets for fast flicks and rapid acquisition."],
+  [
+    "pinpoint",
+    "Pinpoint",
+    "Tiny targets for deliberate precision and planning.",
+  ],
+  ["multi", "Multi", "Six targets for route planning and target transitions."],
+  [
+    "headline",
+    "Headline",
+    "Horizontal targets for disciplined head-level aim.",
+  ],
+  ["strafe", "Strafe", "Moving targets with reversals and changing speeds."],
+  ["smooth-track", "Smooth Track", "Continuous tracking along a smooth path."],
+  [
+    "tempo",
+    "Tempo",
+    "Rhythmic clicks judged as perfect, early, late, or miss.",
+  ],
+  ["microshot", "Microshot", "Tiny targets for fast, controlled corrections."],
+  ["reaction", "Reaction", "Tick-timed visual reaction and acquisition."],
+  ["switch-track", "Switch Track", "Acquire, hold, switch, and reacquire."],
+] as const;
+
 export default function AppDashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<SessionUser | null>(null);
@@ -116,28 +141,29 @@ export default function AppDashboardPage() {
           <p className="mb-2 font-mono text-xs font-bold uppercase tracking-[0.25em] text-emerald-400">
             Training
           </p>
-          <h2 className="mb-6 text-3xl font-black text-white">Gridshot</h2>
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-8">
-            <div className="grid gap-8 md:grid-cols-[1fr_auto] md:items-center">
-              <div>
-                <h3 className="text-2xl font-black text-white">Gridshot</h3>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
-                  Three circular targets. Fast flicks, rapid target acquisition
-                  and accurate clicks. This is the only exposed mode while the
-                  first game loop is being perfected.
-                </p>
-                <p className="mt-3 text-xs text-zinc-500">
-                  Each training mode has its own leaderboard. There is no
-                  separate Practice/Ranked selector.
-                </p>
-              </div>
+          <h2 className="mb-2 text-3xl font-black text-white">Aim Training</h2>
+          <p className="mb-6 text-sm text-zinc-500">
+            Ten focused exercises. Results stay local until verified scoring is
+            enabled.
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {TRAINING_MODES.map(([modeId, title, description]) => (
               <Link
-                href="/app/train/grid"
-                className="rounded-xl bg-emerald-400 px-8 py-4 text-center font-black text-zinc-950 hover:bg-emerald-300"
+                key={modeId}
+                href={`/app/train/${modeId}`}
+                className="group rounded-2xl border border-zinc-800 bg-zinc-900 p-5 transition-colors hover:border-emerald-500/60 hover:bg-zinc-900/80"
               >
-                PLAY GRIDSHOT
+                <h3 className="font-black text-white group-hover:text-emerald-300">
+                  {title}
+                </h3>
+                <p className="mt-2 text-sm leading-5 text-zinc-400">
+                  {description}
+                </p>
+                <span className="mt-5 inline-block font-mono text-xs font-bold text-emerald-400">
+                  PLAY →
+                </span>
               </Link>
-            </div>
+            ))}
           </div>
         </section>
       </div>

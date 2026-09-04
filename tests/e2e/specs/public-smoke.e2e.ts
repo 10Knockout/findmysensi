@@ -231,7 +231,9 @@ test("authenticated Trainer Home renders user greeting, Gridshot play link, and 
   await expect(
     page.getByRole("heading", { name: "BrowserAudit" }),
   ).toBeVisible();
-  await expect(page.getByRole("link", { name: "PLAY GRIDSHOT" })).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "PLAY →" }).first(),
+  ).toBeVisible();
   await expect(page.getByRole("link", { name: "Settings" })).toBeVisible();
   expect(browserErrors).toEqual([]);
 });
