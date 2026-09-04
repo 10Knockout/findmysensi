@@ -8,6 +8,7 @@ const CLICK_MODE_IDS = new Set<PracticeSummaryRecord["modeId"]>([
   "pinpoint",
   "multi",
   "headline",
+  "strafe",
 ]);
 
 function isFiniteNumber(value: unknown): value is number {
@@ -20,23 +21,48 @@ function isPracticeSummaryRecord(
   if (typeof value !== "object" || value === null) return false;
 
   const record = value as Record<string, unknown>;
-  return (
+  const hasBase =
     typeof record.id === "string" &&
     record.id.length > 0 &&
     typeof record.modeId === "string" &&
-    CLICK_MODE_IDS.has(record.modeId as PracticeSummaryRecord["modeId"]) &&
     isFiniteNumber(record.timestamp) &&
     isFiniteNumber(record.score) &&
-    isFiniteNumber(record.hits) &&
-    isFiniteNumber(record.shots) &&
-    isFiniteNumber(record.misses) &&
-    isFiniteNumber(record.accuracyPercentage) &&
     isFiniteNumber(record.durationSeconds) &&
-    isFiniteNumber(record.killsPerSecond) &&
     typeof record.exactReplayPreserved === "boolean" &&
     isFiniteNumber(record.inputOverflowEvents) &&
-    isFiniteNumber(record.inputHighWaterMark)
-  );
+    isFiniteNumber(record.inputHighWaterMark);
+  if (!hasBase) return false;
+
+  if (CLICK_MODE_IDS.has(record.modeId as PracticeSummaryRecord["modeId"])) {
+    return (
+      isFiniteNumber(record.hits) &&
+      isFiniteNumber(record.shots) &&
+      isFiniteNumber(record.misses) &&
+      isFiniteNumber(record.accuracyPercentage) &&
+      isFiniteNumber(record.killsPerSecond)
+    );
+  }
+  if (record.modeId === "smooth-track") {
+    return (
+      isFiniteNumber(record.onTargetTicks) &&
+      isFiniteNumber(record.totalTicks) &&
+      isFiniteNumber(record.onTargetPercentage) &&
+      isFiniteNumber(record.averageErrorUnits) &&
+      isFiniteNumber(record.maxErrorUnits)
+    );
+  }
+  if (record.modeId === "tempo") {
+    return (
+      isFiniteNumber(record.perfect) &&
+      isFiniteNumber(record.early) &&
+      isFiniteNumber(record.late) &&
+      isFiniteNumber(record.miss) &&
+      isFiniteNumber(record.totalBeats) &&
+      isFiniteNumber(record.perfectPercentage) &&
+      isFiniteNumber(record.hitPercentage)
+    );
+  }
+  return false;
 }
 
 function parseStoredHistory(raw: string): PracticeSummaryRecord[] | null {

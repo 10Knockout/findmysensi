@@ -1,4 +1,4 @@
-import { createPrngV1 } from "@findmysensi/aim-core";
+import { createPrngV1, FULL_TURN_UNITS } from "@findmysensi/aim-core";
 import { describe, expect, it } from "vitest";
 import { StrafeScenarioEngine } from "../src/strafe/dev-v0.js";
 
@@ -16,6 +16,8 @@ describe("Strafe Scenario (dev-v0)", () => {
       expect(["linear", "oscillating"]).toContain(t.pattern);
       expect(["left", "right"]).toContain(t.direction);
       expect(t.velocityUnitsPerTick).not.toBe(0);
+      expect(t.xAngleUnits).toBeGreaterThanOrEqual(0);
+      expect(t.xAngleUnits).toBeLessThan(FULL_TURN_UNITS);
     }
   });
 
@@ -48,7 +50,9 @@ describe("Strafe Scenario (dev-v0)", () => {
 
     // All targets should still be within bounds
     for (const t of engine.getActiveTargets()) {
-      expect(Math.abs(t.xAngleUnits)).toBeLessThanOrEqual(halfW + 100000);
+      expect(
+        Math.min(t.xAngleUnits, FULL_TURN_UNITS - t.xAngleUnits),
+      ).toBeLessThanOrEqual(halfW + 100000);
     }
   });
 

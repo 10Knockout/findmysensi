@@ -12,23 +12,19 @@ export interface TrackingMetrics {
 export class TrackingMetricsTracker {
   private onTargetTicks: number = 0;
   private totalTicks: number = 0;
-  private errorSamples: number[] = [];
+  private totalErrorUnits: number = 0;
+  private maxErrorUnits: number = 0;
 
   public recordSample(errorUnits: number, onTarget: boolean): void {
     this.totalTicks++;
     if (onTarget) this.onTargetTicks++;
-    this.errorSamples.push(errorUnits);
+    this.totalErrorUnits += errorUnits;
+    this.maxErrorUnits = Math.max(this.maxErrorUnits, errorUnits);
   }
 
   public computeMetrics(): TrackingMetrics {
     const avgError =
-      this.errorSamples.length > 0
-        ? this.errorSamples.reduce((a, b) => a + b, 0) /
-          this.errorSamples.length
-        : 0;
-
-    const maxError =
-      this.errorSamples.length > 0 ? Math.max(...this.errorSamples) : 0;
+      this.totalTicks > 0 ? this.totalErrorUnits / this.totalTicks : 0;
 
     return Object.freeze({
       onTargetTicks: this.onTargetTicks,
@@ -38,7 +34,7 @@ export class TrackingMetricsTracker {
           ? Math.round((this.onTargetTicks / this.totalTicks) * 10000) / 100
           : 0,
       averageErrorUnits: Math.round(avgError),
-      maxErrorUnits: Math.round(maxError),
+      maxErrorUnits: Math.round(this.maxErrorUnits),
     });
   }
 }

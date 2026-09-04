@@ -23,7 +23,7 @@ describe("PracticeSummaryRecord discriminated union", () => {
     expect(record.hits).toBe(60);
   });
 
-  it.each(["pinpoint", "multi", "headline"] as const)(
+  it.each(["pinpoint", "multi", "headline", "strafe"] as const)(
     "accepts a %s click-mode summary",
     (modeId) => {
       const record: PracticeSummaryRecord = {
@@ -45,4 +45,42 @@ describe("PracticeSummaryRecord discriminated union", () => {
       expect(record.modeId).toBe(modeId);
     },
   );
+
+  it("accepts tracking and tempo summaries without click-only fields", () => {
+    const tracking: PracticeSummaryRecord = {
+      id: "run-track",
+      modeId: "smooth-track",
+      timestamp: 1,
+      score: 50_000,
+      durationSeconds: 60,
+      onTargetTicks: 64,
+      totalTicks: 128,
+      onTargetPercentage: 50,
+      averageErrorUnits: 10_000,
+      maxErrorUnits: 20_000,
+      exactReplayPreserved: true,
+      inputOverflowEvents: 0,
+      inputHighWaterMark: 1,
+    };
+    const tempo: PracticeSummaryRecord = {
+      id: "run-tempo",
+      modeId: "tempo",
+      timestamp: 2,
+      score: 1_000,
+      durationSeconds: 60,
+      perfect: 1,
+      early: 0,
+      late: 0,
+      miss: 0,
+      totalBeats: 1,
+      perfectPercentage: 100,
+      hitPercentage: 100,
+      exactReplayPreserved: true,
+      inputOverflowEvents: 0,
+      inputHighWaterMark: 1,
+    };
+
+    expect(tracking.modeId).toBe("smooth-track");
+    expect(tempo.modeId).toBe("tempo");
+  });
 });

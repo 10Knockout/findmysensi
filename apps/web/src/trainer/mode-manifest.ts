@@ -4,6 +4,9 @@ import {
   createHeadlineModeAdapter,
   createMultiModeAdapter,
   createPinpointModeAdapter,
+  createSmoothTrackModeAdapter,
+  createStrafeModeAdapter,
+  createTempoModeAdapter,
   ModeRuntimeAdapter,
 } from "@findmysensi/trainer-runtime";
 
@@ -41,9 +44,12 @@ export const trainerModeManifest: ReadonlyMap<
   ["pinpoint", buildEntry("pinpoint", true, createPinpointModeAdapter)],
   ["multi", buildEntry("multi", true, createMultiModeAdapter)],
   ["headline", buildEntry("headline", true, createHeadlineModeAdapter)],
-  ["strafe", buildEntry("strafe", false)],
-  ["smooth-track", buildEntry("smooth-track", false)],
-  ["tempo", buildEntry("tempo", false)],
+  ["strafe", buildEntry("strafe", true, createStrafeModeAdapter)],
+  [
+    "smooth-track",
+    buildEntry("smooth-track", true, createSmoothTrackModeAdapter),
+  ],
+  ["tempo", buildEntry("tempo", true, createTempoModeAdapter)],
 ]);
 
 export function isTrainerModeEnabled(modeId: string): boolean {

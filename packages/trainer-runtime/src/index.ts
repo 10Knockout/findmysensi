@@ -4,3 +4,6 @@ export * from "./grid-adapter.js";
 export * from "./pinpoint-adapter.js";
 export * from "./multi-adapter.js";
 export * from "./headline-adapter.js";
+export * from "./strafe-adapter.js";
+export * from "./smooth-track-adapter.js";
+export * from "./tempo-adapter.js";

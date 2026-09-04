@@ -1,4 +1,4 @@
-import { createPrngV1 } from "@findmysensi/aim-core";
+import { createPrngV1, FULL_TURN_UNITS } from "@findmysensi/aim-core";
 import { describe, expect, it } from "vitest";
 import {
   TempoScenarioEngine,
@@ -17,6 +17,8 @@ describe("Tempo Scenario (dev-v0)", () => {
     const firstTarget = engine.initialize(prng);
     // First beat is at TICKS_PER_BEAT, should return a reference to first upcoming beat
     expect(firstTarget).not.toBeNull();
+    expect(firstTarget!.xAngleUnits).toBeGreaterThanOrEqual(0);
+    expect(firstTarget!.xAngleUnits).toBeLessThan(FULL_TURN_UNITS);
   });
 
   it("activates targets within the early window", () => {

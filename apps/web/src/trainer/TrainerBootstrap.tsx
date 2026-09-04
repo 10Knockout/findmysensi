@@ -19,6 +19,7 @@ import {
   createAimRenderer,
   createViewportTransform,
 } from "@findmysensi/render-canvas";
+import type { RuntimeMetrics } from "@findmysensi/trainer-runtime";
 import {
   PracticeRunController,
   PracticeRunState,
@@ -82,9 +83,9 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
   const [gameState, setGameState] = useState<PracticeRunState>("ready");
   const [remainingSeconds, setRemainingSeconds] = useState(modeDurationSeconds);
   const [score, setScore] = useState(0);
-  const [hits, setHits] = useState(0);
-  const [misses, setMisses] = useState(0);
-  const [accuracy, setAccuracy] = useState(100);
+  const [runtimeMetrics, setRuntimeMetrics] = useState<RuntimeMetrics | null>(
+    null,
+  );
   const [countdown, setCountdown] = useState<number | null>(null);
   const [lockError, setLockError] = useState<string | null>(null);
   const [pauseSecondsLeft, setPauseSecondsLeft] = useState(MAX_PAUSE_MS / 1000);
@@ -279,14 +280,9 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
             Math.max(0, Math.ceil((totalTicks - currentTick) / 128)),
           );
         },
-        onScoreUpdate: (newScore, newHits, newMisses) => {
+        onScoreUpdate: (newScore, newMetrics) => {
           setScore(newScore);
-          setHits(newHits);
-          setMisses(newMisses);
-          const totalShots = newHits + newMisses;
-          setAccuracy(
-            totalShots > 0 ? Math.round((newHits / totalShots) * 100) : 100,
-          );
+          setRuntimeMetrics(newMetrics);
         },
         onComplete: () => {},
       },
@@ -579,12 +575,7 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
             >
               {isFullscreen ? "EXIT FULLSCREEN" : "⛶ FULLSCREEN"}
             </button>
-            <HudGroup
-              items={[
-                ["ACCURACY", `${accuracy}%`],
-                ["HITS / MISS", `${hits} / ${misses}`],
-              ]}
-            />
+            <HudGroup items={getRuntimeHudItems(runtimeMetrics)} />
           </div>
         </div>
       ) : null}
@@ -792,6 +783,35 @@ function HudGroup({ items }: { items: [string, string][] }) {
       ))}
     </div>
   );
+}
+
+function getRuntimeHudItems(
+  metrics: RuntimeMetrics | null,
+): [string, string][] {
+  if (!metrics)
+    return [
+      ["ACCURACY", "100%"],
+      ["HITS / MISS", "0 / 0"],
+    ];
+  if ("hits" in metrics) {
+    return [
+      ["ACCURACY", `${metrics.accuracyPercentage}%`],
+      ["HITS / MISS", `${metrics.hits} / ${metrics.misses}`],
+    ];
+  }
+  if ("onTargetTicks" in metrics) {
+    return [
+      ["ON TARGET", `${metrics.onTargetPercentage}%`],
+      ["AVG ERROR", metrics.averageErrorUnits.toLocaleString()],
+    ];
+  }
+  return [
+    ["PERFECT", `${metrics.perfectPercentage}%`],
+    [
+      "P / E / L / M",
+      `${metrics.perfect} / ${metrics.early} / ${metrics.late} / ${metrics.miss}`,
+    ],
+  ];
 }
 
 function formatPauseTime(seconds: number): string {

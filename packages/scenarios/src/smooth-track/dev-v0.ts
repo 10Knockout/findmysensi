@@ -1,4 +1,9 @@
-import { PrngV1 } from "@findmysensi/aim-core";
+import {
+  PrngV1,
+  createAngleUnits,
+  shortestSignedAngleDelta,
+  wrapYaw,
+} from "@findmysensi/aim-core";
 import { defaultScenarioRegistry } from "../registry.js";
 import { RankedScenarioDefinition, ScenarioEntry } from "../types.js";
 
@@ -121,7 +126,7 @@ export class SmoothTrackScenarioEngine {
 
     this.target = {
       id: 1,
-      xAngleUnits: x,
+      xAngleUnits: wrapYaw(x),
       yAngleUnits: y,
       radiusAngleUnits: this.radiusUnits,
     };
@@ -141,7 +146,10 @@ export class SmoothTrackScenarioEngine {
     this.computePosition(currentTick);
     this.totalTicks++;
 
-    const dx = playerYaw - this.target.xAngleUnits;
+    const dx = shortestSignedAngleDelta(
+      createAngleUnits(this.target.xAngleUnits),
+      wrapYaw(playerYaw),
+    );
     const dy = playerPitch - this.target.yAngleUnits;
     const errorUnits = Math.sqrt(dx * dx + dy * dy);
     const onTarget = errorUnits <= this.radiusUnits;

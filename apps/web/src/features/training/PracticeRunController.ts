@@ -12,7 +12,6 @@ import {
   SnapshotBuffer,
   wrapYaw,
 } from "@findmysensi/aim-core";
-import { GridMetrics } from "@findmysensi/analytics";
 import {
   createInputRingBuffer,
   createRawInputBatchTarget,
@@ -28,10 +27,11 @@ import {
   DEFAULT_BROWSER_INPUT_GAIN,
   DeterministicBrowserInputScaler,
 } from "@findmysensi/sensitivity";
-import { ScoreResult } from "@findmysensi/scoring";
 import {
   createGridModeAdapter,
   ModeRuntimeAdapter,
+  RuntimeMetrics,
+  RuntimeScoreResult,
 } from "@findmysensi/trainer-runtime";
 import {
   createFixedTickRunner,
@@ -49,8 +49,8 @@ export type PracticeRunState =
 export interface PracticeRunCallbacks {
   onStateChange: (state: PracticeRunState) => void;
   onTickProgress: (currentTick: number, totalTicks: number) => void;
-  onScoreUpdate: (currentScore: number, hits: number, misses: number) => void;
-  onComplete: (result: ScoreResult) => void;
+  onScoreUpdate: (currentScore: number, metrics: RuntimeMetrics) => void;
+  onComplete: (result: RuntimeScoreResult) => void;
 }
 
 export interface PracticeRunOptions {
@@ -75,7 +75,7 @@ export class PracticeRunController {
   private state: PracticeRunState = "ready";
   private runner: FixedTickRunner | null = null;
   private prng: PrngV1 | null = null;
-  private readonly adapter: ModeRuntimeAdapter<GridMetrics>;
+  private readonly adapter: ModeRuntimeAdapter;
   private shotTracker = createShotTracker();
   private ringBuffer: InputRingBuffer;
   private batchTarget: RawInputBatchTarget;
@@ -101,7 +101,7 @@ export class PracticeRunController {
     callbacks: PracticeRunCallbacks,
     renderer?: AimRenderer,
     optionsOrDuration: PracticeRunOptions | number = {},
-    adapter: ModeRuntimeAdapter<GridMetrics> = createGridModeAdapter(),
+    adapter: ModeRuntimeAdapter = createGridModeAdapter(),
   ) {
     const options: PracticeRunOptions =
       typeof optionsOrDuration === "number"
@@ -285,6 +285,9 @@ export class PracticeRunController {
       this.playerYaw,
       this.playerPitch,
     );
+    if (tick % 16 === 0) {
+      this.publishMetrics(tick + 1);
+    }
 
     this.callbacks.onTickProgress(tick, this.totalDurationTicks);
     this.writeSnapshot(tick);
@@ -296,13 +299,7 @@ export class PracticeRunController {
     const tick = createTick(currentTick);
     this.adapter.onShot(tick, this.playerYaw, this.playerPitch, this.prng);
 
-    const currentMetrics = this.adapter.computeMetrics(currentTick + 1);
-    const currentScore = this.adapter.computeScore(currentMetrics);
-    this.callbacks.onScoreUpdate(
-      currentScore.score,
-      currentMetrics.hits,
-      currentMetrics.misses,
-    );
+    this.publishMetrics(currentTick + 1);
   }
 
   private writeSnapshot(tick: number): void {
@@ -336,22 +333,67 @@ export class PracticeRunController {
     const finalMetrics = this.adapter.computeMetrics(this.totalDurationTicks);
     const finalScore = this.adapter.computeScore(finalMetrics);
 
-    localPracticeHistory.save({
+    const summaryBase = {
       id: `practice-${Date.now()}`,
-      modeId: this.adapter.modeId as PracticeSummaryRecord["modeId"],
       timestamp: Date.now(),
       score: finalScore.score,
-      hits: finalMetrics.hits,
-      shots: finalMetrics.shots,
-      misses: finalMetrics.misses,
-      accuracyPercentage: finalMetrics.accuracyPercentage,
       durationSeconds: Math.round(this.totalDurationTicks / 128),
-      killsPerSecond: finalMetrics.killsPerSecond,
       exactReplayPreserved: this.exactReplayPreserved,
       inputOverflowEvents: this.totalOverflowEvents,
       inputHighWaterMark: this.highWaterMark,
-    });
+    };
+
+    let summary: PracticeSummaryRecord;
+    if (isClickMetrics(finalMetrics)) {
+      summary = {
+        ...summaryBase,
+        modeId: this.adapter.modeId as ClickModeId,
+        hits: finalMetrics.hits,
+        shots: finalMetrics.shots,
+        misses: finalMetrics.misses,
+        accuracyPercentage: finalMetrics.accuracyPercentage,
+        killsPerSecond: finalMetrics.killsPerSecond,
+      };
+    } else if (isTrackingMetrics(finalMetrics)) {
+      summary = {
+        ...summaryBase,
+        modeId: "smooth-track",
+        ...finalMetrics,
+      };
+    } else {
+      summary = {
+        ...summaryBase,
+        modeId: "tempo",
+        ...finalMetrics,
+      };
+    }
+    localPracticeHistory.save(summary);
 
     this.callbacks.onComplete(finalScore);
   }
+
+  private publishMetrics(elapsedTicks: number): void {
+    const metrics = this.adapter.computeMetrics(elapsedTicks);
+    this.callbacks.onScoreUpdate(
+      this.adapter.computeScore(metrics).score,
+      metrics,
+    );
+  }
+}
+
+type ClickModeId = Exclude<
+  PracticeSummaryRecord["modeId"],
+  "smooth-track" | "tempo"
+>;
+
+function isClickMetrics(
+  metrics: RuntimeMetrics,
+): metrics is Extract<RuntimeMetrics, { readonly hits: number }> {
+  return "hits" in metrics;
+}
+
+function isTrackingMetrics(
+  metrics: RuntimeMetrics,
+): metrics is Extract<RuntimeMetrics, { readonly onTargetTicks: number }> {
+  return "onTargetTicks" in metrics;
 }

@@ -29,24 +29,21 @@ describe("Privacy-Safe Local Practice History", () => {
       inputHighWaterMark: 12,
     };
 
-    // Deliberately a mode id outside today's known union: this test proves
-    // getAll(modeId) filters generically rather than being hardcoded to
-    // "grid", ahead of future modes actually joining the union (M4/M5).
-    const sample2 = {
+    const sample2: PracticeSummaryRecord = {
       id: "run-2",
-      modeId: "tracking",
+      modeId: "smooth-track",
       timestamp: 1000500,
       score: 30000,
-      hits: 30,
-      shots: 35,
-      misses: 5,
-      accuracyPercentage: 85.7,
       durationSeconds: 60,
-      killsPerSecond: 0.5,
+      onTargetTicks: 3000,
+      totalTicks: 7680,
+      onTargetPercentage: 39.06,
+      averageErrorUnits: 10000,
+      maxErrorUnits: 50000,
       exactReplayPreserved: false,
       inputOverflowEvents: 2,
       inputHighWaterMark: 4096,
-    } as unknown as PracticeSummaryRecord;
+    };
 
     history.save(sample1);
     history.save(sample2);
@@ -75,5 +72,51 @@ describe("Privacy-Safe Local Practice History", () => {
 
     expect(() => history.getAll("grid")).not.toThrow();
     expect(history.getAll("grid")).toEqual([]);
+  });
+
+  it("restores valid tracking and tempo summaries from local storage", () => {
+    const base = {
+      timestamp: 1,
+      score: 100,
+      durationSeconds: 60,
+      exactReplayPreserved: true,
+      inputOverflowEvents: 0,
+      inputHighWaterMark: 1,
+    };
+    const records: PracticeSummaryRecord[] = [
+      {
+        ...base,
+        id: "track",
+        modeId: "smooth-track",
+        onTargetTicks: 10,
+        totalTicks: 20,
+        onTargetPercentage: 50,
+        averageErrorUnits: 10,
+        maxErrorUnits: 20,
+      },
+      {
+        ...base,
+        id: "tempo",
+        modeId: "tempo",
+        perfect: 1,
+        early: 2,
+        late: 3,
+        miss: 4,
+        totalBeats: 10,
+        perfectPercentage: 10,
+        hitPercentage: 60,
+      },
+    ];
+    vi.stubGlobal("window", {
+      localStorage: {
+        getItem: vi.fn(() => JSON.stringify(records)),
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+      },
+    });
+
+    const history = new LocalPracticeHistory();
+    expect(history.getAll("smooth-track")[0]?.id).toBe("track");
+    expect(history.getAll("tempo")[0]?.id).toBe("tempo");
   });
 });

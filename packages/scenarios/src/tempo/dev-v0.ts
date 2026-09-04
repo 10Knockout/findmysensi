@@ -1,4 +1,4 @@
-import { PrngV1 } from "@findmysensi/aim-core";
+import { PrngV1, wrapYaw } from "@findmysensi/aim-core";
 import { defaultScenarioRegistry } from "../registry.js";
 import {
   RankedScenarioDefinition,
@@ -116,11 +116,11 @@ export class TempoScenarioEngine {
       beatTick < this.durationTicks;
       beatTick += TICKS_PER_BEAT
     ) {
-      let x: number;
+      let localX: number;
       let y: number;
       let attempts = 0;
       do {
-        x = prng.nextRange(-halfW, halfW + 1);
+        localX = prng.nextRange(-halfW, halfW + 1);
         y = prng.nextRange(-halfH, halfH + 1);
         attempts++;
       } while (
@@ -128,17 +128,17 @@ export class TempoScenarioEngine {
         this.lastX !== null &&
         this.lastY !== null &&
         Math.sqrt(
-          (x - this.lastX) * (x - this.lastX) +
+          (localX - this.lastX) * (localX - this.lastX) +
             (y - this.lastY) * (y - this.lastY),
         ) < this.minSep
       );
 
-      this.lastX = x;
+      this.lastX = localX;
       this.lastY = y;
 
       this.beatSchedule.push({
         id: this.nextTargetId++,
-        xAngleUnits: x,
+        xAngleUnits: wrapYaw(localX),
         yAngleUnits: y,
         radiusAngleUnits: this.radiusUnits,
         beatTick,

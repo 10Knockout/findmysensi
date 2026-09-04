@@ -71,93 +71,14 @@ export function PracticeResults({ mode = "grid" }: { mode?: string }) {
               gap: "16px",
             }}
           >
-            <div
-              style={{
-                backgroundColor: "rgba(255, 255, 255, 0.03)",
-                padding: "20px",
-                borderRadius: "12px",
-                border: "1px solid rgba(255, 255, 255, 0.05)",
-              }}
-            >
-              <div style={{ color: "#94a3b8", fontSize: "0.9rem" }}>Score</div>
-              <div
-                style={{
-                  fontSize: "2rem",
-                  fontWeight: 900,
-                  color: "#00ff88",
-                  marginTop: "4px",
-                }}
-              >
-                {latestRun.score.toLocaleString()}
-              </div>
-            </div>
-
-            <div
-              style={{
-                backgroundColor: "rgba(255, 255, 255, 0.03)",
-                padding: "20px",
-                borderRadius: "12px",
-                border: "1px solid rgba(255, 255, 255, 0.05)",
-              }}
-            >
-              <div style={{ color: "#94a3b8", fontSize: "0.9rem" }}>
-                Accuracy
-              </div>
-              <div
-                style={{
-                  fontSize: "2rem",
-                  fontWeight: 900,
-                  color: "#38bdf8",
-                  marginTop: "4px",
-                }}
-              >
-                {latestRun.accuracyPercentage}%
-              </div>
-            </div>
-
-            <div
-              style={{
-                backgroundColor: "rgba(255, 255, 255, 0.03)",
-                padding: "20px",
-                borderRadius: "12px",
-                border: "1px solid rgba(255, 255, 255, 0.05)",
-              }}
-            >
-              <div style={{ color: "#94a3b8", fontSize: "0.9rem" }}>
-                Hits / Shots
-              </div>
-              <div
-                style={{
-                  fontSize: "1.8rem",
-                  fontWeight: 800,
-                  marginTop: "4px",
-                }}
-              >
-                {latestRun.hits} / {latestRun.shots}
-              </div>
-            </div>
-
-            <div
-              style={{
-                backgroundColor: "rgba(255, 255, 255, 0.03)",
-                padding: "20px",
-                borderRadius: "12px",
-                border: "1px solid rgba(255, 255, 255, 0.05)",
-              }}
-            >
-              <div style={{ color: "#94a3b8", fontSize: "0.9rem" }}>
-                Kills / Sec
-              </div>
-              <div
-                style={{
-                  fontSize: "1.8rem",
-                  fontWeight: 800,
-                  marginTop: "4px",
-                }}
-              >
-                {latestRun.killsPerSecond}
-              </div>
-            </div>
+            {getResultStats(latestRun).map(([label, value], index) => (
+              <ResultStat
+                key={label}
+                label={label}
+                value={value}
+                featured={index < 2}
+              />
+            ))}
           </div>
         </div>
       ) : (
@@ -193,6 +114,65 @@ export function PracticeResults({ mode = "grid" }: { mode?: string }) {
         >
           Return to Hub
         </a>
+      </div>
+    </div>
+  );
+}
+
+function getResultStats(record: PracticeSummaryRecord): [string, string][] {
+  const score: [string, string] = ["Score", record.score.toLocaleString()];
+  if (record.modeId === "smooth-track") {
+    return [
+      score,
+      ["On Target", `${record.onTargetPercentage}%`],
+      ["Average Error", record.averageErrorUnits.toLocaleString()],
+      ["Max Error", record.maxErrorUnits.toLocaleString()],
+    ];
+  }
+  if (record.modeId === "tempo") {
+    return [
+      score,
+      ["Perfect", `${record.perfectPercentage}%`],
+      ["Perfect / Early", `${record.perfect} / ${record.early}`],
+      ["Late / Miss", `${record.late} / ${record.miss}`],
+    ];
+  }
+  return [
+    score,
+    ["Accuracy", `${record.accuracyPercentage}%`],
+    ["Hits / Shots", `${record.hits} / ${record.shots}`],
+    ["Kills / Sec", String(record.killsPerSecond)],
+  ];
+}
+
+function ResultStat({
+  label,
+  value,
+  featured,
+}: {
+  label: string;
+  value: string;
+  featured: boolean;
+}) {
+  return (
+    <div
+      style={{
+        backgroundColor: "rgba(255, 255, 255, 0.03)",
+        padding: "20px",
+        borderRadius: "12px",
+        border: "1px solid rgba(255, 255, 255, 0.05)",
+      }}
+    >
+      <div style={{ color: "#94a3b8", fontSize: "0.9rem" }}>{label}</div>
+      <div
+        style={{
+          fontSize: featured ? "2rem" : "1.8rem",
+          fontWeight: featured ? 900 : 800,
+          color: label === "Score" ? "#00ff88" : undefined,
+          marginTop: "4px",
+        }}
+      >
+        {value}
       </div>
     </div>
   );

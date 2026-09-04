@@ -1,4 +1,4 @@
-import { createPrngV1 } from "@findmysensi/aim-core";
+import { createPrngV1, FULL_TURN_UNITS } from "@findmysensi/aim-core";
 import { describe, expect, it } from "vitest";
 import { SmoothTrackScenarioEngine } from "../src/smooth-track/dev-v0.js";
 
@@ -24,6 +24,8 @@ describe("Smooth Track Scenario (dev-v0)", () => {
     const positions: Array<{ x: number; y: number }> = [];
     for (let tick = 0; tick < 100; tick += 10) {
       const pos = engine.computePosition(tick);
+      expect(pos.xAngleUnits).toBeGreaterThanOrEqual(0);
+      expect(pos.xAngleUnits).toBeLessThan(FULL_TURN_UNITS);
       positions.push({ x: pos.xAngleUnits, y: pos.yAngleUnits });
     }
 

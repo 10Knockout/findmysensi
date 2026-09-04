@@ -1,21 +1,27 @@
 import type { AngleUnits, PitchUnits, PrngV1 } from "@findmysensi/aim-core";
-import type { GridMetrics } from "@findmysensi/analytics";
+import type {
+  GridMetrics,
+  TempoMetrics,
+  TrackingMetrics,
+} from "@findmysensi/analytics";
 import type { Tick } from "@findmysensi/protocol";
 import type {
   RankedScenarioDefinition,
   TargetSpawnSpec,
 } from "@findmysensi/scenarios";
-import type { ScoreResult } from "@findmysensi/scoring";
 
-/**
- * The metrics shape Grid, Pinpoint, Multi, Headline, and Strafe all share
- * (hits/shots/misses/accuracy/acquisition/KPS). Smooth Track and Tempo use
- * different shapes entirely and are not covered by this milestone.
- */
 export type ClickMetrics = GridMetrics;
+export type RuntimeMetrics = ClickMetrics | TrackingMetrics | TempoMetrics;
+
+export interface RuntimeScoreResult<
+  TMetrics extends RuntimeMetrics = RuntimeMetrics,
+> {
+  readonly score: number;
+  readonly metrics: TMetrics;
+}
 
 export interface ModeRuntimeAdapter<
-  TMetrics extends ClickMetrics = ClickMetrics,
+  TMetrics extends RuntimeMetrics = RuntimeMetrics,
 > {
   readonly modeId: string;
   readonly definition: RankedScenarioDefinition;
@@ -39,5 +45,5 @@ export interface ModeRuntimeAdapter<
 
   computeMetrics(elapsedTicks: number): TMetrics;
 
-  computeScore(metrics: TMetrics): ScoreResult;
+  computeScore(metrics: TMetrics): RuntimeScoreResult<TMetrics>;
 }

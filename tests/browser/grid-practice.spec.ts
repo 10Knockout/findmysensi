@@ -6,7 +6,11 @@ import {
   wrapYaw,
 } from "@findmysensi/aim-core";
 import { AimRenderer } from "@findmysensi/render-canvas";
-import { createMultiModeAdapter } from "@findmysensi/trainer-runtime";
+import {
+  createMultiModeAdapter,
+  createSmoothTrackModeAdapter,
+  createTempoModeAdapter,
+} from "@findmysensi/trainer-runtime";
 import {
   BROWSER_GAIN_FIXED_POINT_SCALE,
   resolveBrowserInputGain,
@@ -107,6 +111,31 @@ describe("Grid Practice Run Flow & Lifecycle", () => {
 
     expect(localPracticeHistory.getAll("multi")[0]?.modeId).toBe("multi");
     expect(localPracticeHistory.getAll("grid")).toEqual([]);
+  });
+
+  it.each([
+    ["smooth-track", createSmoothTrackModeAdapter],
+    ["tempo", createTempoModeAdapter],
+  ] as const)("persists a real %s metric summary", (modeId, createAdapter) => {
+    localPracticeHistory.clear();
+    const controller = new PracticeRunController(
+      {
+        onStateChange: () => {},
+        onTickProgress: () => {},
+        onScoreUpdate: () => {},
+        onComplete: () => {},
+      },
+      undefined,
+      { durationTicks: 1 },
+      createAdapter(),
+    );
+
+    controller.start([1, 2, 3, 4]);
+    controller.onAnimationFrame(0);
+    controller.onAnimationFrame(10);
+    controller.onAnimationFrame(20);
+
+    expect(localPracticeHistory.getAll(modeId)[0]?.modeId).toBe(modeId);
   });
 
   it("surfaces real ring-buffer overflow into the saved result summary", () => {
@@ -266,8 +295,11 @@ describe("Grid Practice Run Flow & Lifecycle", () => {
       {
         onStateChange: () => {},
         onTickProgress: () => {},
-        onScoreUpdate: (_score, hits, misses) =>
-          scoreUpdates.push({ hits, misses }),
+        onScoreUpdate: (_score, metrics) => {
+          if ("hits" in metrics) {
+            scoreUpdates.push({ hits: metrics.hits, misses: metrics.misses });
+          }
+        },
         onComplete: () => {},
       },
       capture.renderer,

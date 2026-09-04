@@ -32,8 +32,35 @@ export interface HeadlinePracticeSummary extends ClickPracticeSummaryBase {
   readonly modeId: "headline";
 }
 
+export interface StrafePracticeSummary extends ClickPracticeSummaryBase {
+  readonly modeId: "strafe";
+}
+
+export interface SmoothTrackPracticeSummary extends PracticeRunSummaryBase {
+  readonly modeId: "smooth-track";
+  readonly onTargetTicks: number;
+  readonly totalTicks: number;
+  readonly onTargetPercentage: number;
+  readonly averageErrorUnits: number;
+  readonly maxErrorUnits: number;
+}
+
+export interface TempoPracticeSummary extends PracticeRunSummaryBase {
+  readonly modeId: "tempo";
+  readonly perfect: number;
+  readonly early: number;
+  readonly late: number;
+  readonly miss: number;
+  readonly totalBeats: number;
+  readonly perfectPercentage: number;
+  readonly hitPercentage: number;
+}
+
 export type PracticeSummaryRecord =
   | GridPracticeSummary
   | PinpointPracticeSummary
   | MultiPracticeSummary
-  | HeadlinePracticeSummary;
+  | HeadlinePracticeSummary
+  | StrafePracticeSummary
+  | SmoothTrackPracticeSummary
+  | TempoPracticeSummary;

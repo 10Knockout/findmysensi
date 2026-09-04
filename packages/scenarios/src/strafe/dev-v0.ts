@@ -1,4 +1,4 @@
-import { PrngV1 } from "@findmysensi/aim-core";
+import { FULL_TURN_UNITS, PrngV1, wrapYaw } from "@findmysensi/aim-core";
 import { defaultScenarioRegistry } from "../registry.js";
 import {
   RankedScenarioDefinition,
@@ -106,7 +106,10 @@ export class StrafeScenarioEngine {
 
     for (let i = 0; i < this.activeTargets.length; i++) {
       const t = this.activeTargets[i]!;
-      let newX = t.xAngleUnits;
+      let newX =
+        t.xAngleUnits > FULL_TURN_UNITS / 2
+          ? t.xAngleUnits - FULL_TURN_UNITS
+          : t.xAngleUnits;
       let velocity = t.velocityUnitsPerTick;
 
       if (t.pattern === "oscillating") {
@@ -130,7 +133,7 @@ export class StrafeScenarioEngine {
 
       this.activeTargets[i] = {
         ...t,
-        xAngleUnits: newX,
+        xAngleUnits: wrapYaw(newX),
         velocityUnitsPerTick: velocity,
       };
     }
@@ -165,7 +168,7 @@ export class StrafeScenarioEngine {
     const halfW = Math.floor(this.areaWidth / 2);
     const halfH = Math.floor(this.areaHeight / 2);
 
-    const x = prng.nextRange(-halfW, halfW + 1);
+    const x = wrapYaw(prng.nextRange(-halfW, halfW + 1));
     const y = prng.nextRange(-halfH, halfH + 1);
 
     const direction: StrafeDirection =
