@@ -14,3 +14,4 @@ export * from "./recommendation.js";
 export * from "./ranks.js";
 export * from "./benchmarks.js";
 export * from "./workouts.js";
+export * from "./find-my-sensi.js";
