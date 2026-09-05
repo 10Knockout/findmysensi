@@ -8,6 +8,7 @@ import type {
   RegisterRequest,
   ResetPasswordRequest,
   SessionResponse,
+  SessionUser,
   TrainerSettings,
 } from "@findmysensi/protocol";
 
@@ -15,6 +16,99 @@ export interface ApiResult<T> {
   ok: boolean;
   data?: T;
   error?: string;
+}
+
+export const SESSION_CACHE_STORAGE_KEY = "fms_session_cache_v1";
+
+export interface CachedSessionData {
+  session: SessionResponse;
+  cachedAt: number;
+}
+
+let memoryCachedSession: CachedSessionData | null = null;
+let activeSessionPromise: Promise<SessionResponse | null> | null = null;
+
+function isValidCachedSession(
+  item: CachedSessionData,
+  now: number,
+  ttlMs: number,
+): boolean {
+  if (!item || !item.session || !item.session.user) return false;
+  if (item.session.session?.expiresAt) {
+    const expiresAt = new Date(item.session.session.expiresAt).getTime();
+    if (!isNaN(expiresAt) && expiresAt <= now) {
+      return false;
+    }
+  }
+  if (ttlMs > 0 && now - item.cachedAt > ttlMs) {
+    return false;
+  }
+  return true;
+}
+
+export function getStoredSession(
+  ttlMs: number = 60_000,
+): SessionResponse | null {
+  const now = Date.now();
+  if (
+    memoryCachedSession &&
+    isValidCachedSession(memoryCachedSession, now, ttlMs)
+  ) {
+    return memoryCachedSession.session;
+  }
+  if (typeof window !== "undefined" && window.localStorage) {
+    try {
+      const raw = window.localStorage.getItem(SESSION_CACHE_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as CachedSessionData;
+        if (isValidCachedSession(parsed, now, ttlMs)) {
+          memoryCachedSession = parsed;
+          return parsed.session;
+        }
+      }
+    } catch {
+      // ignore storage / json parse errors
+    }
+  }
+  return null;
+}
+
+export function storeSession(session: SessionResponse | null): void {
+  if (!session || !session.user) {
+    clearStoredSession();
+    return;
+  }
+  const data: CachedSessionData = {
+    session,
+    cachedAt: Date.now(),
+  };
+  memoryCachedSession = data;
+  if (typeof window !== "undefined" && window.localStorage) {
+    try {
+      window.localStorage.setItem(
+        SESSION_CACHE_STORAGE_KEY,
+        JSON.stringify(data),
+      );
+    } catch {
+      // ignore storage errors
+    }
+  }
+}
+
+export function clearStoredSession(): void {
+  memoryCachedSession = null;
+  if (typeof window !== "undefined" && window.localStorage) {
+    try {
+      window.localStorage.removeItem(SESSION_CACHE_STORAGE_KEY);
+    } catch {
+      // ignore
+    }
+  }
+}
+
+export interface GetSessionOptions {
+  forceRefresh?: boolean;
+  ttlMs?: number;
 }
 
 export class BrowserApiClient {
@@ -54,21 +148,81 @@ export class BrowserApiClient {
     }
   }
 
-  async getSession(): Promise<SessionResponse | null> {
-    const result = await this.requestJson<SessionResponse>(
-      "/api/auth/get-session",
-      {
-        method: "GET",
-      },
-    );
-    return result.ok ? (result.data ?? null) : null;
+  async getSession(
+    options?: GetSessionOptions,
+  ): Promise<SessionResponse | null> {
+    const ttlMs = options?.ttlMs ?? 60_000;
+    if (!options?.forceRefresh) {
+      const cached = getStoredSession(ttlMs);
+      if (cached) return cached;
+    }
+
+    if (activeSessionPromise) {
+      return activeSessionPromise;
+    }
+
+    activeSessionPromise = (async () => {
+      try {
+        const result = await this.requestJson<SessionResponse | null>(
+          "/api/auth/get-session",
+          {
+            method: "GET",
+          },
+        );
+
+        if (result.ok) {
+          const data = result.data;
+          if (data && data.user) {
+            storeSession(data);
+            return data;
+          } else {
+            clearStoredSession();
+            return null;
+          }
+        }
+
+        // On network error or server error (e.g. 429 rate limit or 500):
+        // Fall back to any unexpired cached session from localStorage rather than logging the user out.
+        const fallback = getStoredSession(0);
+        if (fallback) {
+          return fallback;
+        }
+
+        return null;
+      } finally {
+        activeSessionPromise = null;
+      }
+    })();
+
+    return activeSessionPromise;
   }
 
   async login(data: LoginRequest): Promise<{ ok: boolean; error?: string }> {
-    const result = await this.requestJson<unknown>("/api/auth/sign-in/email", {
+    const result = await this.requestJson<{
+      token?: string;
+      user?: SessionUser;
+    }>("/api/auth/sign-in/email", {
       method: "POST",
       body: JSON.stringify(data),
     });
+
+    if (result.ok && result.data?.user) {
+      const token = result.data.token ?? "";
+      const sessionPayload: SessionResponse = {
+        user: result.data.user,
+        session: token
+          ? {
+              id: token,
+              userId: result.data.user.id,
+              expiresAt: new Date(
+                Date.now() + 7 * 24 * 60 * 60 * 1000,
+              ).toISOString(),
+            }
+          : null,
+      };
+      storeSession(sessionPayload);
+    }
+
     return { ok: result.ok, ...(result.error ? { error: result.error } : {}) };
   }
 
@@ -111,6 +265,7 @@ export class BrowserApiClient {
   }
 
   async logout(): Promise<void> {
+    clearStoredSession();
     await this.requestJson<unknown>("/api/auth/sign-out", { method: "POST" });
   }
 
