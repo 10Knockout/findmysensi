@@ -394,24 +394,26 @@ html {
   border: clamp(10px, 1vw, 15px) solid var(--fms-acid);
   border-radius: 50%;
   box-shadow: inset 0 0 0 2px var(--fms-black);
-  animation: landing-target-cycle 4.8s steps(1, end) infinite;
+  transform: translate(-50%, -50%);
+  transform-origin: center;
 }
 
 .target-one {
-  top: 17%;
-  left: 22%;
+  top: 23%;
+  left: 28%;
+  animation: landing-target-one 4.8s steps(1, end) infinite;
 }
 
 .target-two {
-  top: 61%;
-  left: 67%;
-  animation-delay: -3.2s;
+  top: 67%;
+  left: 73%;
+  animation: landing-target-two 4.8s steps(1, end) infinite;
 }
 
 .target-three {
-  top: 30%;
-  left: 76%;
-  animation-delay: -1.6s;
+  top: 36%;
+  left: 82%;
+  animation: landing-target-three 4.8s steps(1, end) infinite;
 }
 
 .landing-crosshair,
@@ -441,23 +443,22 @@ html {
   border-radius: 50%;
   opacity: 0;
   transform: translate(-50%, -50%) scale(0.2);
-  animation: landing-shot 4.8s ease-out infinite;
 }
 
 .shot-one {
   top: 23%;
   left: 28%;
-  animation-delay: 0s;
+  animation: landing-shot-one 4.8s ease-out infinite;
 }
 .shot-two {
   top: 67%;
   left: 73%;
-  animation-delay: -3.2s;
+  animation: landing-shot-two 4.8s ease-out infinite;
 }
 .shot-three {
   top: 36%;
   left: 82%;
-  animation-delay: -1.6s;
+  animation: landing-shot-three 4.8s ease-out infinite;
 }
 
 .landing-demo-hud {
@@ -832,24 +833,24 @@ html {
 
 @keyframes landing-aim-path {
   0%,
-  7% {
+  8% {
     top: 23%;
     left: 28%;
     transform: translate(-50%, -50%);
   }
-  27%,
-  40% {
+  12%,
+  36% {
     top: 67%;
     left: 73%;
     transform: translate(-50%, -50%) rotate(7deg);
   }
-  60%,
-  73% {
+  40%,
+  64% {
     top: 36%;
     left: 82%;
     transform: translate(-50%, -50%) rotate(-5deg);
   }
-  93%,
+  68%,
   100% {
     top: 23%;
     left: 28%;
@@ -857,35 +858,93 @@ html {
   }
 }
 
-@keyframes landing-target-cycle {
+@keyframes landing-target-one {
   0%,
-  10%,
+  6%,
+  68%,
   100% {
     opacity: 1;
-    transform: scale(1);
+    transform: translate(-50%, -50%) scale(1);
   }
-  11%,
-  24% {
+  8%,
+  66% {
     opacity: 0;
-    transform: scale(0.72);
-  }
-  25%,
-  99% {
-    opacity: 1;
-    transform: scale(1);
+    transform: translate(-50%, -50%) scale(1);
   }
 }
 
-@keyframes landing-shot {
+@keyframes landing-target-two {
   0%,
-  7% {
+  14%,
+  46%,
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  16%,
+  44% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes landing-target-three {
+  0%,
+  42%,
+  74%,
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  44%,
+  72% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes landing-shot-one {
+  0%,
+  5% {
     opacity: 0;
     transform: translate(-50%, -50%) scale(0.2);
   }
-  8% {
+  7% {
     opacity: 0.9;
   }
-  15%,
+  14%,
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.8);
+  }
+}
+
+@keyframes landing-shot-two {
+  0%,
+  13% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.2);
+  }
+  15% {
+    opacity: 0.9;
+  }
+  22%,
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.8);
+  }
+}
+
+@keyframes landing-shot-three {
+  0%,
+  41% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.2);
+  }
+  43% {
+    opacity: 0.9;
+  }
+  50%,
   100% {
     opacity: 0;
     transform: translate(-50%, -50%) scale(1.8);
