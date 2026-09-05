@@ -1,167 +1,264 @@
+import Image from "next/image";
 import Link from "next/link";
+import { LandingMotion } from "../src/features/landing/LandingMotion.js";
 import { LiveLeaderboard } from "../src/features/landing/LiveLeaderboard.js";
+
+const MODES = [
+  "Gridshot",
+  "Pinpoint",
+  "Multi",
+  "Headline",
+  "Strafe",
+  "Smooth Track",
+  "Tempo",
+  "Microshot",
+  "Reaction",
+  "Switch Track",
+] as const;
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-zinc-950 text-zinc-100">
-      <header className="border-b border-zinc-800 px-6 py-4">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
-          <Link href="/" className="font-black tracking-tight text-white">
-            FindMySensi
+    <main className="landing-shell">
+      <LandingMotion />
+
+      <header className="landing-nav">
+        <Link href="#top" className="landing-wordmark">
+          <span aria-hidden="true">F/</span> FindMySensi
+        </Link>
+        <nav aria-label="Main navigation" className="landing-nav-links">
+          <a href="#training">Training</a>
+          <a href="#calibration">Calibration</a>
+          <a href="#leaderboard">Scores</a>
+        </nav>
+        <div className="landing-nav-actions">
+          <Link href="/login" className="landing-login">
+            Sign in
           </Link>
-          <nav className="flex items-center gap-2 text-sm">
-            <Link
-              href="/login"
-              className="rounded-lg px-4 py-2 text-zinc-300 hover:bg-zinc-900"
-            >
-              Login
-            </Link>
-            <Link
-              href="/register"
-              className="rounded-lg bg-emerald-400 px-4 py-2 font-bold text-zinc-950 hover:bg-emerald-300"
-            >
-              Register
-            </Link>
-          </nav>
+          <Link href="/register" className="landing-pill landing-pill-light">
+            Play free
+          </Link>
         </div>
       </header>
 
-      <section className="mx-auto grid max-w-6xl gap-10 px-6 py-20 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
-        <div>
-          <p className="mb-4 font-mono text-xs font-bold uppercase tracking-[0.25em] text-emerald-400">
-            Browser aim training + sensitivity tools
+      <section id="top" className="landing-hero">
+        <Image
+          src="/landing/aim-desk-hero.png"
+          alt="A precision gaming mouse beside three aim targets on a dark monitor"
+          fill
+          priority
+          fetchPriority="high"
+          quality={78}
+          sizes="100vw"
+          className="landing-hero-image"
+        />
+        <div className="landing-hero-scrim" aria-hidden="true" />
+        <div className="landing-hero-content" data-reveal>
+          <p className="landing-kicker">
+            Aim training, stripped to the signal.
           </p>
-          <h1 className="max-w-3xl text-5xl font-black tracking-tight text-white sm:text-7xl">
-            Find the sensitivity you actually perform with.
+          <h1>
+            Find your
+            <br />
+            <em>sensi.</em>
           </h1>
-          <p className="mt-6 max-w-2xl text-lg leading-8 text-zinc-400">
-            Train Gridshot in the browser, compare verified scores, and convert
-            sensitivity using physical aim measurements such as cm/360 and eDPI.
+          <p className="landing-hero-copy">
+            Ten focused drills. Physical sensitivity conversion. Real
+            performance data—inside your browser.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link
-              href="/app"
-              className="rounded-xl bg-emerald-400 px-6 py-3 font-black text-zinc-950 hover:bg-emerald-300"
-            >
-              START TRAINING
+          <div className="landing-hero-actions">
+            <Link href="/register" className="landing-pill landing-pill-acid">
+              Start training
+              <ArrowIcon />
             </Link>
-            <Link
-              href="/register"
-              className="rounded-xl border border-zinc-700 bg-zinc-900 px-6 py-3 font-bold text-white hover:bg-zinc-800"
-            >
-              CREATE ACCOUNT
+            <Link href="/tools/converter" className="landing-text-link">
+              Convert sensitivity
             </Link>
           </div>
         </div>
+        <div className="landing-hero-meta" aria-label="Product highlights">
+          <span>10 drills</span>
+          <span>128 Hz simulation</span>
+          <span>0 installs</span>
+        </div>
+        <a
+          href="#training"
+          className="landing-scroll-cue"
+          aria-label="Scroll to training"
+        >
+          <span />
+        </a>
+      </section>
 
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-          <p className="font-mono text-xs uppercase tracking-widest text-zinc-500">
-            Public tool
-          </p>
-          <h2 className="mt-2 text-2xl font-black text-white">
-            Sensitivity Converter
+      <section id="training" className="landing-chapter landing-chapter-light">
+        <div className="landing-section-head" data-reveal>
+          <p className="landing-index">01 / TRAIN</p>
+          <h2>
+            Less noise.
+            <br />
+            More signal.
           </h2>
-          <p className="mt-3 text-sm leading-6 text-zinc-400">
-            Convert supported game sensitivities, see cm/360, and compare eDPI.
-            Game conversion values are shown only when a definition is supported
-            by the converter registry.
+          <p>
+            Every drill isolates a useful aiming skill. No marketplace, no
+            filler, no setup ritual.
           </p>
-          <Link
-            href="/tools/converter"
-            className="mt-6 inline-flex rounded-lg border border-emerald-500/40 px-4 py-2 font-bold text-emerald-300 hover:bg-emerald-950/40"
+        </div>
+
+        <div className="landing-training-stage" data-reveal>
+          <div
+            className="landing-target-field"
+            aria-label="Animated preview of a cursor snapping between aim targets"
+            role="img"
           >
-            Open Converter
+            <i className="target target-one" />
+            <i className="target target-two" />
+            <i className="target target-three" />
+            <span className="landing-shot shot-one" aria-hidden="true" />
+            <span className="landing-shot shot-two" aria-hidden="true" />
+            <span className="landing-shot shot-three" aria-hidden="true" />
+            <span className="landing-crosshair" aria-hidden="true" />
+            <span className="landing-demo-hud" aria-hidden="true">
+              <b>GRID//01</b>
+              <i>+300</i>
+              <em>00:12.84</em>
+            </span>
+          </div>
+          <div className="landing-stage-caption">
+            <span>INPUT FEED / LIVE</span>
+            <strong>See the shot. Feel the response.</strong>
+          </div>
+        </div>
+
+        <div
+          className="landing-mode-rail"
+          aria-label="Available training modes"
+        >
+          {MODES.map((mode, index) => (
+            <span key={mode}>
+              <b>{String(index + 1).padStart(2, "0")}</b>
+              {mode}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <section
+        id="calibration"
+        className="landing-chapter landing-chapter-acid"
+      >
+        <div className="landing-calibration-copy" data-reveal>
+          <p className="landing-index">02 / CALIBRATE</p>
+          <h2>
+            Stop guessing.
+            <br />
+            Test it.
+          </h2>
+        </div>
+        <div className="landing-calibration-detail" data-reveal>
+          <p>
+            Find My Sensi runs blinded, counterbalanced Gridshot blocks and
+            recommends only a sensitivity you actually tested.
+          </p>
+          <div className="landing-number-line">
+            <span>0.175</span>
+            <i />
+            <span>43.54 cm/360</span>
+          </div>
+          <Link href="/register" className="landing-pill landing-pill-dark">
+            Find my sensi
+            <ArrowIcon />
           </Link>
         </div>
       </section>
 
-      <section className="border-y border-zinc-800 bg-black/20 px-6 py-16">
-        <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-2">
-          <div>
-            <p className="font-mono text-xs font-bold uppercase tracking-[0.25em] text-emerald-400">
-              Live board
-            </p>
-            <h2 className="mt-2 text-3xl font-black text-white">
-              Gridshot Leaderboard
-            </h2>
-            <p className="mt-3 max-w-xl text-sm leading-6 text-zinc-400">
-              Every training mode gets its own leaderboard. Gridshot is the only
-              exposed mode while we perfect the first game loop.
-            </p>
-          </div>
+      <section
+        id="leaderboard"
+        className="landing-chapter landing-chapter-dark"
+      >
+        <div className="landing-board-intro" data-reveal>
+          <p className="landing-index">03 / MEASURE</p>
+          <h2>
+            Your progress,
+            <br />
+            without the fiction.
+          </h2>
+          <p>
+            Practice history stays local. The public board stays empty until
+            server-verified competition is ready.
+          </p>
+        </div>
+        <div className="landing-board-panel" data-reveal>
           <LiveLeaderboard />
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-6 py-16">
-        <div className="grid gap-6 md:grid-cols-2">
-          <article className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-            <p className="font-mono text-xs uppercase tracking-widest text-zinc-500">
-              Why numbers differ between games
-            </p>
-            <h2 className="mt-2 text-2xl font-black text-white">
-              Same aim. Different sensitivity number.
-            </h2>
-            <p className="mt-3 text-sm leading-6 text-zinc-400">
-              A sensitivity value such as 0.25 has meaning only inside the game
-              or trainer that defines it. FindMySensi stores an internal angular
-              gain and uses supported game definitions to translate it. DPI can
-              be unknown; when DPI is known, cm/360 can also be calculated.
-            </p>
-            <p className="mt-3 text-sm leading-6 text-zinc-500">
-              Training FOV is a separate camera setting. FindMySensi defaults to
-              103° and lets signed-in players choose another FOV for the game
-              they are training for.
-            </p>
-            <Link
-              href="/tools/converter"
-              className="mt-5 inline-block font-bold text-emerald-400 hover:underline"
-            >
-              Calculate yours →
-            </Link>
-          </article>
-
-          <article className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-            <p className="font-mono text-xs uppercase tracking-widest text-zinc-500">
-              Open source
-            </p>
-            <h2 className="mt-2 text-2xl font-black text-white">
-              Built in public, improved by players.
-            </h2>
-            <p className="mt-3 text-sm leading-6 text-zinc-400">
-              FindMySensi is created by Hitesh Mahay. You can inspect the public
-              engine, contribute code, report bugs, or suggest improvements on
-              GitHub.
-            </p>
-            <div className="mt-5 flex flex-wrap gap-3 text-sm font-bold">
-              <a
-                href="https://github.com/10Knockout/findmysensi"
-                target="_blank"
-                rel="noreferrer"
-                className="rounded-lg border border-zinc-700 px-4 py-2 hover:bg-zinc-800"
-              >
-                GitHub
-              </a>
-              <a
-                href="https://github.com/10Knockout/findmysensi/issues"
-                target="_blank"
-                rel="noreferrer"
-                className="rounded-lg border border-zinc-700 px-4 py-2 hover:bg-zinc-800"
-              >
-                Report / Contribute
-              </a>
-              <a
-                href="https://hiteshmahay.com"
-                target="_blank"
-                rel="noreferrer"
-                className="rounded-lg border border-zinc-700 px-4 py-2 hover:bg-zinc-800"
-              >
-                Portfolio
-              </a>
-            </div>
-          </article>
+      <section className="landing-chapter landing-chapter-tools">
+        <div className="landing-tool-card" data-reveal>
+          <p className="landing-index">FREE TOOL / 01</p>
+          <h2>Same aim. Different number.</h2>
+          <p>
+            Convert supported games using angular gain, eDPI, and cm/360—not
+            folklore from a forum post.
+          </p>
+          <Link href="/tools/converter" className="landing-arrow-link">
+            Open converter <ArrowIcon />
+          </Link>
+        </div>
+        <div
+          className="landing-tool-card landing-tool-card-inverse"
+          data-reveal
+        >
+          <p className="landing-index">OPEN SOURCE / 02</p>
+          <h2>Inspect the engine.</h2>
+          <p>
+            The trainer, sensitivity math, scenarios, and scoring live in
+            public. Built by Hitesh Mahay, improved with players.
+          </p>
+          <a
+            href="https://github.com/10Knockout/findmysensi"
+            target="_blank"
+            rel="noreferrer"
+            className="landing-arrow-link"
+          >
+            View GitHub <ArrowIcon />
+          </a>
         </div>
       </section>
+
+      <section className="landing-final-cta">
+        <p>Mouse ready?</p>
+        <h2>Make every count.</h2>
+        <Link href="/register" className="landing-pill landing-pill-dark">
+          Create free account
+          <ArrowIcon />
+        </Link>
+      </section>
+
+      <footer className="landing-footer">
+        <span className="landing-wordmark">
+          <span aria-hidden="true">F/</span> FindMySensi
+        </span>
+        <p>Precision over noise. Built for the browser.</p>
+        <div>
+          <a
+            href="https://github.com/10Knockout/findmysensi/issues"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Report an issue
+          </a>
+          <a href="https://hiteshmahay.com" target="_blank" rel="noreferrer">
+            Hitesh Mahay
+          </a>
+        </div>
+      </footer>
     </main>
+  );
+}
+
+function ArrowIcon() {
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden="true">
+      <path d="M4 10h11M11 5l5 5-5 5" />
+    </svg>
   );
 }
