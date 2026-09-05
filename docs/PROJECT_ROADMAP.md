@@ -1,8 +1,8 @@
 # FindMySensi — Project Roadmap & Status
 
-**Last updated:** 2026-09-04
-**Public repo HEAD:** `4196755` (M0-M11 complete and pushed)
-**Secure repo HEAD:** `cea7dca`
+**Last updated:** 2026-09-05
+**Public repo HEAD:** `015c3a1` (M0-M12 complete and pushed)
+**Secure repo HEAD:** `fdd7fb4` (M14 deploy adapter/config pushed)
 
 This is the single durable reference for where FindMySensi is, why it's built the
 way it is, and what's left. Read this before picking up work in a new session
@@ -72,7 +72,7 @@ make after you've actually felt the corrected build.
 
 ## 3. What's actually done (verified, tested, pushed)
 
-M0 through M11 are complete and pushed to `origin main`. For the exact commit
+M0 through M12 are complete and pushed to `origin main`. For the exact commit
 list, run `git log --oneline` in the public repo. Highlights beyond the
 original M4 checkpoint:
 
@@ -97,21 +97,22 @@ original M4 checkpoint:
 - **Find My Sensi** (M10): `find-my-sensi.ts` — 5-candidate generation
   symmetric around a base sensitivity, deterministic counterbalanced test
   order, LOW/MODERATE/HIGH confidence recommendation from real measured
-  accuracy only. **Kernel only — live multi-block UI not yet wired**, needs
-  `PracticeRunController` integration per candidate block; deferred as
-  disproportionate to remaining session budget.
+  accuracy only. `/app/calibrate` now runs five real, blinded 15-second
+  Gridshot blocks and can save the resulting recommendation.
 - **Sensi Battle** (M11): `sensi-battle.ts` — counterbalanced A/B block order,
   objective decision rule, explicit `COULD_NOT_TELL` outcome for sub-3-point
-  accuracy gaps rather than fabricating a winner. **Same UI-wiring deferral
-  as Find My Sensi.**
+  accuracy gaps rather than fabricating a winner. `/app/sensi-battle` now runs
+  the two real blinded blocks and can save a clear winner.
 - **Mouse Swap** (M11): consolidated onto one game-agnostic
   `calculateMouseSwap(sensitivity, oldMouse, newMouse)` — pure DPI-ratio math,
   no saved profiles, no mouse hardware database (explicitly out of scope).
   Replaced a dead `Math.random()`-based legacy preference-calibration
   scaffold that had zero UI callers.
 
-Secure repo: only M0's formatting fix. No feature work there yet — everything
-so far has been public-repo sensitivity/trainer work.
+Secure repo now includes the account/product-shell APIs, synced profile
+cosmetic IDs, Turso/Resend production guards, and a real Vercel Fetch-function
+adapter. The external Turso, Resend, and Vercel resources are not provisioned
+or smoke-tested yet.
 
 ---
 
@@ -135,10 +136,10 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started
   recommended-next-exercise — all deterministic, no fake advice
 - ✅ **M8** — Benchmarks + rank system (Iron→Elite, provisional v1 thresholds)
 - ✅ **M9** — Workouts / playlists (fixed 4-workout catalog, no UGC)
-- ✅ **M10** — Find My Sensi calibration kernel (real performance-based,
-  counterbalanced, confidence-scored) — **UI wiring still pending**
+- ✅ **M10** — Find My Sensi calibration kernel and live five-block flow (real
+  performance-based, blinded, counterbalanced, confidence-scored)
 - ✅ **M11** — Sensi Battle kernel + simple Mouse Swap (DPI-only, no saved
-  profiles) — **Sensi Battle UI wiring still pending**
+  profiles), with a live blinded two-block Battle flow
 - ✅ **M12** — Profile cosmetics: avatars (12 free presets), frames + titles
   (derived from `RANK_TIERS`), 25 real deterministic achievements. New
   `/app/profile` route.
@@ -149,8 +150,9 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started
   vs. M0-M12 (no brand direction in the brief beyond "premium"), you chose
   to defer it rather than have me guess a visual identity. Revisit with
   reference sites/mockups or explicit art direction when ready.
-- ⬜ **M14** — Serverless deployment: public + secure Vercel projects, Turso,
-  Resend, same-origin `/api/v1/*` rewrite
+- 🟡 **M14** — Serverless deployment: code/config complete for public + secure
+  Vercel projects and same-origin `/api/v1/*` routing; external Turso/Resend
+  provisioning, first deploy, and production smoke test remain
 - ⬜ **M15** — Verified Gridshot competition pipeline (server-issued ticket →
   canonical run → server-computed score → verified PB), Gridshot first, then
   generalize
@@ -158,14 +160,10 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started
   security headers, rate limits)
 - ⬜ **M17** — Final release
 
-**Outstanding UI-wiring debt (both from calibration kernels, same root
-cause):** Find My Sensi and Sensi Battle both need a live multi-block practice
-flow — run N (or 2) short blocks back-to-back at different sensitivities,
-collect real `accuracyPercentage` per block, then call the already-built
-`recommendSensitivity`/`decideBattle`. This needs `PracticeRunController` to
-support a sequenced multi-block session (it currently runs one block per
-route load). Worth its own small spec before building — not a "just wire it
-up" task.
+**Current M14 boundary:** repository deployment wiring is complete and tested
+locally. M14 is not complete until the owner provisions Turso and Resend,
+repairs/authenticates the local Vercel CLI, deploys both projects, and passes
+the documented health, registration, and email-delivery smoke checks.
 
 ---
 
@@ -232,10 +230,6 @@ proof automated tests alone miss real hardware/browser behavior.
 1. **§2b re-test** — feel out FMS `0.175` vs. Aimlabs `0.175` @ 2400 DPI on
    the current (2a-fixed) build before any `0.05`/`0.07` constant gets
    touched. Your call once you've felt it.
-2. **Find My Sensi / Sensi Battle live UI** — worth a dedicated
-   `PracticeRunController` multi-block spec before building (see §4), rather
-   than bolting a sequenced flow onto the single-block controller as-is.
-3. **M12-M13 scope** — cosmetics (avatars/frames/titles/achievements) and the
-   frontend redesign are both large, subjective, high-surface-area pieces.
-   Flag before building anything you'd want to art-direct yourself rather
-   than have picked for you.
+2. **M13 art direction** — the frontend redesign remains intentionally
+   deferred until you provide reference sites, mockups, or an explicit visual
+   direction. The trainer itself remains Canvas2D-only.
