@@ -51,7 +51,6 @@ export class Canvas2DPotatoRenderer implements AimRenderer {
     this.viewport = viewport;
     this.ctx = canvas.getContext("2d", {
       alpha: false,
-      desynchronized: true,
     }) as CanvasRenderingContext2D | null;
 
     if (options?.backgroundColor) {
