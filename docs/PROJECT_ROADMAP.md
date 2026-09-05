@@ -143,13 +143,11 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started
 - ✅ **M12** — Profile cosmetics: avatars (12 free presets), frames + titles
   (derived from `RANK_TIERS`), 25 real deterministic achievements. New
   `/app/profile` route.
-- ⬜ **M13** — Full frontend redesign: premium pre-login marketing site
-  (WebGL/3D allowed there, with reduced-motion fallback), polished
-  authenticated dashboard — trainer itself stays Canvas2D-only.
-  **Deliberately skipped for now (your call, 2026-09-04):** underspecified
-  vs. M0-M12 (no brand direction in the brief beyond "premium"), you chose
-  to defer it rather than have me guess a visual identity. Revisit with
-  reference sites/mockups or explicit art direction when ready.
+- ✅ **M13** — Full frontend redesign: single-page, cyberpunk-minimal pre-login
+  marketing site with Turret Road + Zodiak typography, generated editorial
+  hero artwork, a lightweight animated training preview and loader, smooth
+  reveal motion, and reduced-motion/low-power safeguards. Trainer remains
+  Canvas2D-only.
 - 🟡 **M14** — Serverless deployment: code/config complete for public + secure
   Vercel projects and same-origin `/api/v1/*` routing; external Turso/Resend
   provisioning, first deploy, and production smoke test remain
@@ -230,6 +228,3 @@ proof automated tests alone miss real hardware/browser behavior.
 1. **§2b re-test** — feel out FMS `0.175` vs. Aimlabs `0.175` @ 2400 DPI on
    the current (2a-fixed) build before any `0.05`/`0.07` constant gets
    touched. Your call once you've felt it.
-2. **M13 art direction** — the frontend redesign remains intentionally
-   deferred until you provide reference sites, mockups, or an explicit visual
-   direction. The trainer itself remains Canvas2D-only.
