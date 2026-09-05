@@ -141,6 +141,18 @@ export default function AppDashboardPage() {
               Calibrate Aim
             </button>
             <Link
+              href="/app/calibrate"
+              className="rounded-lg border border-emerald-500/40 bg-emerald-950/30 px-4 py-2 text-sm font-semibold text-emerald-300 hover:bg-emerald-900/40"
+            >
+              Find My Sensi
+            </Link>
+            <Link
+              href="/app/sensi-battle"
+              className="rounded-lg border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-200 hover:bg-zinc-900"
+            >
+              Sensi Battle
+            </Link>
+            <Link
               href="/app/workouts"
               className="rounded-lg border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-200 hover:bg-zinc-900"
             >

@@ -19,7 +19,11 @@ import {
   createAimRenderer,
   createViewportTransform,
 } from "@findmysensi/render-canvas";
-import type { RuntimeMetrics } from "@findmysensi/trainer-runtime";
+import { resolveBrowserInputGain } from "@findmysensi/sensitivity";
+import type {
+  RuntimeMetrics,
+  RuntimeScoreResult,
+} from "@findmysensi/trainer-runtime";
 import {
   PracticeRunController,
   PracticeRunState,
@@ -35,6 +39,12 @@ import {
 
 interface TrainerBootstrapProps {
   mode: string;
+  durationTicks?: number;
+  sensitivityOverride?: string;
+  settingsOverride?: TrainerSettings;
+  runLabel?: string;
+  onRunComplete?: (result: RuntimeScoreResult) => void;
+  lockedConfiguration?: boolean;
 }
 
 const MAX_PAUSE_MS = 10 * 60 * 1000;
@@ -51,7 +61,15 @@ const EMPTY_VERIFICATION_SNAPSHOT: SensitivityInputVerificationSnapshot = {
   pitchResidualFixedPointUnits: 0,
 };
 
-export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
+export function TrainerBootstrap({
+  mode,
+  durationTicks,
+  sensitivityOverride,
+  settingsOverride,
+  runLabel,
+  onRunComplete,
+  lockedConfiguration = false,
+}: TrainerBootstrapProps) {
   const router = useRouter();
   const modeEntry = trainerModeManifest.get(mode);
   const modeTitle =
@@ -59,7 +77,9 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
     mode;
   const modeDescription = modeEntry?.scenarioEntry.presentation.description;
   const modeDurationTicks =
-    modeEntry?.scenarioEntry.definition.durationTicks ?? 60 * 128;
+    durationTicks ??
+    modeEntry?.scenarioEntry.definition.durationTicks ??
+    60 * 128;
   const modeDurationSeconds = Math.round(modeDurationTicks / 128);
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -143,6 +163,23 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
       setSettingsError(null);
       setRuntimeConfig(null);
 
+      if (settingsOverride) {
+        try {
+          const settings = TrainerSettingsSchema.parse(settingsOverride);
+          const resolved = resolveGridshotRuntimeConfig(settings);
+          savedCrosshairRef.current = resolveSavedCrosshair(
+            resolved.crosshairCode,
+          );
+          setRawSettings(settings);
+          setRuntimeConfig(resolved);
+          runtimeConfigRef.current = resolved;
+          setInitialConfigLoaded(true);
+        } catch {
+          setSettingsError("Trainer settings are invalid.");
+        }
+        return;
+      }
+
       const session = await client.getSession();
       if (!active) return;
       if (!session?.user) {
@@ -180,7 +217,7 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
     return () => {
       active = false;
     };
-  }, [mode, modeTitle, router, settingsAttempt]);
+  }, [mode, modeTitle, router, settingsAttempt, settingsOverride]);
 
   useEffect(() => {
     if (
@@ -193,6 +230,9 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
       return;
 
     const runtimeConfig = runtimeConfigRef.current;
+    const inputGain = sensitivityOverride
+      ? resolveBrowserInputGain(sensitivityOverride)
+      : runtimeConfig.inputGain;
     const adapter = modeEntry.createAdapter();
     const canvas = canvasRef.current;
     const container = containerRef.current;
@@ -257,6 +297,9 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
     const resizeObserver = new ResizeObserver(handleResize);
     resizeObserver.observe(container);
     setRemainingSeconds(modeDurationSeconds);
+    setGameState("ready");
+    setScore(0);
+    setRuntimeMetrics(null);
 
     const controller = new PracticeRunController(
       {
@@ -269,10 +312,14 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
             pauseDeadlineRef.current = null;
           }
           if (newState === "completed") {
-            window.setTimeout(
-              () => router.push(`/app/train/${mode}/results`),
-              600,
-            );
+            if (onRunComplete) {
+              void document.exitPointerLock?.();
+            } else {
+              window.setTimeout(
+                () => router.push(`/app/train/${mode}/results`),
+                600,
+              );
+            }
           }
         },
         onTickProgress: (currentTick, totalTicks) => {
@@ -284,12 +331,12 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
           setScore(newScore);
           setRuntimeMetrics(newMetrics);
         },
-        onComplete: () => {},
+        onComplete: (result) => onRunComplete?.(result),
       },
       renderer,
       {
         durationTicks: modeDurationTicks,
-        inputGain: runtimeConfig.inputGain,
+        inputGain,
         inputBufferCapacity: runtimeConfig.inputBufferCapacity,
       },
       adapter,
@@ -364,6 +411,8 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
     modeEntry,
     router,
     initialConfigLoaded,
+    sensitivityOverride,
+    onRunComplete,
   ]);
 
   useEffect(() => {
@@ -604,6 +653,7 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
                 {modeTitle}
               </h1>
               <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+                {runLabel ? `${runLabel}. ` : null}
                 {modeDescription} Click start to capture the mouse and begin the{" "}
                 {modeDurationSeconds}-second run.
               </p>
@@ -662,12 +712,14 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
               >
                 Resume
               </button>
-              <button
-                onClick={openSettings}
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 py-3 font-semibold text-zinc-200 hover:bg-zinc-700"
-              >
-                Settings
-              </button>
+              {!lockedConfiguration ? (
+                <button
+                  onClick={openSettings}
+                  className="w-full rounded-lg border border-zinc-700 bg-zinc-800 py-3 font-semibold text-zinc-200 hover:bg-zinc-700"
+                >
+                  Settings
+                </button>
+              ) : null}
               <button
                 type="button"
                 onClick={toggleFullscreen}
@@ -675,12 +727,14 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
               >
                 {isFullscreen ? "Exit Fullscreen" : "Toggle Fullscreen"}
               </button>
-              <button
-                onClick={restartWithLatestSettings}
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 py-3 font-semibold text-zinc-200 hover:bg-zinc-700"
-              >
-                Restart
-              </button>
+              {!lockedConfiguration ? (
+                <button
+                  onClick={restartWithLatestSettings}
+                  className="w-full rounded-lg border border-zinc-700 bg-zinc-800 py-3 font-semibold text-zinc-200 hover:bg-zinc-700"
+                >
+                  Restart
+                </button>
+              ) : null}
               <button
                 onClick={() => router.push("/app")}
                 className="w-full rounded-lg border border-zinc-800 py-3 font-semibold text-zinc-400 hover:bg-zinc-800"
@@ -701,7 +755,7 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
         </div>
       ) : null}
 
-      {rawSettings && isSettingsModalOpen ? (
+      {!lockedConfiguration && rawSettings && isSettingsModalOpen ? (
         <InGameSettingsModal
           isOpen={isSettingsModalOpen}
           onClose={() => setIsSettingsModalOpen(false)}
@@ -710,7 +764,7 @@ export function TrainerBootstrap({ mode }: TrainerBootstrapProps) {
         />
       ) : null}
 
-      {inputDebugEnabled && runtimeConfig ? (
+      {!lockedConfiguration && inputDebugEnabled && runtimeConfig ? (
         <InputVerificationOverlay
           snapshot={verificationSnapshot}
           sensitivity={runtimeConfig.inputGain.fmsSensitivity}
