@@ -104,11 +104,8 @@ export default function AppDashboardPage() {
 
   if (error) {
     return (
-      <main className="grid min-h-screen place-items-center bg-zinc-950 p-6 text-zinc-100">
-        <div
-          role="alert"
-          className="rounded-xl border border-red-900 bg-red-950/30 p-5 text-red-200"
-        >
+      <main className="app-shell">
+        <div role="alert" className="app-alert" style={{ margin: 0 }}>
           {error}
         </div>
       </main>
@@ -117,78 +114,68 @@ export default function AppDashboardPage() {
 
   if (!user) {
     return (
-      <main className="grid min-h-screen place-items-center bg-zinc-950 text-zinc-300">
-        <p className="font-mono text-sm">Checking your session…</p>
+      <main className="app-shell">
+        <p
+          style={{
+            fontFamily: "monospace",
+            fontSize: 13,
+            color: "rgba(255,255,255,0.5)",
+          }}
+        >
+          Checking your session…
+        </p>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-zinc-950 px-6 py-10 text-zinc-100">
-      <div className="mx-auto max-w-5xl">
-        <header className="mb-10 flex flex-wrap items-center justify-between gap-4 border-b border-zinc-800 pb-6">
+    <main className="app-page">
+      <div className="app-page-inner">
+        <header className="app-page-header">
           <div>
-            <p className="text-xs text-zinc-500">Signed in as</p>
-            <h1 className="text-2xl font-black text-white">
+            <p className="app-kicker" style={{ marginBottom: 4 }}>
+              Signed in as
+            </p>
+            <h1 className="app-section-title" style={{ marginBottom: 0 }}>
               {user.username ?? user.email}
             </h1>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="app-page-actions">
             <button
               onClick={() => setShowQuickSetup(true)}
-              className="rounded-lg border border-cyan-500/40 bg-cyan-950/40 px-4 py-2 text-sm font-semibold text-cyan-300 hover:bg-cyan-900/50 transition-colors"
+              className="app-chip"
             >
               Calibrate Aim
             </button>
-            <Link
-              href="/app/calibrate"
-              className="rounded-lg border border-emerald-500/40 bg-emerald-950/30 px-4 py-2 text-sm font-semibold text-emerald-300 hover:bg-emerald-900/40"
-            >
+            <Link href="/app/calibrate" className="app-chip app-chip-acid">
               Find My Sensi
             </Link>
-            <Link
-              href="/app/sensi-battle"
-              className="rounded-lg border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-200 hover:bg-zinc-900"
-            >
+            <Link href="/app/sensi-battle" className="app-chip">
               Sensi Battle
             </Link>
-            <Link
-              href="/app/workouts"
-              className="rounded-lg border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-200 hover:bg-zinc-900"
-            >
+            <Link href="/app/workouts" className="app-chip">
               Workouts
             </Link>
-            <Link
-              href="/app/profile"
-              className="rounded-lg border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-200 hover:bg-zinc-900"
-            >
+            <Link href="/app/profile" className="app-chip">
               Profile
             </Link>
-            <Link
-              href="/app/settings"
-              className="rounded-lg border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-200 hover:bg-zinc-900"
-            >
+            <Link href="/app/settings" className="app-chip">
               Settings
             </Link>
-            <button
-              onClick={logout}
-              className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-red-300 hover:bg-zinc-900"
-            >
+            <button onClick={logout} className="app-chip">
               Sign out
             </button>
           </div>
         </header>
 
         {recommendation ? (
-          <div className="mb-8 rounded-xl border border-cyan-500/30 bg-cyan-950/20 p-4">
-            <p className="font-mono text-xs font-bold uppercase tracking-widest text-cyan-400">
-              Recommended next
-            </p>
-            <p className="mt-1 text-sm text-zinc-200">
+          <div className="app-callout">
+            <b>Recommended next</b>
+            <p>
               Train{" "}
               <Link
                 href={`/app/train/${recommendation.modeId}`}
-                className="font-bold text-cyan-300 underline hover:text-cyan-200"
+                className="app-link"
               >
                 {TRAINING_MODES.find(
                   ([id]) => id === recommendation.modeId,
@@ -201,7 +188,7 @@ export default function AppDashboardPage() {
 
         {benchmarks &&
         Object.values(benchmarks).some((entry) => entry !== null) ? (
-          <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="app-stat-grid">
             {(
               Object.entries(benchmarks) as [
                 string,
@@ -209,19 +196,12 @@ export default function AppDashboardPage() {
               ][]
             ).map(([category, entry]) =>
               entry ? (
-                <div
-                  key={category}
-                  className="rounded-xl border border-zinc-800 bg-zinc-900 p-4"
-                >
-                  <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                    {category}
-                  </p>
-                  <p className="mt-1 text-lg font-black text-white">
-                    {entry.rank.name}
-                  </p>
-                  <p className="mt-1 text-xs text-zinc-500">
+                <div key={category} className="app-stat-card">
+                  <b>{category}</b>
+                  <strong>{entry.rank.name}</strong>
+                  <span>
                     {entry.averageAccuracyPercentage.toFixed(1)}% accuracy
-                  </p>
+                  </span>
                 </div>
               ) : null,
             )}
@@ -229,30 +209,22 @@ export default function AppDashboardPage() {
         ) : null}
 
         <section>
-          <p className="mb-2 font-mono text-xs font-bold uppercase tracking-[0.25em] text-emerald-400">
-            Training
+          <p className="app-section-label">Training</p>
+          <h2 className="app-section-title">Aim Training</h2>
+          <p className="app-section-copy">
+            Ten focused exercises. Results stay local until verified scoring
+            is enabled.
           </p>
-          <h2 className="mb-2 text-3xl font-black text-white">Aim Training</h2>
-          <p className="mb-6 text-sm text-zinc-500">
-            Ten focused exercises. Results stay local until verified scoring is
-            enabled.
-          </p>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="app-mode-grid">
             {TRAINING_MODES.map(([modeId, title, description]) => (
               <Link
                 key={modeId}
                 href={`/app/train/${modeId}`}
-                className="group rounded-2xl border border-zinc-800 bg-zinc-900 p-5 transition-colors hover:border-emerald-500/60 hover:bg-zinc-900/80"
+                className="app-mode-card"
               >
-                <h3 className="font-black text-white group-hover:text-emerald-300">
-                  {title}
-                </h3>
-                <p className="mt-2 text-sm leading-5 text-zinc-400">
-                  {description}
-                </p>
-                <span className="mt-5 inline-block font-mono text-xs font-bold text-emerald-400">
-                  PLAY →
-                </span>
+                <h3>{title}</h3>
+                <p>{description}</p>
+                <span className="app-mode-card-cta">PLAY →</span>
               </Link>
             ))}
           </div>

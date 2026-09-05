@@ -82,19 +82,6 @@ export class BrowserApiClient {
     return { ok: result.ok, ...(result.error ? { error: result.error } : {}) };
   }
 
-  async getDevelopmentVerificationOtp(email: string): Promise<string | null> {
-    const result = await this.requestJson<{ otp?: unknown }>(
-      "/api/v1/dev/verification-otp",
-      {
-        method: "POST",
-        body: JSON.stringify({ email }),
-      },
-    );
-    return result.ok && typeof result.data?.otp === "string"
-      ? result.data.otp
-      : null;
-  }
-
   async verifyEmailOtp(
     email: string,
     otp: string,

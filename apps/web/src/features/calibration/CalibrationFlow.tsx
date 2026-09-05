@@ -222,27 +222,46 @@ export function CalibrationFlow({ kind }: { kind: "find" | "battle" }) {
   if (recommendation || battleDecision) {
     const summary = recommendation ?? battleDecision!;
     return (
-      <main className="grid min-h-screen place-items-center bg-zinc-950 p-6 text-zinc-100">
-        <section className="w-full max-w-xl rounded-2xl border border-zinc-800 bg-zinc-900 p-8">
-          <p className="font-mono text-xs font-bold uppercase tracking-widest text-emerald-400">
+      <main className="app-shell">
+        <section className="app-card app-card-wide">
+          <p className="app-kicker" style={{ marginBottom: 8 }}>
             {title} complete
           </p>
-          <h1 className="mt-3 text-3xl font-black">
+          <h1 className="app-heading">
             {selectedSensitivity === null
               ? "Too close to call"
               : `Recommended: ${formatSensitivity(selectedSensitivity)}`}
           </h1>
-          <p className="mt-3 text-zinc-400">{summary.reason}</p>
-          <p className="mt-2 font-mono text-sm text-zinc-500">
+          <p className="app-subtext">{summary.reason}</p>
+          <p
+            style={{
+              marginTop: 8,
+              fontFamily: "monospace",
+              fontSize: 13,
+              color: "rgba(255,255,255,0.5)",
+            }}
+          >
             Confidence: {summary.confidence}
           </p>
-          {error ? <p className="mt-4 text-red-300">{error}</p> : null}
-          <div className="mt-6 flex flex-wrap gap-3">
+          {error ? (
+            <p className="app-alert" style={{ marginTop: 16 }}>
+              {error}
+            </p>
+          ) : null}
+          <div
+            style={{
+              marginTop: 24,
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 12,
+            }}
+          >
             {selectedSensitivity !== null ? (
               <button
                 onClick={saveSelected}
                 disabled={saving || saved}
-                className="rounded-lg bg-emerald-400 px-5 py-3 font-bold text-zinc-950 disabled:opacity-50"
+                className="app-button"
+                style={{ width: "auto", padding: "0 22px" }}
               >
                 {saving
                   ? "Saving…"
@@ -253,11 +272,16 @@ export function CalibrationFlow({ kind }: { kind: "find" | "battle" }) {
             ) : null}
             <button
               onClick={reset}
-              className="rounded-lg border border-zinc-700 px-5 py-3 font-bold"
+              className="app-button app-button-ghost"
+              style={{ width: "auto", padding: "0 22px" }}
             >
               Run again
             </button>
-            <Link href="/app" className="rounded-lg px-5 py-3 text-zinc-400">
+            <Link
+              href="/app"
+              className="app-link"
+              style={{ alignSelf: "center" }}
+            >
               Dashboard
             </Link>
           </div>
@@ -267,19 +291,26 @@ export function CalibrationFlow({ kind }: { kind: "find" | "battle" }) {
   }
 
   return (
-    <main className="grid min-h-screen place-items-center bg-zinc-950 p-6 text-zinc-100">
-      <section className="w-full max-w-xl rounded-2xl border border-zinc-800 bg-zinc-900 p-8">
-        <p className="font-mono text-xs font-bold uppercase tracking-widest text-cyan-400">
+    <main className="app-shell">
+      <section className="app-card app-card-wide">
+        <p className="app-kicker" style={{ marginBottom: 8 }}>
           Performance test
         </p>
-        <h1 className="mt-3 text-3xl font-black">{title}</h1>
-        <p className="mt-3 text-zinc-400">
+        <h1 className="app-heading">{title}</h1>
+        <p className="app-subtext">
           {kind === "find"
             ? "Run five blinded 15-second Gridshot blocks. Recommendation uses measured accuracy only."
             : "Run two counterbalanced 15-second Gridshot blocks. Gaps under 3 points return no winner."}
         </p>
         {kind === "battle" ? (
-          <div className="mt-6 grid grid-cols-2 gap-3">
+          <div
+            style={{
+              marginTop: 20,
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 12,
+            }}
+          >
             <SensitivityField
               label="Candidate A"
               value={candidateA}
@@ -292,10 +323,15 @@ export function CalibrationFlow({ kind }: { kind: "find" | "battle" }) {
             />
           </div>
         ) : null}
-        {error ? <p className="mt-4 text-red-300">{error}</p> : null}
+        {error ? (
+          <p className="app-alert" style={{ marginTop: 16 }}>
+            {error}
+          </p>
+        ) : null}
         <button
           onClick={start}
-          className="mt-6 w-full rounded-lg bg-emerald-400 px-5 py-3 font-black text-zinc-950"
+          className="app-button"
+          style={{ marginTop: 24 }}
         >
           Start {title}
         </button>
@@ -314,13 +350,15 @@ function SensitivityField({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="text-sm text-zinc-400">
-      {label}
+    <label className="app-field" style={{ marginBottom: 0 }}>
+      <span className="app-label" style={{ display: "block" }}>
+        {label}
+      </span>
       <input
         value={value}
         onChange={(event) => onChange(event.target.value)}
         inputMode="decimal"
-        className="mt-2 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-white"
+        className="app-input"
       />
     </label>
   );
@@ -328,8 +366,16 @@ function SensitivityField({
 
 function Status({ message }: { message: string }) {
   return (
-    <main className="grid min-h-screen place-items-center bg-zinc-950 text-zinc-300">
-      <p>{message}</p>
+    <main className="app-shell">
+      <p
+        style={{
+          fontFamily: "monospace",
+          fontSize: 13,
+          color: "rgba(255,255,255,0.5)",
+        }}
+      >
+        {message}
+      </p>
     </main>
   );
 }

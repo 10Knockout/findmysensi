@@ -156,11 +156,8 @@ export function SettingsClient() {
 
   if (error && (!profile || !trainer)) {
     return (
-      <main className="grid min-h-screen place-items-center bg-zinc-950 p-6 text-zinc-100">
-        <div
-          role="alert"
-          className="max-w-lg rounded-xl border border-red-900 bg-red-950/30 p-5 text-red-200"
-        >
+      <main className="app-shell">
+        <div role="alert" className="app-alert" style={{ margin: 0 }}>
           {error}
         </div>
       </main>
@@ -169,52 +166,65 @@ export function SettingsClient() {
 
   if (!profile || !trainer) {
     return (
-      <main className="grid min-h-screen place-items-center bg-zinc-950 text-zinc-300">
-        <p className="font-mono text-sm">Loading settings…</p>
+      <main className="app-shell">
+        <p
+          style={{
+            fontFamily: "monospace",
+            fontSize: 13,
+            color: "rgba(255,255,255,0.5)",
+          }}
+        >
+          Loading settings…
+        </p>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-zinc-950 px-6 py-8 text-zinc-100">
-      <div className="mx-auto max-w-5xl">
-        <header className="mb-8 flex flex-wrap items-center justify-between gap-3">
+    <main className="app-page">
+      <div className="app-page-inner">
+        <header className="app-page-header">
           <div>
-            <Link
-              href="/app"
-              className="text-sm font-semibold text-emerald-400 hover:underline"
-            >
+            <Link href="/app" className="app-link" style={{ fontSize: 13 }}>
               ← Trainer Home
             </Link>
-            <h1 className="mt-2 text-3xl font-black text-white">Settings</h1>
+            <h1
+              className="app-section-title"
+              style={{ marginTop: 8, marginBottom: 0 }}
+            >
+              Settings
+            </h1>
           </div>
           <button
             onClick={saveAll}
             disabled={saving}
-            className="rounded-xl bg-emerald-400 px-5 py-3 font-black text-zinc-950 disabled:opacity-50"
+            className="app-button"
+            style={{ width: "auto", padding: "0 26px" }}
           >
             {saving ? "Saving…" : "Save Settings"}
           </button>
         </header>
 
         {error ? (
-          <div
-            role="alert"
-            className="mb-5 rounded-lg border border-red-900 bg-red-950/30 p-4 text-sm text-red-200"
-          >
+          <div role="alert" className="app-alert">
             {error}
           </div>
         ) : null}
         {status ? (
           <div
             role="status"
-            className="mb-5 rounded-lg border border-emerald-900 bg-emerald-950/30 p-4 text-sm text-emerald-200"
+            className="app-alert"
+            style={{
+              borderColor: "rgba(189,255,45,0.35)",
+              borderLeftColor: "var(--fms-acid)",
+              background: "rgba(189,255,45,0.07)",
+            }}
           >
             {status}
           </div>
         ) : null}
 
-        <div className="space-y-6">
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           <SettingsSection
             title="Profile"
             description="Your account identity. More avatar and frame rewards can be added later without allowing arbitrary uploads."
@@ -268,12 +278,20 @@ export function SettingsClient() {
             title="Aim & Sensitivity"
             description="The trainer uses the Aimlabs sensitivity scale directly. FOV adjusts camera angle without altering physical sensitivity."
           >
-            <div className="space-y-6">
-              {/* Aimlabs-native Mouse Sensitivity */}
-              <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/60 p-5">
-                <div className="grid gap-4 sm:grid-cols-2">
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              <div className="settings-panel" style={{ margin: 0 }}>
+                <div
+                  style={{
+                    display: "grid",
+                    gap: 16,
+                    gridTemplateColumns: "repeat(auto-fit, minmax(180px,1fr))",
+                  }}
+                >
                   <Field label="Sensitivity Scale">
-                    <div className={`${inputClass} text-cyan-300`}>
+                    <div
+                      className={inputClass}
+                      style={{ color: "var(--fms-acid)" }}
+                    >
                       Aimlabs (native)
                     </div>
                   </Field>
@@ -295,10 +313,15 @@ export function SettingsClient() {
                   </Field>
                 </div>
 
-                {/* Aimlabs Sensitivity Slider */}
-                <div className="mt-4">
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="text-xs font-semibold text-zinc-300">
+                <div style={{ marginTop: 20 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      marginBottom: 8,
+                    }}
+                  >
+                    <span className="settings-label" style={{ margin: 0 }}>
                       Aimlabs Sensitivity
                     </span>
                     <input
@@ -310,7 +333,14 @@ export function SettingsClient() {
                       onChange={(e) =>
                         handleAimlabsSensitivityChange(Number(e.target.value))
                       }
-                      className="w-24 rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-1 text-right font-mono text-sm text-cyan-400 focus:border-cyan-400 focus:outline-none"
+                      className="app-input"
+                      style={{
+                        width: 96,
+                        padding: "6px 10px",
+                        textAlign: "right",
+                        fontFamily: "monospace",
+                        color: "var(--fms-acid)",
+                      }}
                     />
                   </div>
                   <input
@@ -322,68 +352,120 @@ export function SettingsClient() {
                     onChange={(e) =>
                       handleAimlabsSensitivityChange(Number(e.target.value))
                     }
-                    className="w-full accent-cyan-400"
+                    className="accent-acid"
+                    style={{ width: "100%" }}
                   />
-                  <p className="mt-2 text-[11px] leading-relaxed text-zinc-500">
+                  <p
+                    style={{
+                      marginTop: 8,
+                      color: "rgba(255,255,255,0.5)",
+                      fontSize: 11,
+                      lineHeight: 1.6,
+                    }}
+                  >
                     The value is applied directly with no game-profile
                     conversion. At the same DPI, Valorant{" "}
-                    <span className="font-mono text-zinc-300">0.125</span> is
-                    Aimlabs{" "}
-                    <span className="font-mono text-zinc-300">0.175</span>.
+                    <span style={{ fontFamily: "monospace", color: "white" }}>
+                      0.125
+                    </span>{" "}
+                    is Aimlabs{" "}
+                    <span style={{ fontFamily: "monospace", color: "white" }}>
+                      0.175
+                    </span>
+                    .
                   </p>
                 </div>
 
-                {/* Physical Turn Metrics */}
-                <div className="mt-4 grid grid-cols-3 gap-3 rounded-lg border border-zinc-800 bg-black/50 p-3 text-center">
+                <div
+                  style={{
+                    marginTop: 20,
+                    display: "grid",
+                    gridTemplateColumns: "repeat(3, 1fr)",
+                    gap: 12,
+                    padding: 12,
+                    border: "1px solid var(--fms-line-dark)",
+                    textAlign: "center",
+                  }}
+                >
                   <div>
-                    <span className="block text-[10px] uppercase tracking-wider text-zinc-500">
-                      Turn Distance
-                    </span>
-                    <span className="font-mono text-sm font-bold text-cyan-300">
+                    <span className="settings-label">Turn Distance</span>
+                    <span
+                      style={{
+                        fontFamily: "monospace",
+                        fontWeight: 800,
+                        color: "var(--fms-acid)",
+                      }}
+                    >
                       {calcCmPer360}
                     </span>
                   </div>
                   <div>
-                    <span className="block text-[10px] uppercase tracking-wider text-zinc-500">
-                      eDPI
-                    </span>
-                    <span className="font-mono text-sm font-bold text-white">
+                    <span className="settings-label">eDPI</span>
+                    <span style={{ fontFamily: "monospace", fontWeight: 800 }}>
                       {calcEdpi}
                     </span>
                   </div>
                   <div>
-                    <span className="block text-[10px] uppercase tracking-wider text-zinc-500">
+                    <span className="settings-label">
                       Valorant Equivalent
                     </span>
-                    <span className="font-mono text-sm font-bold text-emerald-400">
+                    <span style={{ fontFamily: "monospace", fontWeight: 800 }}>
                       {valorantEquivalent}
                     </span>
-                    <span className="mt-0.5 block text-[9px] text-zinc-600">
+                    <span
+                      style={{
+                        display: "block",
+                        marginTop: 2,
+                        color: "rgba(255,255,255,0.35)",
+                        fontSize: 9,
+                      }}
+                    >
                       same DPI / cm per 360
                     </span>
                   </div>
                 </div>
 
-                <div className="mt-4 rounded-lg border border-zinc-800 bg-zinc-950/80 p-3">
-                  <p className="text-center text-[10px] leading-relaxed text-zinc-500">
-                    Use the same numeric value as Aimlabs Default. Confirm
-                    physical parity with repeated 180° or 360° sweeps before
-                    changing the value by feel.
-                  </p>
-                </div>
+                <p
+                  style={{
+                    marginTop: 16,
+                    padding: 12,
+                    border: "1px solid var(--fms-line-dark)",
+                    color: "rgba(255,255,255,0.45)",
+                    fontSize: 10,
+                    lineHeight: 1.6,
+                    textAlign: "center",
+                  }}
+                >
+                  Use the same numeric value as Aimlabs Default. Confirm
+                  physical parity with repeated 180° or 360° sweeps before
+                  changing the value by feel.
+                </p>
               </div>
 
-              {/* Training FOV Slider with Game Presets */}
-              <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/60 p-5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-zinc-300">
+              <div className="settings-panel" style={{ margin: 0 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <span className="settings-label" style={{ margin: 0 }}>
                     Training Field of View (FOV)
                   </span>
-                  <span className="rounded-md border border-cyan-500/40 bg-cyan-950/40 px-3 py-1 font-mono text-sm font-bold text-cyan-300">
+                  <span
+                    style={{
+                      padding: "6px 12px",
+                      border: "1px solid rgba(189,255,45,0.4)",
+                      fontFamily: "monospace",
+                      fontWeight: 800,
+                      color: "var(--fms-acid)",
+                    }}
+                  >
                     {trainer.fovDegrees}°
                   </span>
                 </div>
-                <div className="mt-3">
+                <div style={{ marginTop: 14 }}>
                   <input
                     type="range"
                     min={80}
@@ -393,56 +475,57 @@ export function SettingsClient() {
                     onChange={(e) =>
                       updateTrainer("fovDegrees", Number(e.target.value))
                     }
-                    className="w-full accent-cyan-400"
+                    className="accent-acid"
+                    style={{ width: "100%" }}
                   />
-                  <div className="mt-1 flex justify-between font-mono text-[10px] text-zinc-500">
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      marginTop: 4,
+                      fontFamily: "monospace",
+                      fontSize: 10,
+                      color: "rgba(255,255,255,0.4)",
+                    }}
+                  >
                     <span>80°</span>
                     <span>103° (Valorant)</span>
                     <span>120°</span>
                   </div>
                 </div>
-                <div className="mt-3 flex flex-wrap gap-2">
+                <div
+                  style={{
+                    marginTop: 14,
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 8,
+                  }}
+                >
                   <button
                     type="button"
                     onClick={() => updateTrainer("fovDegrees", 103)}
-                    className={`rounded-lg border px-3 py-1 text-xs font-semibold transition-all ${
-                      trainer.fovDegrees === 103
-                        ? "border-cyan-400 bg-cyan-500/20 text-cyan-300"
-                        : "border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-                    }`}
+                    className={`settings-chip${trainer.fovDegrees === 103 ? " settings-chip-active" : ""}`}
                   >
                     Valorant (103°)
                   </button>
                   <button
                     type="button"
                     onClick={() => updateTrainer("fovDegrees", 106)}
-                    className={`rounded-lg border px-3 py-1 text-xs font-semibold transition-all ${
-                      trainer.fovDegrees === 106
-                        ? "border-cyan-400 bg-cyan-500/20 text-cyan-300"
-                        : "border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-                    }`}
+                    className={`settings-chip${trainer.fovDegrees === 106 ? " settings-chip-active" : ""}`}
                   >
                     CS2 / Source (106°)
                   </button>
                   <button
                     type="button"
                     onClick={() => updateTrainer("fovDegrees", 90)}
-                    className={`rounded-lg border px-3 py-1 text-xs font-semibold transition-all ${
-                      trainer.fovDegrees === 90
-                        ? "border-cyan-400 bg-cyan-500/20 text-cyan-300"
-                        : "border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-                    }`}
+                    className={`settings-chip${trainer.fovDegrees === 90 ? " settings-chip-active" : ""}`}
                   >
                     Apex / Source (90°)
                   </button>
                   <button
                     type="button"
                     onClick={() => updateTrainer("fovDegrees", 120)}
-                    className={`rounded-lg border px-3 py-1 text-xs font-semibold transition-all ${
-                      trainer.fovDegrees === 120
-                        ? "border-cyan-400 bg-cyan-500/20 text-cyan-300"
-                        : "border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-                    }`}
+                    className={`settings-chip${trainer.fovDegrees === 120 ? " settings-chip-active" : ""}`}
                   >
                     COD / Warzone (120°)
                   </button>
@@ -458,7 +541,13 @@ export function SettingsClient() {
                       updateTrainer("targetColor", e.target.value)
                     }
                     type="color"
-                    className="h-11 w-full rounded-lg border border-zinc-700 bg-black p-1"
+                    style={{
+                      height: 44,
+                      width: "100%",
+                      border: "1px solid var(--fms-line-dark)",
+                      background: "black",
+                      padding: 4,
+                    }}
                   />
                 </Field>
                 <Field
@@ -473,20 +562,33 @@ export function SettingsClient() {
                     min={0.2}
                     max={1}
                     step={0.05}
-                    className="w-full accent-emerald-400"
+                    className="accent-acid"
+                    style={{ width: "100%" }}
                   />
                 </Field>
                 <Field label="Target outline">
-                  <label className="flex h-11 items-center gap-3 rounded-lg border border-zinc-700 bg-black/50 px-3">
+                  <label
+                    style={{
+                      display: "flex",
+                      height: 44,
+                      alignItems: "center",
+                      gap: 12,
+                      border: "1px solid var(--fms-line-dark)",
+                      background: "rgba(255,255,255,0.04)",
+                      padding: "0 12px",
+                    }}
+                  >
                     <input
                       checked={trainer.targetOutline}
                       onChange={(e) =>
                         updateTrainer("targetOutline", e.target.checked)
                       }
                       type="checkbox"
-                      className="accent-emerald-400"
+                      className="accent-acid"
                     />
-                    <span className="text-sm text-zinc-300">Enabled</span>
+                    <span style={{ fontSize: 13, color: "rgba(255,255,255,0.8)" }}>
+                      Enabled
+                    </span>
                   </label>
                 </Field>
               </div>
@@ -594,8 +696,7 @@ export function SettingsClient() {
   );
 }
 
-const inputClass =
-  "h-11 w-full rounded-lg border border-zinc-700 bg-black/50 px-3 text-sm text-white outline-none focus:border-emerald-400";
+const inputClass = "app-input";
 
 function SettingsSection({
   title,
@@ -607,9 +708,9 @@ function SettingsSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-      <h2 className="text-xl font-black text-white">{title}</h2>
-      <p className="mb-5 mt-1 text-sm text-zinc-500">{description}</p>
+    <section className="settings-panel" style={{ margin: 0 }}>
+      <h2>{title}</h2>
+      <p style={{ marginBottom: 20 }}>{description}</p>
       {children}
     </section>
   );
@@ -623,10 +724,8 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <label className="block">
-      <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-zinc-400">
-        {label}
-      </span>
+    <label className="app-field" style={{ display: "block" }}>
+      <span className="settings-label">{label}</span>
       {children}
     </label>
   );

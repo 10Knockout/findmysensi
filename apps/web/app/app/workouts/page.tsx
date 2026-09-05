@@ -47,11 +47,8 @@ export default function WorkoutsPage() {
 
   if (error) {
     return (
-      <main className="grid min-h-screen place-items-center bg-zinc-950 p-6 text-zinc-100">
-        <div
-          role="alert"
-          className="rounded-xl border border-red-900 bg-red-950/30 p-5 text-red-200"
-        >
+      <main className="app-shell">
+        <div role="alert" className="app-alert" style={{ margin: 0 }}>
           {error}
         </div>
       </main>
@@ -60,53 +57,56 @@ export default function WorkoutsPage() {
 
   if (!user) {
     return (
-      <main className="grid min-h-screen place-items-center bg-zinc-950 text-zinc-300">
-        <p className="font-mono text-sm">Checking your session…</p>
+      <main className="app-shell">
+        <p
+          style={{
+            fontFamily: "monospace",
+            fontSize: 13,
+            color: "rgba(255,255,255,0.5)",
+          }}
+        >
+          Checking your session…
+        </p>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-zinc-950 px-6 py-10 text-zinc-100">
-      <div className="mx-auto max-w-4xl">
-        <Link
-          href="/app"
-          className="text-sm font-semibold text-emerald-400 hover:underline"
-        >
+    <main className="app-page">
+      <div className="app-page-inner" style={{ maxWidth: 780 }}>
+        <Link href="/app" className="app-link" style={{ fontSize: 13 }}>
           ← Trainer Home
         </Link>
-        <h1 className="mt-3 mb-2 text-3xl font-black text-white">Workouts</h1>
-        <p className="mb-8 text-sm text-zinc-500">
-          Curated sequences from the 10 exercise catalog. Play each exercise in
-          order; there is no auto-advance yet.
+        <h1
+          className="app-section-title"
+          style={{ marginTop: 14, marginBottom: 8 }}
+        >
+          Workouts
+        </h1>
+        <p className="app-section-copy">
+          Curated sequences from the 10 exercise catalog. Play each exercise
+          in order; there is no auto-advance yet.
         </p>
 
-        <div className="space-y-5">
-          {WORKOUT_DEFINITIONS.map((workout) => (
-            <div
-              key={workout.id}
-              className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6"
-            >
-              <h2 className="text-xl font-black text-white">{workout.title}</h2>
-              <p className="mt-1 text-sm text-zinc-400">
-                {workout.description}
-              </p>
-              <ol className="mt-4 flex flex-wrap gap-2">
-                {workout.modeIds.map((modeId, index) => (
-                  <li key={`${workout.id}-${modeId}-${index}`}>
-                    <Link
-                      href={`/app/train/${modeId}`}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs font-bold text-zinc-200 hover:border-emerald-500/60 hover:text-emerald-300"
-                    >
-                      <span className="text-zinc-600">{index + 1}.</span>
-                      {MODE_TITLES[modeId] ?? modeId}
-                    </Link>
-                  </li>
-                ))}
-              </ol>
-            </div>
-          ))}
-        </div>
+        {WORKOUT_DEFINITIONS.map((workout) => (
+          <div key={workout.id} className="app-workout-card">
+            <h2>{workout.title}</h2>
+            <p>{workout.description}</p>
+            <ol className="app-workout-steps">
+              {workout.modeIds.map((modeId, index) => (
+                <li key={`${workout.id}-${modeId}-${index}`}>
+                  <Link
+                    href={`/app/train/${modeId}`}
+                    className="app-workout-step"
+                  >
+                    <b>{index + 1}.</b>
+                    {MODE_TITLES[modeId] ?? modeId}
+                  </Link>
+                </li>
+              ))}
+            </ol>
+          </div>
+        ))}
       </div>
     </main>
   );

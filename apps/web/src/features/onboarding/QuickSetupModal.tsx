@@ -81,13 +81,23 @@ export function QuickSetupModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg rounded-2xl border border-cyan-500/40 bg-zinc-950 p-6 shadow-2xl shadow-cyan-950/50 sm:p-8">
-        {/* Glow Header */}
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+    <div className="settings-overlay" style={{ position: "fixed" }}>
+      <div className="app-card app-card-wide">
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div
+            style={{
+              display: "grid",
+              width: 40,
+              height: 40,
+              placeItems: "center",
+              border: "1px solid rgba(189,255,45,0.4)",
+              background: "rgba(189,255,45,0.08)",
+              color: "var(--fms-acid)",
+            }}
+          >
             <svg
-              className="h-5 w-5"
+              width={20}
+              height={20}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -97,28 +107,34 @@ export function QuickSetupModal({
             </svg>
           </div>
           <div>
-            <h2 className="text-xl font-black tracking-tight text-white">
+            <h2 className="app-heading" style={{ fontSize: 20 }}>
               Calibrate Your Aim
             </h2>
-            <p className="text-xs text-zinc-400">
+            <p className="app-help" style={{ marginTop: 2 }}>
               Set up your mouse sensitivity & game profile for a 1:1 match
             </p>
           </div>
         </div>
 
         {error ? (
-          <div className="mt-4 rounded-lg border border-red-800 bg-red-950/40 p-3 text-xs text-red-300">
+          <div
+            className="app-alert"
+            style={{ marginTop: 16, marginBottom: 0 }}
+          >
             {error}
           </div>
         ) : null}
 
-        <div className="mt-6 space-y-5">
-          {/* Game Selection */}
-          <div>
-            <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-zinc-400">
-              Primary Game
-            </label>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div style={{ marginTop: 22 }}>
+          <div className="app-field">
+            <label className="settings-label">Primary Game</label>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(110px,1fr))",
+                gap: 8,
+              }}
+            >
               {(
                 [
                   ["valorant", "Valorant"],
@@ -131,11 +147,8 @@ export function QuickSetupModal({
                   key={id}
                   type="button"
                   onClick={() => handleGameSelect(id)}
-                  className={`rounded-xl border py-2.5 px-3 text-center text-xs font-bold transition-all ${
-                    selectedGame === id
-                      ? "border-cyan-400 bg-cyan-500/20 text-cyan-300 shadow-md shadow-cyan-950/40"
-                      : "border-zinc-800 bg-zinc-900/80 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
-                  }`}
+                  className={`settings-chip${selectedGame === id ? " settings-chip-active" : ""}`}
+                  style={{ textAlign: "center" }}
                 >
                   {label}
                 </button>
@@ -143,12 +156,25 @@ export function QuickSetupModal({
             </div>
           </div>
 
-          {/* Sensitivity & DPI */}
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div
+            style={{
+              display: "grid",
+              gap: 16,
+              gridTemplateColumns: "repeat(auto-fit, minmax(180px,1fr))",
+              marginBottom: 18,
+            }}
+          >
             <div>
-              <label className="mb-1.5 flex items-center justify-between text-xs font-bold uppercase tracking-wider text-zinc-400">
+              <label
+                className="settings-label"
+                style={{ display: "flex", justifyContent: "space-between" }}
+              >
                 <span>In-Game Sensitivity</span>
-                <span className="font-mono text-cyan-400">{inGameSens}</span>
+                <span
+                  style={{ fontFamily: "monospace", color: "var(--fms-acid)" }}
+                >
+                  {inGameSens}
+                </span>
               </label>
               <input
                 type="number"
@@ -159,7 +185,8 @@ export function QuickSetupModal({
                 onChange={(e) =>
                   setInGameSens(parseFloat(e.target.value) || 0.01)
                 }
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2.5 font-mono text-sm text-white focus:border-cyan-400 focus:outline-none"
+                className="app-input"
+                style={{ fontFamily: "monospace" }}
               />
               <input
                 type="range"
@@ -170,25 +197,21 @@ export function QuickSetupModal({
                 onChange={(e) =>
                   setInGameSens(parseFloat(e.target.value) || 0.01)
                 }
-                className="mt-2 w-full accent-cyan-400"
+                className="accent-acid"
+                style={{ marginTop: 8, width: "100%" }}
               />
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-zinc-400">
-                Mouse DPI
-              </label>
-              <div className="flex gap-2">
+              <label className="settings-label">Mouse DPI</label>
+              <div style={{ display: "flex", gap: 8 }}>
                 {[400, 800, 1600].map((presetDpi) => (
                   <button
                     key={presetDpi}
                     type="button"
                     onClick={() => setDpi(presetDpi)}
-                    className={`flex-1 rounded-xl border py-2 text-xs font-bold font-mono transition-all ${
-                      dpi === presetDpi
-                        ? "border-cyan-400 bg-cyan-500/20 text-cyan-300"
-                        : "border-zinc-800 bg-zinc-900 text-zinc-400 hover:border-zinc-700"
-                    }`}
+                    className={`settings-chip${dpi === presetDpi ? " settings-chip-active" : ""}`}
+                    style={{ flex: 1, textAlign: "center" }}
                   >
                     {presetDpi}
                   </button>
@@ -201,39 +224,57 @@ export function QuickSetupModal({
                 step={50}
                 value={dpi}
                 onChange={(e) => setDpi(parseInt(e.target.value) || 800)}
-                className="mt-2 w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-1.5 font-mono text-xs text-white focus:border-cyan-400 focus:outline-none"
+                className="app-input"
+                style={{ marginTop: 8, fontFamily: "monospace" }}
                 placeholder="Custom DPI"
               />
             </div>
           </div>
 
-          {/* Physical Metric & FOV Readout */}
-          <div className="grid grid-cols-2 gap-3 rounded-xl border border-zinc-800 bg-black/60 p-3.5">
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(2, 1fr)",
+              gap: 12,
+              padding: 14,
+              border: "1px solid var(--fms-line-dark)",
+            }}
+          >
             <div>
-              <span className="block text-[10px] uppercase tracking-wider text-zinc-500">
-                Turn Distance
-              </span>
-              <span className="font-mono text-sm font-bold text-cyan-300">
+              <span className="settings-label">Turn Distance</span>
+              <span
+                style={{
+                  fontFamily: "monospace",
+                  fontWeight: 800,
+                  color: "var(--fms-acid)",
+                }}
+              >
                 {cmPer360} cm / 360°
               </span>
             </div>
             <div>
-              <span className="block text-[10px] uppercase tracking-wider text-zinc-500">
-                Auto-Configured FOV
-              </span>
-              <span className="font-mono text-sm font-bold text-emerald-400">
+              <span className="settings-label">Auto-Configured FOV</span>
+              <span style={{ fontFamily: "monospace", fontWeight: 800 }}>
                 {GAME_RECOMMENDED_FOV[selectedGame] ?? 103}° ({selectedGame})
               </span>
             </div>
           </div>
         </div>
 
-        {/* Buttons */}
-        <div className="mt-8 flex items-center justify-between gap-3">
+        <div
+          style={{
+            marginTop: 26,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+          }}
+        >
           <button
             type="button"
             onClick={onClose}
-            className="text-xs font-semibold text-zinc-500 hover:text-zinc-300 transition-colors"
+            className="app-link"
+            style={{ background: "none", border: "none", cursor: "pointer" }}
           >
             Skip for now
           </button>
@@ -241,7 +282,8 @@ export function QuickSetupModal({
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="rounded-xl bg-cyan-400 px-6 py-3 text-sm font-bold text-black shadow-lg shadow-cyan-500/20 transition-all hover:bg-cyan-300 active:scale-95 disabled:opacity-50"
+            className="app-button"
+            style={{ width: "auto", padding: "0 26px" }}
           >
             {saving ? "Saving Setup…" : "Confirm & Start Aiming"}
           </button>

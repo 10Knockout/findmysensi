@@ -136,11 +136,10 @@ export function InGameSettingsModal({
   };
 
   return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-lg">
-      <div className="flex h-full max-h-[92vh] w-full max-w-4xl flex-col rounded-2xl border border-cyan-500/30 bg-zinc-950 shadow-[0_0_50px_rgba(6,182,212,0.15)]">
-        {/* Modal Top Header with Aimlabs-style Cyan Tab Navigation */}
-        <div className="flex items-center justify-between border-b border-zinc-800 px-6 py-4">
-          <div className="flex items-center gap-1 overflow-x-auto">
+    <div className="settings-overlay">
+      <div className="settings-modal">
+        <div className="settings-header">
+          <div className="settings-tabs">
             <TabButton
               active={activeTab === "sensitivity"}
               onClick={() => setActiveTab("sensitivity")}
@@ -163,42 +162,44 @@ export function InGameSettingsModal({
             />
           </div>
 
-          <button
-            onClick={onClose}
-            className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-zinc-400 hover:bg-zinc-800 hover:text-white"
-          >
-            <span>&lt; BACK</span>
+          <button onClick={onClose} className="settings-close">
+            &lt; BACK
           </button>
         </div>
 
-        {/* Modal Body Content (Scrollable) */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="settings-body">
           {/* SENSITIVITY TAB */}
           {activeTab === "sensitivity" ? (
-            <div className="space-y-6">
-              <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/60 p-5">
-                <h3 className="text-sm font-bold tracking-wide text-white uppercase">
-                  Aimlabs Mouse Sensitivity
-                </h3>
-                <p className="mt-1 text-xs text-zinc-400">
+            <div>
+              <div className="settings-panel">
+                <h3>Aimlabs Mouse Sensitivity</h3>
+                <p>
                   Trainer uses the Aimlabs sensitivity number directly, with no
                   game-profile conversion.
                 </p>
 
-                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <div
+                  style={{
+                    marginTop: 16,
+                    display: "grid",
+                    gap: 16,
+                    gridTemplateColumns: "repeat(auto-fit, minmax(180px,1fr))",
+                  }}
+                >
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-zinc-400">
+                    <label className="settings-label">
                       Sensitivity Scale
                     </label>
-                    <div className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-cyan-300">
+                    <div
+                      className="app-input"
+                      style={{ color: "var(--fms-acid)" }}
+                    >
                       Aimlabs (native)
                     </div>
                   </div>
 
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-zinc-400">
-                      Mouse DPI
-                    </label>
+                    <label className="settings-label">Mouse DPI</label>
                     <input
                       type="number"
                       min={100}
@@ -206,15 +207,20 @@ export function InGameSettingsModal({
                       step={50}
                       value={dpi}
                       onChange={(e) => handleDpiChange(Number(e.target.value))}
-                      className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white focus:border-cyan-400 focus:outline-none"
+                      className="app-input"
                     />
                   </div>
                 </div>
 
-                {/* Aimlabs Sensitivity Slider */}
-                <div className="mt-5">
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="text-xs font-semibold text-zinc-300">
+                <div style={{ marginTop: 20 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      marginBottom: 8,
+                    }}
+                  >
+                    <span className="settings-label" style={{ margin: 0 }}>
                       Aimlabs Sensitivity
                     </span>
                     <input
@@ -226,7 +232,14 @@ export function InGameSettingsModal({
                       onChange={(e) =>
                         handleAimlabsSensitivityChange(Number(e.target.value))
                       }
-                      className="w-24 rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-1 text-right font-mono text-sm text-cyan-400 focus:border-cyan-400 focus:outline-none"
+                      className="app-input"
+                      style={{
+                        width: 96,
+                        padding: "6px 10px",
+                        textAlign: "right",
+                        fontFamily: "monospace",
+                        color: "var(--fms-acid)",
+                      }}
                     />
                   </div>
                   <input
@@ -238,73 +251,121 @@ export function InGameSettingsModal({
                     onChange={(e) =>
                       handleAimlabsSensitivityChange(Number(e.target.value))
                     }
-                    className="w-full accent-cyan-400"
+                    className="accent-acid"
+                    style={{ width: "100%" }}
                   />
-                  <p className="mt-2 text-[11px] leading-relaxed text-zinc-500">
+                  <p
+                    style={{
+                      marginTop: 8,
+                      color: "rgba(255,255,255,0.5)",
+                      fontSize: 11,
+                      lineHeight: 1.6,
+                    }}
+                  >
                     The value is applied directly. At the same DPI, Valorant{" "}
-                    <span className="font-mono text-zinc-300">0.125</span> is
-                    Aimlabs{" "}
-                    <span className="font-mono text-zinc-300">0.175</span>.
+                    <span style={{ fontFamily: "monospace", color: "white" }}>
+                      0.125
+                    </span>{" "}
+                    is Aimlabs{" "}
+                    <span style={{ fontFamily: "monospace", color: "white" }}>
+                      0.175
+                    </span>
+                    .
                   </p>
                 </div>
 
-                {/* Real-Time Turn Metrics Banner */}
-                <div className="mt-5 grid grid-cols-3 gap-3 rounded-lg border border-zinc-800 bg-black/50 p-3 text-center">
+                <div
+                  style={{
+                    marginTop: 20,
+                    display: "grid",
+                    gridTemplateColumns: "repeat(3, 1fr)",
+                    gap: 12,
+                    padding: 12,
+                    border: "1px solid var(--fms-line-dark)",
+                    textAlign: "center",
+                  }}
+                >
                   <div>
-                    <span className="block text-[10px] uppercase tracking-wider text-zinc-500">
-                      Turn Distance
-                    </span>
-                    <span className="font-mono text-sm font-bold text-cyan-300">
+                    <span className="settings-label">Turn Distance</span>
+                    <span
+                      style={{
+                        fontFamily: "monospace",
+                        fontWeight: 800,
+                        color: "var(--fms-acid)",
+                      }}
+                    >
                       {cmPer360}
                     </span>
                   </div>
                   <div>
-                    <span className="block text-[10px] uppercase tracking-wider text-zinc-500">
-                      eDPI
-                    </span>
-                    <span className="font-mono text-sm font-bold text-white">
+                    <span className="settings-label">eDPI</span>
+                    <span style={{ fontFamily: "monospace", fontWeight: 800 }}>
                       {edpi}
                     </span>
                   </div>
                   <div>
-                    <span className="block text-[10px] uppercase tracking-wider text-zinc-500">
+                    <span className="settings-label">
                       Valorant Equivalent
                     </span>
-                    <span className="font-mono text-sm font-bold text-emerald-400">
+                    <span style={{ fontFamily: "monospace", fontWeight: 800 }}>
                       {valorantEquivalent}
                     </span>
-                    <span className="mt-0.5 block text-[9px] text-zinc-600">
+                    <span
+                      style={{
+                        display: "block",
+                        marginTop: 2,
+                        color: "rgba(255,255,255,0.35)",
+                        fontSize: 9,
+                      }}
+                    >
                       same DPI / cm per 360
                     </span>
                   </div>
                 </div>
 
-                <div className="mt-4 rounded-lg border border-zinc-800 bg-zinc-950/80 p-3">
-                  <p className="text-center text-[10px] leading-relaxed text-zinc-500">
-                    Use the same numeric value as Aimlabs Default. Confirm
-                    physical parity with repeated 180° or 360° sweeps before
-                    changing the value by feel.
-                  </p>
-                </div>
+                <p
+                  style={{
+                    marginTop: 16,
+                    padding: 12,
+                    border: "1px solid var(--fms-line-dark)",
+                    color: "rgba(255,255,255,0.45)",
+                    fontSize: 10,
+                    lineHeight: 1.6,
+                    textAlign: "center",
+                  }}
+                >
+                  Use the same numeric value as Aimlabs Default. Confirm
+                  physical parity with repeated 180° or 360° sweeps before
+                  changing the value by feel.
+                </p>
               </div>
 
-              {/* Field of View Slider & Game Presets */}
-              <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/60 p-5">
-                <div className="flex items-center justify-between">
+              <div className="settings-panel">
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
                   <div>
-                    <h3 className="text-sm font-bold tracking-wide text-white uppercase">
-                      Field of View (FOV)
-                    </h3>
-                    <p className="text-xs text-zinc-400">
-                      Adjust camera horizontal FOV between 80° and 120°.
-                    </p>
+                    <h3>Field of View (FOV)</h3>
+                    <p>Adjust camera horizontal FOV between 80° and 120°.</p>
                   </div>
-                  <span className="rounded-md border border-cyan-500/40 bg-cyan-950/40 px-3 py-1 font-mono text-sm font-bold text-cyan-300">
+                  <span
+                    style={{
+                      padding: "6px 12px",
+                      border: "1px solid rgba(189,255,45,0.4)",
+                      fontFamily: "monospace",
+                      fontWeight: 800,
+                      color: "var(--fms-acid)",
+                    }}
+                  >
                     {settings.fovDegrees}°
                   </span>
                 </div>
 
-                <div className="mt-4">
+                <div style={{ marginTop: 16 }}>
                   <input
                     type="range"
                     min={80}
@@ -314,58 +375,58 @@ export function InGameSettingsModal({
                     onChange={(e) =>
                       updateSetting("fovDegrees", Number(e.target.value))
                     }
-                    className="w-full accent-cyan-400"
+                    className="accent-acid"
+                    style={{ width: "100%" }}
                   />
-                  <div className="mt-1 flex justify-between font-mono text-[10px] text-zinc-500">
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      marginTop: 4,
+                      fontFamily: "monospace",
+                      fontSize: 10,
+                      color: "rgba(255,255,255,0.4)",
+                    }}
+                  >
                     <span>80°</span>
                     <span>103° (Valorant standard)</span>
                     <span>120°</span>
                   </div>
                 </div>
 
-                {/* Quick Game FOV Presets */}
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div
+                  style={{
+                    marginTop: 16,
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 8,
+                  }}
+                >
                   <button
                     type="button"
                     onClick={() => updateSetting("fovDegrees", 103)}
-                    className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all ${
-                      settings.fovDegrees === 103
-                        ? "border-cyan-400 bg-cyan-500/20 text-cyan-300"
-                        : "border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-                    }`}
+                    className={`settings-chip${settings.fovDegrees === 103 ? " settings-chip-active" : ""}`}
                   >
                     Valorant (103°)
                   </button>
                   <button
                     type="button"
                     onClick={() => updateSetting("fovDegrees", 106)}
-                    className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all ${
-                      settings.fovDegrees === 106
-                        ? "border-cyan-400 bg-cyan-500/20 text-cyan-300"
-                        : "border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-                    }`}
+                    className={`settings-chip${settings.fovDegrees === 106 ? " settings-chip-active" : ""}`}
                   >
                     CS2 / Source (106°)
                   </button>
                   <button
                     type="button"
                     onClick={() => updateSetting("fovDegrees", 90)}
-                    className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all ${
-                      settings.fovDegrees === 90
-                        ? "border-cyan-400 bg-cyan-500/20 text-cyan-300"
-                        : "border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-                    }`}
+                    className={`settings-chip${settings.fovDegrees === 90 ? " settings-chip-active" : ""}`}
                   >
                     Apex / Source (90°)
                   </button>
                   <button
                     type="button"
                     onClick={() => updateSetting("fovDegrees", 120)}
-                    className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all ${
-                      settings.fovDegrees === 120
-                        ? "border-cyan-400 bg-cyan-500/20 text-cyan-300"
-                        : "border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-                    }`}
+                    className={`settings-chip${settings.fovDegrees === 120 ? " settings-chip-active" : ""}`}
                   >
                     COD / Warzone (120°)
                   </button>
@@ -376,7 +437,7 @@ export function InGameSettingsModal({
 
           {/* CROSSHAIR TAB */}
           {activeTab === "crosshair" ? (
-            <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/60 p-5">
+            <div className="settings-panel">
               <InteractiveCrosshairEditor
                 crosshair={crosshair}
                 onChange={setCrosshair}
@@ -386,202 +447,248 @@ export function InGameSettingsModal({
 
           {/* TARGETS TAB */}
           {activeTab === "targets" ? (
-            <div className="space-y-6">
-              <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/60 p-5">
-                <h3 className="text-sm font-bold tracking-wide text-white uppercase">
-                  Target Appearance & Color
-                </h3>
-                <p className="mt-1 text-xs text-zinc-400">
-                  Customize the look of training targets.
-                </p>
+            <div className="settings-panel">
+              <h3>Target Appearance & Color</h3>
+              <p>Customize the look of training targets.</p>
 
-                {/* Target Preview Box */}
-                <div className="mt-4 flex aspect-video max-h-48 w-full items-center justify-center rounded-xl border border-zinc-700 bg-zinc-950 shadow-inner">
-                  <div
-                    className="h-20 w-20 rounded-full transition-all"
+              <div
+                style={{
+                  marginTop: 16,
+                  display: "flex",
+                  maxHeight: 190,
+                  aspectRatio: "16/9",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  border: "1px solid var(--fms-line-dark)",
+                  background: "var(--fms-black)",
+                }}
+              >
+                <div
+                  style={{
+                    width: 80,
+                    height: 80,
+                    borderRadius: "50%",
+                    backgroundColor: settings.targetColor,
+                    opacity: settings.targetOpacity,
+                    border: settings.targetOutline
+                      ? "3px solid #ffffff"
+                      : "none",
+                  }}
+                />
+              </div>
+
+              <div style={{ marginTop: 20 }}>
+                <label className="settings-label">Target Color</label>
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  {TARGET_SWATCHES.map((swatch) => (
+                    <button
+                      key={swatch.hex}
+                      type="button"
+                      onClick={() => updateSetting("targetColor", swatch.hex)}
+                      style={{
+                        width: 28,
+                        height: 28,
+                        backgroundColor: swatch.hex,
+                        border:
+                          settings.targetColor.toLowerCase() ===
+                          swatch.hex.toLowerCase()
+                            ? "2px solid white"
+                            : "1px solid var(--fms-line-dark)",
+                        cursor: "pointer",
+                      }}
+                      title={swatch.name}
+                    />
+                  ))}
+                  <input
+                    type="color"
+                    value={settings.targetColor}
+                    onChange={(e) =>
+                      updateSetting("targetColor", e.target.value)
+                    }
                     style={{
-                      backgroundColor: settings.targetColor,
-                      opacity: settings.targetOpacity,
-                      border: settings.targetOutline
-                        ? "3px solid #ffffff"
-                        : "none",
+                      width: 48,
+                      height: 28,
+                      border: "1px solid var(--fms-line-dark)",
+                      background: "black",
+                      cursor: "pointer",
                     }}
                   />
+                  <span
+                    style={{
+                      fontFamily: "monospace",
+                      fontSize: 12,
+                      color: "rgba(255,255,255,0.5)",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {settings.targetColor}
+                  </span>
                 </div>
+              </div>
 
-                <div className="mt-5 space-y-4">
-                  {/* Target Color Swatches */}
-                  <div>
-                    <label className="mb-1.5 block text-xs font-medium text-zinc-400">
-                      Target Color
-                    </label>
-                    <div className="flex flex-wrap items-center gap-2">
-                      {TARGET_SWATCHES.map((swatch) => (
-                        <button
-                          key={swatch.hex}
-                          type="button"
-                          onClick={() =>
-                            updateSetting("targetColor", swatch.hex)
-                          }
-                          className={`h-7 w-7 rounded-lg border transition-all ${
-                            settings.targetColor.toLowerCase() ===
-                            swatch.hex.toLowerCase()
-                              ? "border-white scale-110 shadow-lg"
-                              : "border-zinc-700 hover:scale-105"
-                          }`}
-                          style={{ backgroundColor: swatch.hex }}
-                          title={swatch.name}
-                        />
-                      ))}
-                      <input
-                        type="color"
-                        value={settings.targetColor}
-                        onChange={(e) =>
-                          updateSetting("targetColor", e.target.value)
-                        }
-                        className="h-7 w-12 cursor-pointer rounded-lg border border-zinc-700 bg-black p-0.5"
-                      />
-                      <span className="font-mono text-xs text-zinc-400 uppercase">
-                        {settings.targetColor}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Target Opacity Slider */}
-                  <div>
-                    <div className="mb-1 flex justify-between text-xs text-zinc-400">
-                      <span>Opacity</span>
-                      <span className="font-mono text-cyan-400">
-                        {Math.round(settings.targetOpacity * 100)}%
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min={0.2}
-                      max={1.0}
-                      step={0.05}
-                      value={settings.targetOpacity}
-                      onChange={(e) =>
-                        updateSetting("targetOpacity", Number(e.target.value))
-                      }
-                      className="w-full accent-cyan-400"
-                    />
-                  </div>
-
-                  {/* Target Outline Toggle */}
-                  <div className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-950 p-3">
-                    <span className="text-xs font-semibold text-zinc-300">
-                      White Outline Border
-                    </span>
-                    <input
-                      type="checkbox"
-                      checked={settings.targetOutline}
-                      onChange={(e) =>
-                        updateSetting("targetOutline", e.target.checked)
-                      }
-                      className="h-4 w-4 accent-cyan-400 cursor-pointer"
-                    />
-                  </div>
+              <div style={{ marginTop: 16 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    marginBottom: 6,
+                    fontSize: 12,
+                    color: "rgba(255,255,255,0.5)",
+                  }}
+                >
+                  <span>Opacity</span>
+                  <span
+                    style={{ fontFamily: "monospace", color: "var(--fms-acid)" }}
+                  >
+                    {Math.round(settings.targetOpacity * 100)}%
+                  </span>
                 </div>
+                <input
+                  type="range"
+                  min={0.2}
+                  max={1.0}
+                  step={0.05}
+                  value={settings.targetOpacity}
+                  onChange={(e) =>
+                    updateSetting("targetOpacity", Number(e.target.value))
+                  }
+                  className="accent-acid"
+                  style={{ width: "100%" }}
+                />
+              </div>
+
+              <div
+                style={{
+                  marginTop: 16,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: 12,
+                  border: "1px solid var(--fms-line-dark)",
+                }}
+              >
+                <span style={{ fontSize: 12, fontWeight: 620 }}>
+                  White Outline Border
+                </span>
+                <input
+                  type="checkbox"
+                  checked={settings.targetOutline}
+                  onChange={(e) =>
+                    updateSetting("targetOutline", e.target.checked)
+                  }
+                  className="accent-acid"
+                  style={{ width: 16, height: 16, cursor: "pointer" }}
+                />
               </div>
             </div>
           ) : null}
 
           {/* GRAPHICS / VIDEO TAB */}
           {activeTab === "video" ? (
-            <div className="space-y-6">
-              <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/60 p-5">
-                <h3 className="text-sm font-bold tracking-wide text-white uppercase">
-                  Display & Resolution Settings
-                </h3>
-                <p className="mt-1 text-xs text-zinc-400">
-                  Configure aspect ratio scaling and monitor display options.
-                </p>
+            <div className="settings-panel">
+              <h3>Display & Resolution Settings</h3>
+              <p>Configure aspect ratio scaling and monitor display options.</p>
 
-                <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-zinc-400">
-                      Aspect Ratio & Scaling Method
-                    </label>
-                    <select
-                      value={settings.scalingMode}
-                      onChange={(e) =>
-                        updateSetting(
-                          "scalingMode",
-                          e.target.value as TrainerSettings["scalingMode"],
-                        )
-                      }
-                      className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white focus:border-cyan-400 focus:outline-none"
-                    >
-                      <option value="fill">
-                        Fill (Native Fullscreen - No Bars)
-                      </option>
-                      <option value="fit">
-                        16:9 Letterbox (Fit with Black Bars)
-                      </option>
-                      <option value="stretch">Stretch to Screen</option>
-                    </select>
-                    <p className="mt-1 text-[11px] text-zinc-500">
-                      Use Fill on 1440p monitors to avoid black gaps entirely.
-                    </p>
-                  </div>
+              <div
+                style={{
+                  marginTop: 16,
+                  display: "grid",
+                  gap: 16,
+                  gridTemplateColumns: "repeat(auto-fit, minmax(200px,1fr))",
+                }}
+              >
+                <div>
+                  <label className="settings-label">
+                    Aspect Ratio & Scaling Method
+                  </label>
+                  <select
+                    value={settings.scalingMode}
+                    onChange={(e) =>
+                      updateSetting(
+                        "scalingMode",
+                        e.target.value as TrainerSettings["scalingMode"],
+                      )
+                    }
+                    className="app-input"
+                  >
+                    <option value="fill">
+                      Fill (Native Fullscreen - No Bars)
+                    </option>
+                    <option value="fit">
+                      16:9 Letterbox (Fit with Black Bars)
+                    </option>
+                    <option value="stretch">Stretch to Screen</option>
+                  </select>
+                  <p
+                    style={{
+                      marginTop: 6,
+                      fontSize: 11,
+                      color: "rgba(255,255,255,0.4)",
+                    }}
+                  >
+                    Use Fill on 1440p monitors to avoid black gaps entirely.
+                  </p>
+                </div>
 
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-zinc-400">
-                      Display Resolution
-                    </label>
-                    <select
-                      value={settings.resolution}
-                      onChange={(e) =>
-                        updateSetting(
-                          "resolution",
-                          e.target.value as TrainerSettings["resolution"],
-                        )
-                      }
-                      className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white focus:border-cyan-400 focus:outline-none"
-                    >
-                      <option value="native">
-                        Native (Detected:{" "}
-                        {typeof window !== "undefined"
-                          ? `${window.screen.width}x${window.screen.height}`
-                          : "Auto"}
-                        )
-                      </option>
-                      <option value="2560x1440">2560x1440 (1440p QHD)</option>
-                      <option value="1920x1080">1920x1080 (1080p FHD)</option>
-                      <option value="1280x720">1280x720 (720p HD)</option>
-                    </select>
-                  </div>
+                <div>
+                  <label className="settings-label">Display Resolution</label>
+                  <select
+                    value={settings.resolution}
+                    onChange={(e) =>
+                      updateSetting(
+                        "resolution",
+                        e.target.value as TrainerSettings["resolution"],
+                      )
+                    }
+                    className="app-input"
+                  >
+                    <option value="native">
+                      Native (Detected:{" "}
+                      {typeof window !== "undefined"
+                        ? `${window.screen.width}x${window.screen.height}`
+                        : "Auto"}
+                      )
+                    </option>
+                    <option value="2560x1440">2560x1440 (1440p QHD)</option>
+                    <option value="1920x1080">1920x1080 (1080p FHD)</option>
+                    <option value="1280x720">1280x720 (720p HD)</option>
+                  </select>
+                </div>
 
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-zinc-400">
-                      Graphics Quality Preset
-                    </label>
-                    <select
-                      value={settings.graphicsPreset}
-                      onChange={(e) =>
-                        updateSetting(
-                          "graphicsPreset",
-                          e.target.value as TrainerSettings["graphicsPreset"],
-                        )
-                      }
-                      className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white focus:border-cyan-400 focus:outline-none"
-                    >
-                      <option value="automatic">Automatic (Optimal)</option>
-                      <option value="potato">Potato (Maximum FPS)</option>
-                      <option value="low">Low</option>
-                      <option value="balanced">Balanced</option>
-                      <option value="high">High</option>
-                    </select>
-                  </div>
+                <div>
+                  <label className="settings-label">
+                    Graphics Quality Preset
+                  </label>
+                  <select
+                    value={settings.graphicsPreset}
+                    onChange={(e) =>
+                      updateSetting(
+                        "graphicsPreset",
+                        e.target.value as TrainerSettings["graphicsPreset"],
+                      )
+                    }
+                    className="app-input"
+                  >
+                    <option value="automatic">Automatic (Optimal)</option>
+                    <option value="potato">Potato (Maximum FPS)</option>
+                    <option value="low">Low</option>
+                    <option value="balanced">Balanced</option>
+                    <option value="high">High</option>
+                  </select>
                 </div>
               </div>
             </div>
           ) : null}
         </div>
 
-        {/* Modal Bottom Actions Bar */}
-        <div className="flex items-center justify-between border-t border-zinc-800 bg-zinc-950 px-6 py-4 rounded-b-2xl">
+        <div className="settings-footer">
           <button
             type="button"
             onClick={() => {
@@ -596,14 +703,15 @@ export function InGameSettingsModal({
               });
               setCrosshair(CROSSHAIR_PRESETS[0]!.config);
             }}
-            className="rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2 text-xs font-bold text-zinc-300 hover:bg-zinc-700 uppercase"
+            className="app-button app-button-ghost"
+            style={{ width: "auto", padding: "0 18px" }}
           >
             DEFAULT
           </button>
 
-          <div className="flex items-center gap-3">
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             {saveStatus ? (
-              <span className="text-xs font-medium text-cyan-300">
+              <span style={{ fontSize: 12, color: "var(--fms-acid)" }}>
                 {saveStatus}
               </span>
             ) : null}
@@ -611,9 +719,10 @@ export function InGameSettingsModal({
               type="button"
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-2 rounded-lg bg-cyan-400 px-6 py-2 text-xs font-black uppercase tracking-wider text-black hover:bg-cyan-300 disabled:opacity-50"
+              className="app-button"
+              style={{ width: "auto", padding: "0 26px" }}
             >
-              <span>{saving ? "SAVING..." : "SAVE & APPLY"}</span>
+              {saving ? "SAVING..." : "SAVE & APPLY"}
             </button>
           </div>
         </div>
@@ -635,11 +744,7 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`relative px-4 py-2 text-xs font-black tracking-wider transition-all uppercase ${
-        active
-          ? "text-cyan-400 border-b-2 border-cyan-400"
-          : "text-zinc-400 hover:text-zinc-200"
-      }`}
+      className={`settings-tab${active ? " settings-tab-active" : ""}`}
     >
       {label}
     </button>

@@ -45,35 +45,24 @@ function ResetPasswordForm() {
   };
 
   return (
-    <div className="max-w-md w-full bg-zinc-900 border border-zinc-800 rounded-xl p-8 shadow-2xl">
-      <div className="text-center mb-8">
-        <Link href="/" className="inline-flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 rounded bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center font-black text-black text-lg">
-            S
-          </div>
-          <span className="text-xl font-bold tracking-tight text-white">
-            FindMySensi
-          </span>
+    <div className="app-card">
+      <div className="app-card-header">
+        <Link
+          href="/"
+          className="landing-wordmark"
+          style={{ justifyContent: "center", marginBottom: 22 }}
+        >
+          <span>FMS</span>FindMySensi
         </Link>
-        <h1 className="text-2xl font-bold text-white tracking-tight">
-          Set New Password
-        </h1>
-        <p className="text-sm text-zinc-400 mt-1">
-          Enter your new secure password
-        </p>
+        <h1 className="app-heading">Set New Password</h1>
+        <p className="app-subtext">Enter your new secure password</p>
       </div>
 
-      {error && (
-        <div className="mb-6 p-4 rounded-lg bg-red-950/50 border border-red-800/50 text-red-300 text-sm">
-          {error}
-        </div>
-      )}
+      {error && <div className="app-alert">{error}</div>}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
-            New Password
-          </label>
+      <form onSubmit={handleSubmit}>
+        <div className="app-field">
+          <label className="app-label">New Password</label>
           <input
             type="password"
             required
@@ -81,14 +70,12 @@ function ResetPasswordForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
-            className="w-full px-4 py-3 bg-black/50 border border-zinc-800 rounded-lg text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition-colors"
+            className="app-input"
           />
         </div>
 
-        <div>
-          <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
-            Confirm New Password
-          </label>
+        <div className="app-field">
+          <label className="app-label">Confirm New Password</label>
           <input
             type="password"
             required
@@ -96,15 +83,11 @@ function ResetPasswordForm() {
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             placeholder="••••••••"
-            className="w-full px-4 py-3 bg-black/50 border border-zinc-800 rounded-lg text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition-colors"
+            className="app-input"
           />
         </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full py-3 px-4 bg-emerald-400 hover:bg-emerald-300 text-zinc-950 font-bold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-4"
-        >
+        <button type="submit" disabled={loading} className="app-button">
           {loading ? "Updating Password..." : "Update Password"}
         </button>
       </form>
@@ -114,10 +97,18 @@ function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <main className="min-h-screen bg-zinc-950 text-zinc-100 flex items-center justify-center p-6">
+    <main className="app-shell">
       <Suspense
         fallback={
-          <div className="text-zinc-500 font-mono text-xs">LOADING...</div>
+          <p
+            style={{
+              color: "rgba(255,255,255,0.4)",
+              fontFamily: "monospace",
+              fontSize: 12,
+            }}
+          >
+            LOADING...
+          </p>
         }
       >
         <ResetPasswordForm />

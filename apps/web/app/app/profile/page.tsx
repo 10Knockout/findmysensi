@@ -110,11 +110,8 @@ export default function ProfilePage() {
 
   if (error) {
     return (
-      <main className="grid min-h-screen place-items-center bg-zinc-950 p-6 text-zinc-100">
-        <div
-          role="alert"
-          className="rounded-xl border border-red-900 bg-red-950/30 p-5 text-red-200"
-        >
+      <main className="app-shell">
+        <div role="alert" className="app-alert" style={{ margin: 0 }}>
           {error}
         </div>
       </main>
@@ -123,8 +120,16 @@ export default function ProfilePage() {
 
   if (!user) {
     return (
-      <main className="grid min-h-screen place-items-center bg-zinc-950 text-zinc-300">
-        <p className="font-mono text-sm">Checking your session…</p>
+      <main className="app-shell">
+        <p
+          style={{
+            fontFamily: "monospace",
+            fontSize: 13,
+            color: "rgba(255,255,255,0.5)",
+          }}
+        >
+          Checking your session…
+        </p>
       </main>
     );
   }
@@ -135,18 +140,15 @@ export default function ProfilePage() {
   const title = titleForAccuracy(bestAccuracy);
 
   return (
-    <main className="min-h-screen bg-zinc-950 px-6 py-10 text-zinc-100">
-      <div className="mx-auto max-w-4xl">
-        <Link
-          href="/app"
-          className="text-sm font-semibold text-emerald-400 hover:underline"
-        >
+    <main className="app-page">
+      <div className="app-page-inner" style={{ maxWidth: 900 }}>
+        <Link href="/app" className="app-link" style={{ fontSize: 13 }}>
           ← Trainer Home
         </Link>
 
-        <header className="mt-4 mb-10 flex items-center gap-5 border-b border-zinc-800 pb-8">
+        <header className="app-avatar-header">
           <div
-            className="grid h-20 w-20 shrink-0 place-items-center rounded-full text-4xl"
+            className="app-avatar-ring"
             style={{
               backgroundColor: `${avatar.colorHex}22`,
               border: `3px solid ${frame.colorHex}`,
@@ -156,36 +158,36 @@ export default function ProfilePage() {
             {avatar.glyph}
           </div>
           <div>
-            <h1 className="text-2xl font-black text-white">
+            <h1 className="app-section-title" style={{ marginBottom: 4 }}>
               {user.username ?? user.email}
             </h1>
             <p
-              className="mt-1 font-mono text-xs font-bold uppercase tracking-widest"
-              style={{ color: frame.colorHex }}
+              style={{
+                fontFamily: "var(--font-turret-road), monospace",
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                color: frame.colorHex,
+              }}
             >
               {title}
             </p>
           </div>
         </header>
 
-        <section className="mb-10">
-          <p className="mb-2 font-mono text-xs font-bold uppercase tracking-[0.25em] text-emerald-400">
-            Avatar
-          </p>
-          <h2 className="mb-4 text-xl font-black text-white">
+        <section style={{ marginBottom: 40 }}>
+          <p className="app-section-label">Avatar</p>
+          <h2 className="app-section-title" style={{ fontSize: 22 }}>
             Choose Your Look
           </h2>
-          <div className="grid grid-cols-4 gap-3 sm:grid-cols-6">
+          <div className="app-avatar-grid">
             {AVATAR_OPTIONS.map((option) => (
               <button
                 key={option.id}
                 onClick={() => selectAvatar(option.id)}
                 aria-pressed={option.id === avatarId}
-                className={`grid aspect-square place-items-center rounded-xl border text-2xl transition-colors ${
-                  option.id === avatarId
-                    ? "border-emerald-500 bg-emerald-950/30"
-                    : "border-zinc-800 bg-zinc-900 hover:border-zinc-600"
-                }`}
+                className={`app-avatar-swatch${option.id === avatarId ? " app-avatar-swatch-active" : ""}`}
                 style={{ color: option.colorHex }}
                 title={option.label}
               >
@@ -195,60 +197,42 @@ export default function ProfilePage() {
           </div>
         </section>
 
-        <section className="mb-10 grid grid-cols-3 gap-3">
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
-            <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-              Sessions
-            </p>
-            <p className="mt-1 text-lg font-black text-white">
-              {lifetime.totalSessions}
-            </p>
+        <section className="app-stat-grid">
+          <div className="app-stat-card">
+            <b>Sessions</b>
+            <strong>{lifetime.totalSessions}</strong>
           </div>
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
-            <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-              Shots Fired
-            </p>
-            <p className="mt-1 text-lg font-black text-white">
-              {lifetime.totalShots}
-            </p>
+          <div className="app-stat-card">
+            <b>Shots Fired</b>
+            <strong>{lifetime.totalShots}</strong>
           </div>
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
-            <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-              Practice Time
-            </p>
-            <p className="mt-1 text-lg font-black text-white">
-              {Math.floor(lifetime.totalPracticeSeconds / 60)}m
-            </p>
+          <div className="app-stat-card">
+            <b>Practice Time</b>
+            <strong>{Math.floor(lifetime.totalPracticeSeconds / 60)}m</strong>
           </div>
         </section>
 
-        <section>
-          <p className="mb-2 font-mono text-xs font-bold uppercase tracking-[0.25em] text-emerald-400">
-            Achievements
-          </p>
-          <h2 className="mb-4 text-xl font-black text-white">
+        <section style={{ marginTop: 36 }}>
+          <p className="app-section-label">Achievements</p>
+          <h2 className="app-section-title" style={{ fontSize: 22 }}>
             {unlocked.size} / {ACHIEVEMENT_DEFINITIONS.length} Unlocked
           </h2>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div
+            style={{
+              display: "grid",
+              gap: 10,
+              gridTemplateColumns: "repeat(auto-fit, minmax(240px,1fr))",
+            }}
+          >
             {ACHIEVEMENT_DEFINITIONS.map((achievement) => {
               const isUnlocked = unlocked.has(achievement.id);
               return (
                 <div
                   key={achievement.id}
-                  className={`rounded-xl border p-4 ${
-                    isUnlocked
-                      ? "border-emerald-500/40 bg-emerald-950/20"
-                      : "border-zinc-800 bg-zinc-900/60 opacity-60"
-                  }`}
+                  className={`app-achievement-card${isUnlocked ? " app-achievement-card-unlocked" : " app-achievement-card-locked"}`}
                 >
-                  <p
-                    className={`font-black ${isUnlocked ? "text-emerald-300" : "text-zinc-400"}`}
-                  >
-                    {achievement.name}
-                  </p>
-                  <p className="mt-1 text-xs text-zinc-500">
-                    {achievement.description}
-                  </p>
+                  <b>{achievement.name}</b>
+                  <p>{achievement.description}</p>
                 </div>
               );
             })}

@@ -431,15 +431,16 @@ export function TrainerBootstrap({
 
   if (!modeEntry?.enabled || !modeEntry.createAdapter) {
     return (
-      <main className="grid min-h-screen place-items-center bg-zinc-950 p-6 text-zinc-100">
-        <div className="max-w-lg rounded-xl border border-zinc-800 bg-zinc-900 p-6 text-center">
-          <h1 className="text-xl font-bold">Mode not available yet</h1>
-          <p className="mt-2 text-sm text-zinc-400">
+      <main className="app-shell">
+        <div className="app-card" style={{ textAlign: "center" }}>
+          <h1 className="app-heading">Mode not available yet</h1>
+          <p className="app-subtext">
             This training mode is not enabled in the current release.
           </p>
           <button
             onClick={() => router.replace("/app")}
-            className="mt-5 rounded-lg bg-emerald-400 px-4 py-2 font-bold text-zinc-950"
+            className="app-button"
+            style={{ marginTop: 22 }}
           >
             Back to Trainer Home
           </button>
@@ -450,23 +451,26 @@ export function TrainerBootstrap({
 
   if (settingsError) {
     return (
-      <main className="grid min-h-screen place-items-center bg-zinc-950 p-6 text-zinc-100">
-        <div
-          role="alert"
-          className="max-w-lg rounded-xl border border-red-900 bg-red-950/30 p-6"
-        >
-          <h1 className="font-bold text-red-100">{modeTitle} cannot start</h1>
-          <p className="mt-2 text-sm text-red-200">{settingsError}</p>
-          <div className="mt-5 flex gap-3">
+      <main className="app-shell">
+        <div role="alert" className="app-card">
+          <h1 className="app-heading" style={{ fontSize: 22 }}>
+            {modeTitle} cannot start
+          </h1>
+          <p className="app-alert" style={{ marginTop: 14 }}>
+            {settingsError}
+          </p>
+          <div style={{ display: "flex", gap: 12 }}>
             <button
               onClick={() => setSettingsAttempt((value) => value + 1)}
-              className="rounded-lg bg-red-200 px-4 py-2 font-bold text-red-950"
+              className="app-button"
+              style={{ flex: 1 }}
             >
               Retry
             </button>
             <button
               onClick={() => router.replace("/app/settings")}
-              className="rounded-lg border border-red-800 px-4 py-2 font-bold text-red-100"
+              className="app-button app-button-ghost"
+              style={{ flex: 1 }}
             >
               Settings
             </button>
@@ -478,8 +482,16 @@ export function TrainerBootstrap({
 
   if (!runtimeConfig) {
     return (
-      <main className="grid min-h-screen place-items-center bg-zinc-950 text-zinc-300">
-        <p className="font-mono text-sm">Loading {modeTitle} settings…</p>
+      <main className="app-shell">
+        <p
+          style={{
+            fontFamily: "monospace",
+            fontSize: 13,
+            color: "rgba(255,255,255,0.5)",
+          }}
+        >
+          Loading {modeTitle} settings…
+        </p>
       </main>
     );
   }
@@ -619,7 +631,8 @@ export function TrainerBootstrap({
             <button
               type="button"
               onClick={toggleFullscreen}
-              className="pointer-events-auto rounded border border-zinc-800 bg-zinc-950/80 px-3 py-1.5 text-xs text-zinc-400 hover:border-cyan-400 hover:text-cyan-300"
+              className="pointer-events-auto app-chip"
+              style={{ minHeight: "auto", padding: "6px 12px" }}
               title="Toggle Fullscreen"
             >
               {isFullscreen ? "EXIT FULLSCREEN" : "⛶ FULLSCREEN"}
@@ -632,10 +645,27 @@ export function TrainerBootstrap({
       {countdown !== null ? (
         <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-black/70 backdrop-blur-sm">
           <div className="text-center">
-            <span className="block font-mono text-8xl font-black text-emerald-400">
+            <span
+              style={{
+                display: "block",
+                fontFamily: "var(--font-turret-road), monospace",
+                fontSize: 96,
+                fontWeight: 800,
+                color: "var(--fms-acid)",
+              }}
+            >
               {countdown}
             </span>
-            <p className="mt-4 font-mono text-sm uppercase tracking-widest text-zinc-400">
+            <p
+              style={{
+                marginTop: 16,
+                fontFamily: "var(--font-turret-road), monospace",
+                fontSize: 13,
+                letterSpacing: "0.2em",
+                textTransform: "uppercase",
+                color: "rgba(255,255,255,0.5)",
+              }}
+            >
               GET READY
             </p>
           </div>
@@ -644,42 +674,42 @@ export function TrainerBootstrap({
 
       {gameState === "ready" && countdown === null ? (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/80 p-6 backdrop-blur-md">
-          <div className="w-full max-w-md space-y-6 rounded-2xl border border-zinc-800 bg-zinc-900 p-8 text-center shadow-2xl">
+          <div className="app-card" style={{ textAlign: "center" }}>
             <div>
-              <span className="rounded border border-emerald-500/30 bg-emerald-950 px-2.5 py-1 font-mono text-xs font-bold uppercase tracking-wider text-emerald-400">
-                {modeTitle}
-              </span>
-              <h1 className="mt-3 text-3xl font-black tracking-tight text-white">
+              <span className="trainer-badge">{modeTitle}</span>
+              <h1 className="app-heading" style={{ marginTop: 14 }}>
                 {modeTitle}
               </h1>
-              <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+              <p className="app-subtext">
                 {runLabel ? `${runLabel}. ` : null}
-                {modeDescription} Click start to capture the mouse and begin the{" "}
-                {modeDurationSeconds}-second run.
+                {modeDescription} Click start to capture the mouse and begin
+                the {modeDurationSeconds}-second run.
               </p>
             </div>
-            <div className="flex gap-2">
+            <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
               <button
                 onClick={startCountdownAndLock}
-                className="flex-1 rounded-xl bg-emerald-400 py-4 text-lg font-black text-zinc-950 hover:bg-emerald-300"
+                className="app-button"
+                style={{ flex: 1 }}
               >
                 START {modeTitle.toUpperCase()}
               </button>
               <button
                 type="button"
                 onClick={toggleFullscreen}
-                className="rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-4 font-mono text-xs font-bold text-zinc-300 hover:border-cyan-400 hover:text-cyan-300"
+                className="app-button app-button-ghost"
+                style={{ flex: "none", width: "auto", padding: "0 18px" }}
                 title="Toggle Fullscreen"
               >
                 {isFullscreen ? "EXIT FS" : "⛶ FULLSCREEN"}
               </button>
             </div>
             {lockError ? (
-              <p role="alert" className="text-sm text-red-300">
+              <p role="alert" className="app-alert" style={{ marginTop: 20 }}>
                 {lockError}
               </p>
             ) : null}
-            <p className="font-mono text-[11px] text-zinc-500">
+            <p className="app-help" style={{ marginTop: 20 }}>
               Esc releases mouse capture and pauses the run. Raw input is used
               when supported; ordinary Pointer Lock remains available.
             </p>
@@ -689,33 +719,47 @@ export function TrainerBootstrap({
 
       {gameState === "paused" && countdown === null ? (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/80 p-6 backdrop-blur-md">
-          <div className="w-full max-w-sm space-y-6 rounded-2xl border border-zinc-800 bg-zinc-900 p-8 text-center shadow-2xl">
+          <div className="app-card" style={{ textAlign: "center" }}>
             <div>
-              <span className="font-mono text-xs font-bold uppercase tracking-widest text-amber-400">
+              <span
+                className="app-kicker"
+                style={{ color: "#f5a524", marginBottom: 0 }}
+              >
                 PAUSED
               </span>
-              <h2 className="mt-1 text-2xl font-bold text-white">
+              <h2 className="app-heading" style={{ fontSize: 24, marginTop: 8 }}>
                 {modeTitle} paused
               </h2>
-              <p className="mt-2 text-xs text-zinc-500">
+              <p className="app-help">
                 Pause time does not advance simulation time. This run closes
                 after 10 minutes paused.
               </p>
-              <p className="mt-2 font-mono text-sm text-zinc-300">
+              <p
+                style={{
+                  marginTop: 8,
+                  fontFamily: "monospace",
+                  fontSize: 13,
+                  color: "rgba(255,255,255,0.75)",
+                }}
+              >
                 {formatPauseTime(pauseSecondsLeft)} remaining
               </p>
             </div>
-            <div className="space-y-3">
-              <button
-                onClick={handleResume}
-                className="w-full rounded-lg bg-emerald-400 py-3 font-bold text-zinc-950 hover:bg-emerald-300"
-              >
+            <div
+              style={{
+                marginTop: 20,
+                display: "flex",
+                flexDirection: "column",
+                gap: 10,
+              }}
+            >
+              <button onClick={handleResume} className="app-button">
                 Resume
               </button>
               {!lockedConfiguration ? (
                 <button
                   onClick={openSettings}
-                  className="w-full rounded-lg border border-zinc-700 bg-zinc-800 py-3 font-semibold text-zinc-200 hover:bg-zinc-700"
+                  className="app-button app-button-ghost"
                 >
                   Settings
                 </button>
@@ -723,21 +767,21 @@ export function TrainerBootstrap({
               <button
                 type="button"
                 onClick={toggleFullscreen}
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800/80 py-3 font-semibold text-zinc-200 hover:border-cyan-400 hover:text-cyan-300"
+                className="app-button app-button-ghost"
               >
                 {isFullscreen ? "Exit Fullscreen" : "Toggle Fullscreen"}
               </button>
               {!lockedConfiguration ? (
                 <button
                   onClick={restartWithLatestSettings}
-                  className="w-full rounded-lg border border-zinc-700 bg-zinc-800 py-3 font-semibold text-zinc-200 hover:bg-zinc-700"
+                  className="app-button app-button-ghost"
                 >
                   Restart
                 </button>
               ) : null}
               <button
                 onClick={() => router.push("/app")}
-                className="w-full rounded-lg border border-zinc-800 py-3 font-semibold text-zinc-400 hover:bg-zinc-800"
+                className="app-button app-button-ghost"
               >
                 Exit to Home
               </button>
@@ -825,15 +869,12 @@ function resolveBackingResolution(
 
 function HudGroup({ items }: { items: [string, string][] }) {
   return (
-    <div className="flex items-center gap-6 rounded-lg border border-zinc-800/80 bg-black/60 px-4 py-2.5">
-      {items.map(([label, value], index) => (
-        <React.Fragment key={label}>
-          {index > 0 ? <div className="h-8 w-px bg-zinc-800" /> : null}
-          <div>
-            <span className="block text-[10px] text-zinc-500">{label}</span>
-            <span className="text-xl font-bold text-white">{value}</span>
-          </div>
-        </React.Fragment>
+    <div className="trainer-hud">
+      {items.map(([label, value]) => (
+        <div key={label}>
+          <b>{label}</b>
+          <strong>{value}</strong>
+        </div>
       ))}
     </div>
   );
