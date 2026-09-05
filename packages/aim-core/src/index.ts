@@ -1,5 +1,6 @@
 export * from "./fixed/angle.js";
 export * from "./fixed/range.js";
+export * from "./fixed/camera-bounds.js";
 export * from "./prng/xoshiro128ss.js";
 export * from "./input/types.js";
 export * from "./input/shot.js";

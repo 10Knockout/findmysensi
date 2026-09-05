@@ -1,11 +1,13 @@
 import {
   createAngleUnits,
+  QUARTER_TURN_UNITS,
   RenderSnapshotView,
   shortestSignedAngleDelta,
 } from "@findmysensi/aim-core";
 import {
   AimRenderer,
   CrosshairConfig,
+  PlayAreaRenderConfig,
   PotatoRendererOptions,
   TargetRenderConfig,
 } from "./types.js";
@@ -34,6 +36,29 @@ const DEFAULT_TARGET: TargetRenderConfig = {
 
 const DEFAULT_BACKGROUND = "#0f1117";
 
+const DEFAULT_PLAY_AREA: Omit<
+  PlayAreaRenderConfig,
+  "widthUnits" | "heightUnits"
+> = {
+  color: "#00ff88",
+  lineWidth: 1,
+  opacity: 0.16,
+};
+
+/**
+ * The viewport projects angles through `tan()`, which flips sign past +/-90 deg
+ * and would mirror off-frustum geometry onto the opposite side of the screen.
+ * Pinning relative angles just inside a quarter turn keeps them on the correct
+ * side; anything that far out is off-screen and gets clipped anyway.
+ */
+const MAX_PROJECTABLE_ANGLE_UNITS = QUARTER_TURN_UNITS - 1;
+
+function toProjectableAngle(units: number): number {
+  if (units > MAX_PROJECTABLE_ANGLE_UNITS) return MAX_PROJECTABLE_ANGLE_UNITS;
+  if (units < -MAX_PROJECTABLE_ANGLE_UNITS) return -MAX_PROJECTABLE_ANGLE_UNITS;
+  return units;
+}
+
 export class Canvas2DPotatoRenderer implements AimRenderer {
   private canvas: HTMLCanvasElement | null = null;
   private ctx: CanvasRenderingContext2D | null = null;
@@ -41,6 +66,7 @@ export class Canvas2DPotatoRenderer implements AimRenderer {
   private backgroundColor: string = DEFAULT_BACKGROUND;
   private crosshair: CrosshairConfig = DEFAULT_CROSSHAIR;
   private target: TargetRenderConfig = DEFAULT_TARGET;
+  private playArea: PlayAreaRenderConfig | null = null;
 
   public initialize(
     canvas: HTMLCanvasElement,
@@ -62,6 +88,9 @@ export class Canvas2DPotatoRenderer implements AimRenderer {
     if (options?.target) {
       this.target = { ...DEFAULT_TARGET, ...options.target };
     }
+    this.playArea = options?.playArea
+      ? { ...DEFAULT_PLAY_AREA, ...options.playArea }
+      : null;
   }
 
   public render(snapshot: RenderSnapshotView): void {
@@ -96,6 +125,8 @@ export class Canvas2DPotatoRenderer implements AimRenderer {
     const playerYaw = snapshot.playerYaw;
     const playerPitch = snapshot.playerPitch;
 
+    this.renderPlayArea(ctx, vp, playerYaw, playerPitch);
+
     for (let i = 0; i < targetCount; i++) {
       const rawTargetX = snapshot.targetX[i] ?? 0;
       const rawTargetY = snapshot.targetY[i] ?? 0;
@@ -106,7 +137,10 @@ export class Canvas2DPotatoRenderer implements AimRenderer {
         createAngleUnits(rawTargetX),
       );
       const relPitch = rawTargetY - playerPitch;
-      const screenPos = vp.simToDisplay(relYaw, relPitch);
+      const screenPos = vp.simToDisplay(
+        toProjectableAngle(relYaw),
+        toProjectableAngle(relPitch),
+      );
       const radiusPx = Math.max(2, vp.angleRadiusToPixels(rawRadius));
 
       ctx.globalAlpha = this.target.opacity;
@@ -125,6 +159,48 @@ export class Canvas2DPotatoRenderer implements AimRenderer {
 
     this.renderCrosshair(ctx, rectX + rectW / 2, rectY + rectH / 2);
     if (typeof ctx.restore === "function") ctx.restore();
+  }
+
+  private renderPlayArea(
+    ctx: CanvasRenderingContext2D,
+    vp: ViewportTransform,
+    playerYaw: number,
+    playerPitch: number,
+  ): void {
+    const config = this.playArea;
+    if (!config || config.opacity <= 0 || config.lineWidth <= 0) return;
+    if (typeof ctx.strokeRect !== "function") return;
+
+    const halfWidth = Math.floor(config.widthUnits / 2);
+    const halfHeight = Math.floor(config.heightUnits / 2);
+
+    // Yaw wraps, so each edge is measured along the shortest path from the
+    // player. Pitch never wraps, so it is a plain difference.
+    const relLeft = shortestSignedAngleDelta(
+      createAngleUnits(playerYaw),
+      createAngleUnits(wrapPositive(-halfWidth)),
+    );
+    const relRight = shortestSignedAngleDelta(
+      createAngleUnits(playerYaw),
+      createAngleUnits(wrapPositive(halfWidth)),
+    );
+
+    const left = vp.simToDisplay(toProjectableAngle(relLeft), 0).x;
+    const right = vp.simToDisplay(toProjectableAngle(relRight), 0).x;
+    const top = vp.simToDisplay(
+      0,
+      toProjectableAngle(halfHeight - playerPitch),
+    ).y;
+    const bottom = vp.simToDisplay(
+      0,
+      toProjectableAngle(-halfHeight - playerPitch),
+    ).y;
+
+    ctx.globalAlpha = config.opacity;
+    ctx.lineWidth = config.lineWidth;
+    ctx.strokeStyle = config.color;
+    ctx.strokeRect(left, top, right - left, bottom - top);
+    ctx.globalAlpha = 1;
   }
 
   private renderCrosshair(
@@ -207,6 +283,12 @@ export class Canvas2DPotatoRenderer implements AimRenderer {
     this.ctx = null;
     this.viewport = null;
   }
+}
+
+function wrapPositive(units: number): number {
+  const full = QUARTER_TURN_UNITS * 4;
+  const remainder = units % full;
+  return remainder < 0 ? remainder + full : remainder;
 }
 
 export function createAimRenderer(): AimRenderer {

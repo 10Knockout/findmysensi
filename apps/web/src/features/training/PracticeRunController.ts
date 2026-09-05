@@ -1,6 +1,8 @@
 import {
   AngleUnits,
-  clampPitch,
+  CameraBounds,
+  clampPitchToBounds,
+  clampYawToBounds,
   createAngleUnits,
   createPitchUnits,
   createPrngV1,
@@ -9,8 +11,8 @@ import {
   FULL_TURN_UNITS,
   PitchUnits,
   PrngV1,
+  resolveCameraBounds,
   SnapshotBuffer,
-  wrapYaw,
 } from "@findmysensi/aim-core";
 import {
   createInputRingBuffer,
@@ -84,6 +86,7 @@ export class PracticeRunController {
   private callbacks: PracticeRunCallbacks;
 
   private readonly totalDurationTicks: number;
+  private readonly cameraBounds: CameraBounds;
   private inputScaler: DeterministicBrowserInputScaler;
   private playerYaw: AngleUnits = createAngleUnits(0);
   private playerPitch: PitchUnits = createPitchUnits(0);
@@ -118,6 +121,12 @@ export class PracticeRunController {
     this.adapter = adapter;
     this.totalDurationTicks =
       options.durationTicks ?? adapter.definition.durationTicks;
+    // Bound the camera to this mode's play area so overshooting a flick can
+    // never strand the player in empty space against the 89.9 deg gimbal clamp.
+    this.cameraBounds = resolveCameraBounds(
+      adapter.definition.simulation.spawnAreaWidthUnits,
+      adapter.definition.simulation.spawnAreaHeightUnits,
+    );
     this.inputScaler = createBrowserInputScaler(gain);
     this.ringBuffer = createInputRingBuffer(capacity);
     this.batchTarget = createRawInputBatchTarget(capacity);
@@ -267,8 +276,14 @@ export class PracticeRunController {
           if (event.kind === "move") {
             const yawDelta = this.inputScaler.scaleYaw(event.dx);
             const pitchDelta = this.inputScaler.scalePitch(event.dy);
-            this.playerYaw = wrapYaw(this.playerYaw + yawDelta);
-            this.playerPitch = clampPitch(this.playerPitch - pitchDelta);
+            this.playerYaw = clampYawToBounds(
+              this.playerYaw + yawDelta,
+              this.cameraBounds,
+            );
+            this.playerPitch = clampPitchToBounds(
+              this.playerPitch - pitchDelta,
+              this.cameraBounds,
+            );
             this.cumulativeEngineYawAngleUnits += yawDelta;
             this.cumulativeEnginePitchAngleUnits -= pitchDelta;
           } else if (event.kind === "shot") {

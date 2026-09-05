@@ -230,6 +230,7 @@ export function TrainerBootstrap({
       return;
 
     const runtimeConfig = runtimeConfigRef.current;
+    const modeSimulation = modeEntry.scenarioEntry.definition.simulation;
     const inputGain = sensitivityOverride
       ? resolveBrowserInputGain(sensitivityOverride)
       : runtimeConfig.inputGain;
@@ -275,6 +276,10 @@ export function TrainerBootstrap({
             borderWidth: activeCfg.targetOutline ? 2 : 0,
             borderColor: "#ffffff",
           },
+          playArea: {
+            widthUnits: modeSimulation.spawnAreaWidthUnits,
+            heightUnits: modeSimulation.spawnAreaHeightUnits,
+          },
         });
         rendererInitialized = true;
       } else {
@@ -286,6 +291,10 @@ export function TrainerBootstrap({
             opacity: activeCfg.targetOpacity,
             borderWidth: activeCfg.targetOutline ? 2 : 0,
             borderColor: "#ffffff",
+          },
+          playArea: {
+            widthUnits: modeSimulation.spawnAreaWidthUnits,
+            heightUnits: modeSimulation.spawnAreaHeightUnits,
           },
         });
       }
@@ -682,8 +691,8 @@ export function TrainerBootstrap({
               </h1>
               <p className="app-subtext">
                 {runLabel ? `${runLabel}. ` : null}
-                {modeDescription} Click start to capture the mouse and begin
-                the {modeDurationSeconds}-second run.
+                {modeDescription} Click start to capture the mouse and begin the{" "}
+                {modeDurationSeconds}-second run.
               </p>
             </div>
             <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
@@ -727,7 +736,10 @@ export function TrainerBootstrap({
               >
                 PAUSED
               </span>
-              <h2 className="app-heading" style={{ fontSize: 24, marginTop: 8 }}>
+              <h2
+                className="app-heading"
+                style={{ fontSize: 24, marginTop: 8 }}
+              >
                 {modeTitle} paused
               </h2>
               <p className="app-help">

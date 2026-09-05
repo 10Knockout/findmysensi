@@ -22,10 +22,28 @@ export interface TargetRenderConfig {
   readonly borderWidth: number;
 }
 
+export interface PlayAreaRenderConfig {
+  /** Full width of the scenario spawn area, in angle units. */
+  readonly widthUnits: number;
+  /** Full height of the scenario spawn area, in angle units. */
+  readonly heightUnits: number;
+  readonly color: string;
+  readonly lineWidth: number;
+  readonly opacity: number;
+}
+
 export interface PotatoRendererOptions {
   readonly backgroundColor?: string | undefined;
   readonly crosshair?: Partial<CrosshairConfig> | undefined;
   readonly target?: Partial<TargetRenderConfig> | undefined;
+  /**
+   * Draws the scenario's play area as a faint outline. Omit to draw nothing.
+   * Requires at least `widthUnits` and `heightUnits`.
+   */
+  readonly playArea?:
+    | (Pick<PlayAreaRenderConfig, "widthUnits" | "heightUnits"> &
+        Partial<PlayAreaRenderConfig>)
+    | undefined;
 }
 
 export interface AimRenderer {
