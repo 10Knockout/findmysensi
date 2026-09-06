@@ -11,10 +11,7 @@ import {
   encodeCrosshairShareCode,
   type CrosshairConfig,
 } from "@findmysensi/crosshair";
-import {
-  fmsToGameSensitivity,
-  sensitivityToCmPer360,
-} from "@findmysensi/sensitivity";
+import { sensitivityToCmPer360 } from "@findmysensi/sensitivity";
 import { InteractiveCrosshairEditor } from "../features/crosshair/InteractiveCrosshairEditor";
 
 interface InGameSettingsModalProps {
@@ -77,35 +74,29 @@ export function InGameSettingsModal({
     setSettings((prev) => ({ ...prev, [key]: val }));
   };
 
-  const aimlabsSensitivity = Number(settings.fmsSensitivity ?? "1");
+  const fmsSensitivity = Number(settings.fmsSensitivity ?? "1");
 
-  const handleAimlabsSensitivityChange = (value: number) => {
+  const handleFindMySensiSensitivityChange = (rawValue: string) => {
+    const value = Number(rawValue);
     if (!Number.isFinite(value) || value <= 0) return;
     updateSetting("fmsSensitivity", String(value));
   };
 
-  const handleDpiChange = (newDpi: number) => {
+  const handleDpiChange = (rawValue: string) => {
+    const newDpi = Number(rawValue);
+    if (!Number.isInteger(newDpi) || newDpi < 100 || newDpi > 100_000) {
+      return;
+    }
     setDpi(newDpi);
     updateSetting("nominalDpi", newDpi);
   };
 
   // Calculate physical metrics (cm/360, eDPI)
   let cmPer360 = "N/A";
-  let edpi = "N/A";
-  let valorantEquivalent = "N/A";
   try {
-    if (aimlabsSensitivity > 0 && dpi > 0) {
-      const cm = sensitivityToCmPer360(
-        "aimlab-default",
-        aimlabsSensitivity,
-        dpi,
-      );
+    if (fmsSensitivity > 0 && dpi > 0) {
+      const cm = sensitivityToCmPer360("aimlab-default", fmsSensitivity, dpi);
       cmPer360 = `${cm.toFixed(1)} cm / 360°`;
-      edpi = `${(aimlabsSensitivity * dpi).toFixed(0)}`;
-      valorantEquivalent = fmsToGameSensitivity(
-        "valorant",
-        settings.fmsSensitivity ?? "1",
-      ).toFixed(3);
     }
   } catch {
     // ignore
@@ -172,10 +163,9 @@ export function InGameSettingsModal({
           {activeTab === "sensitivity" ? (
             <div>
               <div className="settings-panel">
-                <h3>Aimlabs Mouse Sensitivity</h3>
+                <h3>Aim Sensitivity</h3>
                 <p>
-                  Trainer uses the Aimlabs sensitivity number directly, with no
-                  game-profile conversion.
+                  One Aimlabs Default sensitivity controls every training game.
                 </p>
 
                 <div
@@ -187,26 +177,20 @@ export function InGameSettingsModal({
                   }}
                 >
                   <div>
-                    <label className="settings-label">
-                      Sensitivity Scale
-                    </label>
-                    <div
-                      className="app-input"
-                      style={{ color: "var(--fms-acid)" }}
+                    <label
+                      htmlFor="in-game-mouse-dpi"
+                      className="settings-label"
                     >
-                      Aimlabs (native)
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="settings-label">Mouse DPI</label>
+                      Mouse DPI (reference only)
+                    </label>
                     <input
+                      id="in-game-mouse-dpi"
                       type="number"
                       min={100}
                       max={32000}
                       step={50}
                       value={dpi}
-                      onChange={(e) => handleDpiChange(Number(e.target.value))}
+                      onChange={(event) => handleDpiChange(event.target.value)}
                       className="app-input"
                     />
                   </div>
@@ -220,17 +204,22 @@ export function InGameSettingsModal({
                       marginBottom: 8,
                     }}
                   >
-                    <span className="settings-label" style={{ margin: 0 }}>
-                      Aimlabs Sensitivity
-                    </span>
+                    <label
+                      htmlFor="in-game-fms-sensitivity"
+                      className="settings-label"
+                      style={{ margin: 0 }}
+                    >
+                      Aim Sensitivity (Aimlabs Default)
+                    </label>
                     <input
+                      id="in-game-fms-sensitivity"
                       type="number"
                       min={0.005}
                       max={10.0}
                       step={0.005}
-                      value={aimlabsSensitivity}
-                      onChange={(e) =>
-                        handleAimlabsSensitivityChange(Number(e.target.value))
+                      value={fmsSensitivity}
+                      onChange={(event) =>
+                        handleFindMySensiSensitivityChange(event.target.value)
                       }
                       className="app-input"
                       style={{
@@ -243,13 +232,14 @@ export function InGameSettingsModal({
                     />
                   </div>
                   <input
+                    aria-label="Aim sensitivity slider"
                     type="range"
                     min={0.005}
                     max={2}
                     step={0.005}
-                    value={Math.min(aimlabsSensitivity, 2)}
-                    onChange={(e) =>
-                      handleAimlabsSensitivityChange(Number(e.target.value))
+                    value={Math.min(fmsSensitivity, 2)}
+                    onChange={(event) =>
+                      handleFindMySensiSensitivityChange(event.target.value)
                     }
                     className="accent-acid"
                     style={{ width: "100%" }}
@@ -262,15 +252,8 @@ export function InGameSettingsModal({
                       lineHeight: 1.6,
                     }}
                   >
-                    The value is applied directly. At the same DPI, Valorant{" "}
-                    <span style={{ fontFamily: "monospace", color: "white" }}>
-                      0.125
-                    </span>{" "}
-                    is Aimlabs{" "}
-                    <span style={{ fontFamily: "monospace", color: "white" }}>
-                      0.175
-                    </span>
-                    .
+                    Saved once and used by this game and every other trainer
+                    game. Use Converter for Valorant, CS2, or Apex values.
                   </p>
                 </div>
 
@@ -278,7 +261,7 @@ export function InGameSettingsModal({
                   style={{
                     marginTop: 20,
                     display: "grid",
-                    gridTemplateColumns: "repeat(3, 1fr)",
+                    gridTemplateColumns: "1fr",
                     gap: 12,
                     padding: 12,
                     border: "1px solid var(--fms-line-dark)",
@@ -297,30 +280,6 @@ export function InGameSettingsModal({
                       {cmPer360}
                     </span>
                   </div>
-                  <div>
-                    <span className="settings-label">eDPI</span>
-                    <span style={{ fontFamily: "monospace", fontWeight: 800 }}>
-                      {edpi}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="settings-label">
-                      Valorant Equivalent
-                    </span>
-                    <span style={{ fontFamily: "monospace", fontWeight: 800 }}>
-                      {valorantEquivalent}
-                    </span>
-                    <span
-                      style={{
-                        display: "block",
-                        marginTop: 2,
-                        color: "rgba(255,255,255,0.35)",
-                        fontSize: 9,
-                      }}
-                    >
-                      same DPI / cm per 360
-                    </span>
-                  </div>
                 </div>
 
                 <p
@@ -334,9 +293,9 @@ export function InGameSettingsModal({
                     textAlign: "center",
                   }}
                 >
-                  Use the same numeric value as Aimlabs Default. Confirm
-                  physical parity with repeated 180° or 360° sweeps before
-                  changing the value by feel.
+                  Use same numeric value as Aimlabs Default. Confirm physical
+                  parity with repeated 180° or 360° sweeps before changing the
+                  value by feel.
                 </p>
               </div>
 
@@ -545,7 +504,10 @@ export function InGameSettingsModal({
                 >
                   <span>Opacity</span>
                   <span
-                    style={{ fontFamily: "monospace", color: "var(--fms-acid)" }}
+                    style={{
+                      fontFamily: "monospace",
+                      color: "var(--fms-acid)",
+                    }}
                   >
                     {Math.round(settings.targetOpacity * 100)}%
                   </span>
@@ -650,11 +612,7 @@ export function InGameSettingsModal({
                     className="app-input"
                   >
                     <option value="native">
-                      Native (Detected:{" "}
-                      {typeof window !== "undefined"
-                        ? `${window.screen.width}x${window.screen.height}`
-                        : "Auto"}
-                      )
+                      Native (Detected automatically)
                     </option>
                     <option value="2560x1440">2560x1440 (1440p QHD)</option>
                     <option value="1920x1080">1920x1080 (1080p FHD)</option>

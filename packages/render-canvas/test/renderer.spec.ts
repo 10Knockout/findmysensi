@@ -17,6 +17,7 @@ function createMockContext() {
     clip: vi.fn(),
     save: vi.fn(),
     restore: vi.fn(),
+    closePath: vi.fn(),
     arc: vi.fn(),
     fill: vi.fn(),
     stroke: vi.fn(),

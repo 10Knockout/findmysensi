@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { BrowserApiClient } from "@findmysensi/api-client";
 import { TrainerSettings } from "@findmysensi/protocol";
 import {
+  SENSITIVITY_PROFILES,
+  convertSensitivity,
   type VerifiedSensitivityProfileId,
-  gameSensitivityToFms,
-  sensitivityToCmPer360,
 } from "@findmysensi/sensitivity";
 
 interface QuickSetupModalProps {
@@ -16,11 +16,18 @@ interface QuickSetupModalProps {
   onSaved: (updated: TrainerSettings) => void;
 }
 
-const GAME_RECOMMENDED_FOV: Record<VerifiedSensitivityProfileId, number> = {
-  valorant: 103,
-  cs2: 106,
-  apex: 90,
-  "aimlab-default": 103,
+const SOURCE_GAMES = [
+  "valorant",
+  "cs2",
+  "apex",
+  "aimlab-default",
+] as const satisfies readonly VerifiedSensitivityProfileId[];
+
+const SOURCE_DEFAULTS: Record<VerifiedSensitivityProfileId, string> = {
+  valorant: "0.125",
+  cs2: "0.397727",
+  apex: "0.397727",
+  "aimlab-default": "0.175",
 };
 
 export function QuickSetupModal({
@@ -29,52 +36,85 @@ export function QuickSetupModal({
   currentSettings,
   onSaved,
 }: QuickSetupModalProps) {
-  const [selectedGame, setSelectedGame] =
+  const [sourceGame, setSourceGame] =
     useState<VerifiedSensitivityProfileId>("valorant");
-  const [inGameSens, setInGameSens] = useState<number>(0.35);
-  const [dpi, setDpi] = useState<number>(800);
+  const [sourceSensitivity, setSourceSensitivity] = useState("0.125");
+  const [dpi, setDpi] = useState("800");
+  const [fov, setFov] = useState(String(currentSettings.fovDegrees));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const conversion = useMemo(() => {
+    const sensitivity = Number(sourceSensitivity);
+    const parsedDpi = Number(dpi);
+    if (
+      !Number.isFinite(sensitivity) ||
+      sensitivity <= 0 ||
+      !Number.isInteger(parsedDpi) ||
+      parsedDpi < 100 ||
+      parsedDpi > 100_000
+    ) {
+      return null;
+    }
+
+    try {
+      return convertSensitivity({
+        sourceGame,
+        targetGame: "aimlab-default",
+        sourceSensitivity: sensitivity,
+        sourceDpi: parsedDpi,
+        targetDpi: parsedDpi,
+      });
+    } catch {
+      return null;
+    }
+  }, [dpi, sourceGame, sourceSensitivity]);
 
   if (!isOpen) return null;
 
   const handleGameSelect = (gameId: VerifiedSensitivityProfileId) => {
-    setSelectedGame(gameId);
-    if (gameId === "valorant") setInGameSens(0.35);
-    else if (gameId === "cs2") setInGameSens(1.2);
-    else if (gameId === "apex") setInGameSens(1.4);
-    else setInGameSens(0.5);
+    setSourceGame(gameId);
+    setSourceSensitivity(SOURCE_DEFAULTS[gameId]);
   };
 
-  const cmPer360 =
-    inGameSens > 0 && dpi > 0
-      ? sensitivityToCmPer360(selectedGame, inGameSens, dpi).toFixed(1)
-      : "--";
-
   const handleSave = async () => {
+    const parsedDpi = Number(dpi);
+    const parsedFov = Number(fov);
+    if (
+      !conversion ||
+      !Number.isInteger(parsedDpi) ||
+      parsedDpi < 100 ||
+      parsedDpi > 100_000 ||
+      !Number.isFinite(parsedFov) ||
+      parsedFov < 40 ||
+      parsedFov > 140
+    ) {
+      setError("Enter valid sensitivity, DPI, and FOV values.");
+      return;
+    }
+
     setSaving(true);
     setError(null);
     try {
-      const fmsSens = gameSensitivityToFms(selectedGame, inGameSens);
-      const recommendedFov = GAME_RECOMMENDED_FOV[selectedGame] ?? 103;
-
       const updated: TrainerSettings = {
         ...currentSettings,
-        fmsSensitivity: fmsSens,
-        nominalDpi: dpi,
-        fovDegrees: recommendedFov,
+        fmsSensitivity: conversion.formattedTargetSensitivity,
+        nominalDpi: parsedDpi,
+        fovDegrees: parsedFov,
       };
 
       const client = new BrowserApiClient();
       const res = await client.saveTrainerSettings(updated);
       if (!res.ok) {
-        throw new Error(res.error ?? "Failed to save profile");
+        throw new Error(res.error ?? "Failed to save sensitivity");
       }
 
-      onSaved(updated);
+      onSaved(res.data ?? updated);
       onClose();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to save profile");
+      setError(
+        err instanceof Error ? err.message : "Failed to save sensitivity",
+      );
     } finally {
       setSaving(false);
     }
@@ -96,6 +136,7 @@ export function QuickSetupModal({
             }}
           >
             <svg
+              aria-hidden="true"
               width={20}
               height={20}
               fill="none"
@@ -108,16 +149,17 @@ export function QuickSetupModal({
           </div>
           <div>
             <h2 className="app-heading" style={{ fontSize: 20 }}>
-              Calibrate Your Aim
+              Match Your Sensitivity
             </h2>
             <p className="app-help" style={{ marginTop: 2 }}>
-              Set up your mouse sensitivity & game profile for a 1:1 match
+              Convert once into one Aim Sensitivity used by every game.
             </p>
           </div>
         </div>
 
         {error ? (
           <div
+            role="alert"
             className="app-alert"
             style={{ marginTop: 16, marginBottom: 0 }}
           >
@@ -126,8 +168,8 @@ export function QuickSetupModal({
         ) : null}
 
         <div style={{ marginTop: 22 }}>
-          <div className="app-field">
-            <label className="settings-label">Primary Game</label>
+          <fieldset className="app-field" style={{ border: 0, padding: 0 }}>
+            <legend className="settings-label">Convert from</legend>
             <div
               style={{
                 display: "grid",
@@ -135,26 +177,22 @@ export function QuickSetupModal({
                 gap: 8,
               }}
             >
-              {(
-                [
-                  ["valorant", "Valorant"],
-                  ["cs2", "CS2"],
-                  ["apex", "Apex"],
-                  ["aimlab-default", "FMS / Aimlabs"],
-                ] as const
-              ).map(([id, label]) => (
+              {SOURCE_GAMES.map((id) => (
                 <button
                   key={id}
                   type="button"
+                  aria-pressed={sourceGame === id}
                   onClick={() => handleGameSelect(id)}
-                  className={`settings-chip${selectedGame === id ? " settings-chip-active" : ""}`}
+                  className={`settings-chip${sourceGame === id ? " settings-chip-active" : ""}`}
                   style={{ textAlign: "center" }}
                 >
-                  {label}
+                  {id === "aimlab-default"
+                    ? "Aimlabs Default"
+                    : SENSITIVITY_PROFILES[id].name}
                 </button>
               ))}
             </div>
-          </div>
+          </fieldset>
 
           <div
             style={{
@@ -166,51 +204,37 @@ export function QuickSetupModal({
           >
             <div>
               <label
+                htmlFor="setup-source-sensitivity"
                 className="settings-label"
-                style={{ display: "flex", justifyContent: "space-between" }}
               >
-                <span>In-Game Sensitivity</span>
-                <span
-                  style={{ fontFamily: "monospace", color: "var(--fms-acid)" }}
-                >
-                  {inGameSens}
-                </span>
+                {SENSITIVITY_PROFILES[sourceGame].name} Sensitivity
               </label>
               <input
+                id="setup-source-sensitivity"
                 type="number"
-                min={0.01}
-                max={20.0}
-                step={0.005}
-                value={inGameSens}
-                onChange={(e) =>
-                  setInGameSens(parseFloat(e.target.value) || 0.01)
-                }
+                min="0.001"
+                max="100"
+                step="0.001"
+                inputMode="decimal"
+                value={sourceSensitivity}
+                onChange={(event) => setSourceSensitivity(event.target.value)}
                 className="app-input"
                 style={{ fontFamily: "monospace" }}
-              />
-              <input
-                type="range"
-                min={0.01}
-                max={selectedGame === "valorant" ? 1.5 : 4.0}
-                step={0.005}
-                value={inGameSens}
-                onChange={(e) =>
-                  setInGameSens(parseFloat(e.target.value) || 0.01)
-                }
-                className="accent-acid"
-                style={{ marginTop: 8, width: "100%" }}
               />
             </div>
 
             <div>
-              <label className="settings-label">Mouse DPI</label>
+              <label htmlFor="setup-dpi" className="settings-label">
+                Mouse DPI
+              </label>
               <div style={{ display: "flex", gap: 8 }}>
-                {[400, 800, 1600].map((presetDpi) => (
+                {[400, 800, 1600, 2400].map((presetDpi) => (
                   <button
                     key={presetDpi}
                     type="button"
-                    onClick={() => setDpi(presetDpi)}
-                    className={`settings-chip${dpi === presetDpi ? " settings-chip-active" : ""}`}
+                    aria-pressed={dpi === String(presetDpi)}
+                    onClick={() => setDpi(String(presetDpi))}
+                    className={`settings-chip${dpi === String(presetDpi) ? " settings-chip-active" : ""}`}
                     style={{ flex: 1, textAlign: "center" }}
                   >
                     {presetDpi}
@@ -218,20 +242,42 @@ export function QuickSetupModal({
                 ))}
               </div>
               <input
+                id="setup-dpi"
                 type="number"
-                min={100}
-                max={32000}
-                step={50}
+                min="100"
+                max="100000"
+                step="50"
                 value={dpi}
-                onChange={(e) => setDpi(parseInt(e.target.value) || 800)}
+                onChange={(event) => setDpi(event.target.value)}
                 className="app-input"
                 style={{ marginTop: 8, fontFamily: "monospace" }}
-                placeholder="Custom DPI"
               />
+            </div>
+
+            <div>
+              <label htmlFor="setup-fov" className="settings-label">
+                Horizontal FOV
+              </label>
+              <input
+                id="setup-fov"
+                type="number"
+                min="40"
+                max="140"
+                step="1"
+                value={fov}
+                onChange={(event) => setFov(event.target.value)}
+                className="app-input"
+                style={{ fontFamily: "monospace" }}
+              />
+              <p className="app-help" style={{ marginTop: 6 }}>
+                FOV changes view only. It never changes mouse rotation.
+              </p>
             </div>
           </div>
 
           <div
+            role="status"
+            aria-live="polite"
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(2, 1fr)",
@@ -241,24 +287,33 @@ export function QuickSetupModal({
             }}
           >
             <div>
-              <span className="settings-label">Turn Distance</span>
+              <span className="settings-label">Your Aim Sensitivity</span>
               <span
+                data-testid="converted-fms-sensitivity"
                 style={{
                   fontFamily: "monospace",
                   fontWeight: 800,
                   color: "var(--fms-acid)",
+                  fontSize: 24,
                 }}
               >
-                {cmPer360} cm / 360°
+                {conversion?.formattedTargetSensitivity ?? "--"}
               </span>
             </div>
             <div>
-              <span className="settings-label">Auto-Configured FOV</span>
+              <span className="settings-label">Turn Distance</span>
               <span style={{ fontFamily: "monospace", fontWeight: 800 }}>
-                {GAME_RECOMMENDED_FOV[selectedGame] ?? 103}° ({selectedGame})
+                {conversion
+                  ? `${conversion.formattedCmPer360} cm / 360°`
+                  : "--"}
               </span>
             </div>
           </div>
+          <p className="app-help" style={{ marginTop: 10 }}>
+            Example: Valorant 0.125 becomes FindMySensi 0.175 at the same DPI.
+            Compare 0.175 against Aimlabs Default profile, not its Valorant
+            profile.
+          </p>
         </div>
 
         <div
@@ -281,11 +336,11 @@ export function QuickSetupModal({
           <button
             type="button"
             onClick={handleSave}
-            disabled={saving}
+            disabled={saving || !conversion}
             className="app-button"
             style={{ width: "auto", padding: "0 26px" }}
           >
-            {saving ? "Saving Setup…" : "Confirm & Start Aiming"}
+            {saving ? "Saving…" : "Save Sensitivity"}
           </button>
         </div>
       </div>

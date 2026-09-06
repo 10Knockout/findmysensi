@@ -6,6 +6,7 @@ import {
   DEFAULT_BROWSER_INPUT_GAIN,
   resolveBrowserInputGain,
 } from "../src/browser-gain.js";
+import { gameSensitivityToFms } from "../src/converter.js";
 
 describe("Aimlabs-default-native browser gain", () => {
   it("derives sensitivity 1.0 from exactly 0.05 degrees per raw count", () => {
@@ -28,6 +29,14 @@ describe("Aimlabs-default-native browser gain", () => {
     expect(
       resolveBrowserInputGain("1.5").fixedPointAngleUnitsPerInputUnit,
     ).toBe(3_665_038_759);
+  });
+
+  it("makes Valorant 0.125 and FindMySensi 0.175 mechanically identical", () => {
+    const fmsSensitivity = gameSensitivityToFms("valorant", "0.125");
+    const gain = resolveBrowserInputGain(fmsSensitivity);
+
+    expect(fmsSensitivity).toBe("0.175");
+    expect(gain.degreesPerInputUnit).toBe(0.00875);
   });
 
   it("preserves residuals without systematic truncation", () => {

@@ -1,5 +1,8 @@
 import {
   createAngleUnits,
+  degreesToAngleDeltaUnits,
+  degreesToAngleUnits,
+  FULL_TURN_UNITS,
   QUARTER_TURN_UNITS,
   RenderSnapshotView,
   shortestSignedAngleDelta,
@@ -9,6 +12,7 @@ import {
   CrosshairConfig,
   PlayAreaRenderConfig,
   PotatoRendererOptions,
+  RendererGraphicsPreset,
   TargetRenderConfig,
 } from "./types.js";
 import { ViewportTransform } from "./viewport-transform.js";
@@ -35,6 +39,11 @@ const DEFAULT_TARGET: TargetRenderConfig = {
 };
 
 const DEFAULT_BACKGROUND = "#0f1117";
+const ARENA_CEILING = "#151a22";
+const ARENA_WALL = "#1b222c";
+const ARENA_FLOOR = "#0b1017";
+const ARENA_GRID = "#758397";
+const ARENA_EDGE = "#a7b3c2";
 
 const DEFAULT_PLAY_AREA: Omit<
   PlayAreaRenderConfig,
@@ -67,6 +76,7 @@ export class Canvas2DPotatoRenderer implements AimRenderer {
   private crosshair: CrosshairConfig = DEFAULT_CROSSHAIR;
   private target: TargetRenderConfig = DEFAULT_TARGET;
   private playArea: PlayAreaRenderConfig | null = null;
+  private graphicsPreset: RendererGraphicsPreset = "automatic";
 
   public initialize(
     canvas: HTMLCanvasElement,
@@ -87,6 +97,9 @@ export class Canvas2DPotatoRenderer implements AimRenderer {
     }
     if (options?.target) {
       this.target = { ...DEFAULT_TARGET, ...options.target };
+    }
+    if (options?.graphicsPreset) {
+      this.graphicsPreset = options.graphicsPreset;
     }
     this.playArea = options?.playArea
       ? { ...DEFAULT_PLAY_AREA, ...options.playArea }
@@ -125,6 +138,7 @@ export class Canvas2DPotatoRenderer implements AimRenderer {
     const playerYaw = snapshot.playerYaw;
     const playerPitch = snapshot.playerPitch;
 
+    this.renderArena(ctx, vp, playerYaw, playerPitch);
     this.renderPlayArea(ctx, vp, playerYaw, playerPitch);
 
     for (let i = 0; i < targetCount; i++) {
@@ -137,28 +151,239 @@ export class Canvas2DPotatoRenderer implements AimRenderer {
         createAngleUnits(rawTargetX),
       );
       const relPitch = rawTargetY - playerPitch;
-      const screenPos = vp.simToDisplay(
-        toProjectableAngle(relYaw),
-        toProjectableAngle(relPitch),
-      );
-      const radiusPx = Math.max(2, vp.angleRadiusToPixels(rawRadius));
-
-      ctx.globalAlpha = this.target.opacity;
-      ctx.beginPath();
-      ctx.arc(screenPos.x, screenPos.y, radiusPx, 0, Math.PI * 2);
-      ctx.fillStyle = this.target.bodyColor;
-      ctx.fill();
-
-      if (this.target.borderWidth > 0) {
-        ctx.lineWidth = this.target.borderWidth;
-        ctx.strokeStyle = this.target.borderColor;
-        ctx.stroke();
+      if (
+        Math.abs(relYaw) >= QUARTER_TURN_UNITS ||
+        Math.abs(relPitch) >= QUARTER_TURN_UNITS
+      ) {
+        continue;
       }
-      ctx.globalAlpha = 1;
+      const screenPos = vp.simToDisplay(relYaw, relPitch);
+      const radiusPx = Math.max(2, vp.angleRadiusToPixels(rawRadius));
+      if (
+        screenPos.x + radiusPx < rectX ||
+        screenPos.x - radiusPx > rectX + rectW ||
+        screenPos.y + radiusPx < rectY ||
+        screenPos.y - radiusPx > rectY + rectH
+      ) {
+        continue;
+      }
+
+      this.renderTargetSphere(ctx, screenPos.x, screenPos.y, radiusPx);
     }
 
+    this.renderViewModel(ctx, vp, playerPitch);
     this.renderCrosshair(ctx, rectX + rectW / 2, rectY + rectH / 2);
     if (typeof ctx.restore === "function") ctx.restore();
+  }
+
+  private renderArena(
+    ctx: CanvasRenderingContext2D,
+    vp: ViewportTransform,
+    playerYaw: number,
+    playerPitch: number,
+  ): void {
+    const { x, y, width, height } = vp.displayRect;
+    const bottom = y + height;
+    const ceilingBottom = this.projectWorldPitch(
+      vp,
+      degreesToAngleDeltaUnits(35),
+      playerPitch,
+      y,
+      bottom,
+    );
+    const floorTop = this.projectWorldPitch(
+      vp,
+      degreesToAngleDeltaUnits(-35),
+      playerPitch,
+      y,
+      bottom,
+    );
+
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = ARENA_CEILING;
+    ctx.fillRect(x, y, width, Math.max(0, ceilingBottom - y));
+    ctx.fillStyle = ARENA_WALL;
+    ctx.fillRect(
+      x,
+      ceilingBottom,
+      width,
+      Math.max(0, floorTop - ceilingBottom),
+    );
+    ctx.fillStyle = ARENA_FLOOR;
+    ctx.fillRect(x, floorTop, width, Math.max(0, bottom - floorTop));
+
+    const gridStepDegrees =
+      this.graphicsPreset === "potato"
+        ? 30
+        : this.graphicsPreset === "high"
+          ? 10
+          : 15;
+
+    ctx.globalAlpha = this.graphicsPreset === "potato" ? 0.14 : 0.2;
+    ctx.lineWidth = Math.max(1, vp.dpr * 0.75);
+    ctx.strokeStyle = ARENA_GRID;
+    ctx.beginPath();
+
+    for (
+      let worldYawDegrees = 0;
+      worldYawDegrees < 360;
+      worldYawDegrees += gridStepDegrees
+    ) {
+      const relativeYaw = shortestSignedAngleDelta(
+        createAngleUnits(playerYaw),
+        degreesToAngleUnits(worldYawDegrees),
+      );
+      if (Math.abs(relativeYaw) >= QUARTER_TURN_UNITS) continue;
+      const screenX = vp.simToDisplay(relativeYaw, 0).x;
+      if (screenX < x || screenX > x + width) continue;
+      ctx.moveTo(screenX, y);
+      ctx.lineTo(screenX, bottom);
+    }
+
+    for (
+      let worldPitchDegrees = -75;
+      worldPitchDegrees <= 75;
+      worldPitchDegrees += gridStepDegrees
+    ) {
+      const relativePitch =
+        degreesToAngleDeltaUnits(worldPitchDegrees) - playerPitch;
+      if (Math.abs(relativePitch) >= QUARTER_TURN_UNITS) continue;
+      const screenY = vp.simToDisplay(0, relativePitch).y;
+      if (screenY < y || screenY > bottom) continue;
+      ctx.moveTo(x, screenY);
+      ctx.lineTo(x + width, screenY);
+    }
+    ctx.stroke();
+
+    ctx.globalAlpha = 0.32;
+    ctx.lineWidth = Math.max(1, vp.dpr);
+    ctx.strokeStyle = ARENA_EDGE;
+    ctx.beginPath();
+    ctx.moveTo(x, ceilingBottom);
+    ctx.lineTo(x + width, ceilingBottom);
+    ctx.moveTo(x, floorTop);
+    ctx.lineTo(x + width, floorTop);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  private projectWorldPitch(
+    vp: ViewportTransform,
+    worldPitch: number,
+    playerPitch: number,
+    top: number,
+    bottom: number,
+  ): number {
+    const relativePitch = worldPitch - playerPitch;
+    if (relativePitch >= QUARTER_TURN_UNITS) return top;
+    if (relativePitch <= -QUARTER_TURN_UNITS) return bottom;
+    const projected = vp.simToDisplay(0, relativePitch).y;
+    return Math.max(top, Math.min(bottom, projected));
+  }
+
+  private renderTargetSphere(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    radius: number,
+  ): void {
+    ctx.globalAlpha = this.target.opacity * 0.28;
+    ctx.beginPath();
+    ctx.arc(
+      x + radius * 0.13,
+      y + radius * 0.18,
+      radius * 1.04,
+      0,
+      Math.PI * 2,
+    );
+    ctx.fillStyle = "#000000";
+    ctx.fill();
+
+    ctx.globalAlpha = this.target.opacity;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    if (
+      this.graphicsPreset !== "potato" &&
+      this.graphicsPreset !== "low" &&
+      typeof ctx.createRadialGradient === "function"
+    ) {
+      const gradient = ctx.createRadialGradient(
+        x - radius * 0.32,
+        y - radius * 0.34,
+        Math.max(1, radius * 0.06),
+        x,
+        y,
+        radius,
+      );
+      gradient.addColorStop(0, "#ffffff");
+      gradient.addColorStop(0.18, this.target.bodyColor);
+      gradient.addColorStop(1, "#111827");
+      ctx.fillStyle = gradient;
+    } else {
+      ctx.fillStyle = this.target.bodyColor;
+    }
+    ctx.fill();
+
+    if (this.target.borderWidth > 0) {
+      ctx.lineWidth = this.target.borderWidth;
+      ctx.strokeStyle = this.target.borderColor;
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  private renderViewModel(
+    ctx: CanvasRenderingContext2D,
+    vp: ViewportTransform,
+    playerPitch: number,
+  ): void {
+    const { x, y, width, height } = vp.displayRect;
+    const right = x + width;
+    const bottom = y + height;
+    const scale = Math.max(0.55, Math.min(1.5, height / 1080));
+    const pitchDegrees = (playerPitch / FULL_TURN_UNITS) * 360;
+    const downLook = Math.max(0, Math.min(1, (-pitchDegrees - 42) / 42));
+
+    if (downLook > 0) {
+      const bootY = bottom - (24 + downLook * 92) * scale;
+      const spread = (34 + downLook * 42) * scale;
+      const bootWidth = 34 * scale;
+      const bootHeight = 92 * scale;
+      fillPolygon(ctx, "#070a0e", [
+        [x + width / 2 - spread - bootWidth, bottom],
+        [x + width / 2 - spread - bootWidth * 0.72, bootY],
+        [x + width / 2 - spread + bootWidth * 0.55, bootY - bootHeight * 0.08],
+        [x + width / 2 - spread + bootWidth, bottom],
+      ]);
+      fillPolygon(ctx, "#070a0e", [
+        [x + width / 2 + spread - bootWidth, bottom],
+        [x + width / 2 + spread - bootWidth * 0.55, bootY - bootHeight * 0.08],
+        [x + width / 2 + spread + bootWidth * 0.72, bootY],
+        [x + width / 2 + spread + bootWidth, bottom],
+      ]);
+    }
+
+    const lowered = downLook * 70 * scale;
+    fillPolygon(ctx, "#263141", [
+      [right - 310 * scale, bottom],
+      [right - 255 * scale, bottom - 152 * scale + lowered],
+      [right - 170 * scale, bottom - 126 * scale + lowered],
+      [right - 120 * scale, bottom],
+    ]);
+    fillPolygon(ctx, "#0a0f16", [
+      [right - 220 * scale, bottom - 135 * scale + lowered],
+      [right - 195 * scale, bottom - 245 * scale + lowered],
+      [right - 111 * scale, bottom - 230 * scale + lowered],
+      [right - 76 * scale, bottom - 95 * scale + lowered],
+      [right - 128 * scale, bottom - 70 * scale + lowered],
+    ]);
+    fillPolygon(ctx, "#64748b", [
+      [right - 194 * scale, bottom - 244 * scale + lowered],
+      [right - 92 * scale, bottom - 256 * scale + lowered],
+      [right - 49 * scale, bottom - 233 * scale + lowered],
+      [right - 112 * scale, bottom - 218 * scale + lowered],
+    ]);
+    ctx.globalAlpha = 1;
   }
 
   private renderPlayArea(
@@ -283,6 +508,24 @@ export class Canvas2DPotatoRenderer implements AimRenderer {
     this.ctx = null;
     this.viewport = null;
   }
+}
+
+function fillPolygon(
+  ctx: CanvasRenderingContext2D,
+  color: string,
+  points: readonly (readonly [number, number])[],
+): void {
+  const first = points[0];
+  if (!first) return;
+  ctx.beginPath();
+  ctx.moveTo(first[0], first[1]);
+  for (let index = 1; index < points.length; index++) {
+    const point = points[index]!;
+    ctx.lineTo(point[0], point[1]);
+  }
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
 }
 
 function wrapPositive(units: number): number {

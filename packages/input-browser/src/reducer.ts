@@ -39,6 +39,10 @@ function mapReasonCode(code: number): InvalidationReason {
   }
 }
 
+function reversesDirection(accumulated: number, next: number): boolean {
+  return accumulated !== 0 && next !== 0 && accumulated > 0 !== next > 0;
+}
+
 export function reduceRawEvents(
   input: RawInputBatchTarget,
   clock: TickBucketer,
@@ -91,8 +95,18 @@ export function reduceRawEvents(
 
     switch (kind) {
       case EVENT_KIND_MOVE: {
-        accumDx += input.dx[i] ?? 0;
-        accumDy += input.dy[i] ?? 0;
+        const dx = input.dx[i] ?? 0;
+        const dy = input.dy[i] ?? 0;
+
+        // A direction change is a semantic boundary at a camera limit. If it
+        // is folded into the preceding motion, the clamp can consume the first
+        // reverse input and make rapid flicks feel temporarily blocked.
+        if (reversesDirection(accumDx, dx) || reversesDirection(accumDy, dy)) {
+          flushMove(currentSegmentTick);
+        }
+
+        accumDx += dx;
+        accumDy += dy;
         break;
       }
 

@@ -16,10 +16,7 @@ import {
   encodeCrosshairShareCode,
   type CrosshairConfig,
 } from "@findmysensi/crosshair";
-import {
-  fmsToGameSensitivity,
-  sensitivityToCmPer360,
-} from "@findmysensi/sensitivity";
+import { sensitivityToCmPer360 } from "@findmysensi/sensitivity";
 import { InteractiveCrosshairEditor } from "../crosshair/InteractiveCrosshairEditor.js";
 import {
   ASPECT_OPTIONS,
@@ -93,25 +90,19 @@ export function SettingsClient() {
     setTrainer((current) => (current ? { ...current, [key]: value } : current));
   };
 
-  const aimlabsSensitivity = Number(trainer?.fmsSensitivity ?? "1");
+  const fmsSensitivity = Number(trainer?.fmsSensitivity ?? "1");
 
-  const handleAimlabsSensitivityChange = (value: number) => {
+  const handleFindMySensiSensitivityChange = (rawValue: string) => {
+    const value = Number(rawValue);
     if (!Number.isFinite(value) || value <= 0) return;
     updateTrainer("fmsSensitivity", String(value));
   };
 
   let calcCmPer360 = "N/A";
-  let calcEdpi = "N/A";
-  let valorantEquivalent = "N/A";
   try {
     const effDpi = trainer?.nominalDpi ?? 800;
-    if (aimlabsSensitivity > 0 && effDpi > 0) {
-      calcCmPer360 = `${sensitivityToCmPer360("aimlab-default", aimlabsSensitivity, effDpi).toFixed(1)} cm / 360°`;
-      calcEdpi = `${(aimlabsSensitivity * effDpi).toFixed(0)}`;
-      valorantEquivalent = fmsToGameSensitivity(
-        "valorant",
-        trainer?.fmsSensitivity ?? "1",
-      ).toFixed(3);
+    if (fmsSensitivity > 0 && effDpi > 0) {
+      calcCmPer360 = `${sensitivityToCmPer360("aimlab-default", fmsSensitivity, effDpi).toFixed(1)} cm / 360°`;
     }
   } catch {
     // ignore
@@ -276,7 +267,7 @@ export function SettingsClient() {
 
           <SettingsSection
             title="Aim & Sensitivity"
-            description="The trainer uses the Aimlabs sensitivity scale directly. FOV adjusts camera angle without altering physical sensitivity."
+            description="One Aim Sensitivity controls every training game. It uses the Aimlabs Default numeric scale."
           >
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               <div className="settings-panel" style={{ margin: 0 }}>
@@ -287,16 +278,9 @@ export function SettingsClient() {
                     gridTemplateColumns: "repeat(auto-fit, minmax(180px,1fr))",
                   }}
                 >
-                  <Field label="Sensitivity Scale">
-                    <div
-                      className={inputClass}
-                      style={{ color: "var(--fms-acid)" }}
-                    >
-                      Aimlabs (native)
-                    </div>
-                  </Field>
-                  <Field label="Mouse DPI">
+                  <Field label="Mouse DPI (reference only)">
                     <input
+                      aria-label="Mouse DPI"
                       value={trainer.nominalDpi ?? ""}
                       onChange={(e) =>
                         updateTrainer(
@@ -321,17 +305,22 @@ export function SettingsClient() {
                       marginBottom: 8,
                     }}
                   >
-                    <span className="settings-label" style={{ margin: 0 }}>
-                      Aimlabs Sensitivity
-                    </span>
+                    <label
+                      htmlFor="fms-sensitivity-number"
+                      className="settings-label"
+                      style={{ margin: 0 }}
+                    >
+                      Aim Sensitivity (Aimlabs Default)
+                    </label>
                     <input
+                      id="fms-sensitivity-number"
                       type="number"
                       min={0.005}
                       max={10.0}
                       step={0.005}
-                      value={aimlabsSensitivity}
-                      onChange={(e) =>
-                        handleAimlabsSensitivityChange(Number(e.target.value))
+                      value={fmsSensitivity}
+                      onChange={(event) =>
+                        handleFindMySensiSensitivityChange(event.target.value)
                       }
                       className="app-input"
                       style={{
@@ -344,13 +333,14 @@ export function SettingsClient() {
                     />
                   </div>
                   <input
+                    aria-label="Aim sensitivity slider"
                     type="range"
                     min={0.005}
                     max={2}
                     step={0.005}
-                    value={Math.min(aimlabsSensitivity, 2)}
-                    onChange={(e) =>
-                      handleAimlabsSensitivityChange(Number(e.target.value))
+                    value={Math.min(fmsSensitivity, 2)}
+                    onChange={(event) =>
+                      handleFindMySensiSensitivityChange(event.target.value)
                     }
                     className="accent-acid"
                     style={{ width: "100%" }}
@@ -363,24 +353,23 @@ export function SettingsClient() {
                       lineHeight: 1.6,
                     }}
                   >
-                    The value is applied directly with no game-profile
-                    conversion. At the same DPI, Valorant{" "}
-                    <span style={{ fontFamily: "monospace", color: "white" }}>
-                      0.125
-                    </span>{" "}
-                    is Aimlabs{" "}
-                    <span style={{ fontFamily: "monospace", color: "white" }}>
-                      0.175
-                    </span>
-                    .
+                    Saved once and applied to Gridshot and every other training
+                    game. FOV and game mode never change mouse rotation.
                   </p>
+                  <Link
+                    href="/tools/converter"
+                    className="app-link"
+                    style={{ display: "inline-block", marginTop: 10 }}
+                  >
+                    Convert your game sensitivity
+                  </Link>
                 </div>
 
                 <div
                   style={{
                     marginTop: 20,
                     display: "grid",
-                    gridTemplateColumns: "repeat(3, 1fr)",
+                    gridTemplateColumns: "1fr",
                     gap: 12,
                     padding: 12,
                     border: "1px solid var(--fms-line-dark)",
@@ -397,30 +386,6 @@ export function SettingsClient() {
                       }}
                     >
                       {calcCmPer360}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="settings-label">eDPI</span>
-                    <span style={{ fontFamily: "monospace", fontWeight: 800 }}>
-                      {calcEdpi}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="settings-label">
-                      Valorant Equivalent
-                    </span>
-                    <span style={{ fontFamily: "monospace", fontWeight: 800 }}>
-                      {valorantEquivalent}
-                    </span>
-                    <span
-                      style={{
-                        display: "block",
-                        marginTop: 2,
-                        color: "rgba(255,255,255,0.35)",
-                        fontSize: 9,
-                      }}
-                    >
-                      same DPI / cm per 360
                     </span>
                   </div>
                 </div>
@@ -586,7 +551,9 @@ export function SettingsClient() {
                       type="checkbox"
                       className="accent-acid"
                     />
-                    <span style={{ fontSize: 13, color: "rgba(255,255,255,0.8)" }}>
+                    <span
+                      style={{ fontSize: 13, color: "rgba(255,255,255,0.8)" }}
+                    >
                       Enabled
                     </span>
                   </label>

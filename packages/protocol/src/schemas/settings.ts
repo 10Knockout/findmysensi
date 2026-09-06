@@ -4,6 +4,8 @@ export const DEFAULT_TRAINING_FOV_DEGREES = 103;
 
 export const TrainerSettingsSchema = z
   .object({
+    // One global Aimlabs Default numeric value. Every trainer mode uses it.
+    // Source-game profiles belong to converter input and are never persisted.
     fmsSensitivity: z
       .string()
       .trim()

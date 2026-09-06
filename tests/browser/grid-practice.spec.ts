@@ -221,6 +221,11 @@ describe("Grid Practice Run Flow & Lifecycle", () => {
 
     controller.start([1, 2, 3, 4]);
     controller.recordBrowserInputEvent(100, 40);
+    // Mirrors what TrainerBootstrap's onMovementAccepted does for every real
+    // browser mouse event: the display camera used for rendering advances
+    // immediately, independent of the ring-buffered value that only reaches
+    // playerYaw/playerPitch once a simulation tick processes it.
+    controller.recordDisplayMovement(100, 40);
     controller.getRingBuffer().pushMove(100, 40, 1);
     controller.onAnimationFrame(0);
     controller.onAnimationFrame(8);
@@ -287,6 +292,8 @@ describe("Grid Practice Run Flow & Lifecycle", () => {
       expectedPitchDegrees: 0,
       actualEngineYawDegrees: 0,
       actualEnginePitchDegrees: 0,
+      viewYawDegrees: 0,
+      viewPitchDegrees: 0,
       yawResidualFixedPointUnits: 0,
       pitchResidualFixedPointUnits: 0,
     });
@@ -331,8 +338,12 @@ describe("Grid Practice Run Flow & Lifecycle", () => {
     controller
       .getRingBuffer()
       .pushMove(yawDelta / gain, -targetPitch / gain, 1);
+    // Mirrors what TrainerBootstrap's onMovementAccepted does for every real
+    // browser mouse event -- see the comment on the previous test above.
+    controller.recordDisplayMovement(yawDelta / gain, -targetPitch / gain);
     controller.getRingBuffer().pushShot(0, 2);
     controller.getRingBuffer().pushMove(-40, 0, 3);
+    controller.recordDisplayMovement(-40, 0);
     controller.onAnimationFrame(8);
 
     expect(scoreUpdates.at(-1)).toEqual({ hits: 1, misses: 0 });

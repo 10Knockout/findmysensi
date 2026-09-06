@@ -18,23 +18,17 @@ const PUBLIC_GAME_IDS = [
 export default function SensitivityConverterPage() {
   const [sourceGame, setSourceGame] =
     useState<VerifiedSensitivityProfileId>("valorant");
-  const [targetGame, setTargetGame] =
-    useState<VerifiedSensitivityProfileId>("aimlab-default");
   const [sourceSensitivity, setSourceSensitivity] = useState("0.125");
   const [sourceDpi, setSourceDpi] = useState("800");
-  const [targetDpi, setTargetDpi] = useState("800");
 
   const result = useMemo(() => {
     const sensitivity = Number(sourceSensitivity);
-    const sourceDpiNumber = Number(sourceDpi);
-    const targetDpiNumber = Number(targetDpi);
+    const dpi = Number(sourceDpi);
     if (
       !Number.isFinite(sensitivity) ||
       sensitivity <= 0 ||
-      !Number.isFinite(sourceDpiNumber) ||
-      sourceDpiNumber <= 0 ||
-      !Number.isFinite(targetDpiNumber) ||
-      targetDpiNumber <= 0
+      !Number.isInteger(dpi) ||
+      dpi <= 0
     ) {
       return null;
     }
@@ -42,15 +36,15 @@ export default function SensitivityConverterPage() {
     try {
       return convertSensitivity({
         sourceGame,
-        targetGame,
+        targetGame: "aimlab-default",
         sourceSensitivity: sensitivity,
-        sourceDpi: sourceDpiNumber,
-        targetDpi: targetDpiNumber,
+        sourceDpi: dpi,
+        targetDpi: dpi,
       });
     } catch {
       return null;
     }
-  }, [sourceDpi, sourceGame, sourceSensitivity, targetDpi, targetGame]);
+  }, [sourceDpi, sourceGame, sourceSensitivity]);
 
   return (
     <main className="min-h-screen bg-zinc-950 px-6 py-10 text-zinc-100">
@@ -64,23 +58,22 @@ export default function SensitivityConverterPage() {
               ← FindMySensi
             </Link>
             <h1 className="mt-2 text-3xl font-black text-white sm:text-4xl">
-              Sensitivity Converter
+              FindMySensi Converter
             </h1>
           </div>
           <div className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 font-mono text-xs text-zinc-400">
-            HIPFIRE • NOMINAL DPI
+            HIPFIRE • SAME DPI
           </div>
         </header>
 
         <div className="mb-6 rounded-xl border border-amber-900/60 bg-amber-950/20 p-4 text-sm leading-6 text-amber-100">
-          FindMySensi sensitivity uses the Aimlabs Default numeric scale: a
-          value of 0.175 here is Aimlabs Default 0.175 in the trainer. These
-          cross-verified hipfire profiles match physical 360-distance; ADS,
-          scopes, and monitor-distance matching are separate systems.
+          Trainer has one Aim Sensitivity. Game choices below only convert your
+          existing setting into that value. FOV changes view, never mouse
+          rotation.
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
-          <ConverterPanel title="From">
+          <ConverterPanel title="Your current game">
             <Field label="Game">
               <select
                 value={sourceGame}
@@ -103,7 +96,7 @@ export default function SensitivityConverterPage() {
                 value={sourceSensitivity}
                 onChange={(event) => setSourceSensitivity(event.target.value)}
                 type="number"
-                min="0.0001"
+                min="0.001"
                 step="0.001"
                 inputMode="decimal"
                 className={inputClass}
@@ -121,54 +114,36 @@ export default function SensitivityConverterPage() {
             </Field>
           </ConverterPanel>
 
-          <ConverterPanel title="To">
-            <Field label="Game">
-              <select
-                value={targetGame}
-                onChange={(event) =>
-                  setTargetGame(
-                    event.target.value as VerifiedSensitivityProfileId,
-                  )
-                }
-                className={inputClass}
-              >
-                {PUBLIC_GAME_IDS.map((id) => (
-                  <option key={id} value={id}>
-                    {SENSITIVITY_PROFILES[id].name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Target DPI / CPI">
-              <input
-                value={targetDpi}
-                onChange={(event) => setTargetDpi(event.target.value)}
-                type="number"
-                min="1"
-                step="1"
-                className={inputClass}
-              />
-            </Field>
-            <button
-              type="button"
-              onClick={() => setTargetDpi(sourceDpi)}
-              className="rounded-lg border border-zinc-700 px-4 py-2 text-left text-sm font-semibold text-zinc-300 hover:bg-zinc-800"
+          <section
+            aria-live="polite"
+            className="rounded-2xl border border-emerald-500/30 bg-zinc-900 p-6"
+          >
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-zinc-500">
+              Your Aim Sensitivity
+            </p>
+            <div
+              data-testid="fms-sensitivity-result"
+              className="mt-3 font-mono text-5xl font-black text-emerald-400 sm:text-6xl"
             >
-              Use same DPI as source
-            </button>
-          </ConverterPanel>
+              {result?.formattedTargetSensitivity ?? "—"}
+            </div>
+            <p className="mt-4 text-sm leading-6 text-zinc-300">
+              Enter this number once in FindMySensi. Every training game uses
+              it. No source-game profile remains active during training. For
+              Aimlabs comparison, use its Default profile.
+            </p>
+            <div className="mt-6 rounded-xl border border-zinc-800 bg-black/30 p-4">
+              <div className="text-xs text-zinc-500">Required example</div>
+              <div className="mt-1 font-mono font-bold text-white">
+                Valorant 0.125 = FindMySensi 0.175
+              </div>
+            </div>
+          </section>
         </div>
 
         {result ? (
-          <section className="mt-6 rounded-2xl border border-emerald-500/30 bg-zinc-900 p-6 sm:p-8">
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-zinc-500">
-              Converted {SENSITIVITY_PROFILES[targetGame].name} sensitivity
-            </p>
-            <div className="mt-2 font-mono text-5xl font-black text-emerald-400 sm:text-6xl">
-              {result.formattedTargetSensitivity}
-            </div>
-
-            <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <section className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-900 p-6 sm:p-8">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <Metric
                 label="cm / 360"
                 value={`${result.formattedCmPer360} cm`}
@@ -185,19 +160,12 @@ export default function SensitivityConverterPage() {
                 label={`${SENSITIVITY_PROFILES[sourceGame].name} eDPI`}
                 value={result.sourceEdpi.toFixed(2)}
               />
-              <Metric
-                label={`${SENSITIVITY_PROFILES[targetGame].name} eDPI`}
-                value={result.targetEdpi.toFixed(2)}
-              />
             </div>
 
             <p className="mt-5 text-xs leading-5 text-zinc-500">
-              eDPI is sensitivity × DPI and is useful inside a single game. Do
-              not compare eDPI numbers across games as though they share the
-              same sensitivity scale. FOV is a separate camera setting and is
-              not silently used to rewrite this hipfire cm/360 conversion. PUBG
-              is intentionally not exposed until its nonlinear slider curve has
-              current, agreeing forward and reverse test vectors.
+              Same-DPI conversion preserves physical cm/360. eDPI is only
+              meaningful inside its source game. ADS and scoped sensitivity are
+              separate systems.
             </p>
           </section>
         ) : (
@@ -205,7 +173,7 @@ export default function SensitivityConverterPage() {
             role="alert"
             className="mt-6 rounded-xl border border-red-900 bg-red-950/30 p-5 text-sm text-red-200"
           >
-            Enter positive sensitivity and DPI values to calculate a conversion.
+            Enter positive sensitivity and DPI values.
           </div>
         )}
       </div>

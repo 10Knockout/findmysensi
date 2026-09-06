@@ -1,6 +1,6 @@
-# Sensitivity profile verification
+# Single sensitivity verification
 
-Last reviewed: 2026-09-03
+Last reviewed: 2026-09-06
 
 ## Canonical model
 
@@ -12,6 +12,8 @@ FindMySensi's native sensitivity is the Aimlabs Default numeric scale.
 - eDPI remains a game-local display metric and is never the cross-game
   conversion authority.
 - FOV is excluded from base hipfire counts-per-360 conversion.
+- Game profiles are converter inputs only. Runtime settings store one native
+  FindMySensi value and never keep an active game profile.
 
 Runtime rotation uses the aim engine's `2^24` angle units per full turn. The
 setup path converts the native sensitivity to a Q20 gain using exact rational
@@ -39,7 +41,7 @@ settings conversion controls, and their adapter methods fail closed.
 The implementation is independently derived; no third-party source code or UI
 was copied.
 
-- [Aimlabs official converter](https://aimlabs.com/mouse-sensitivity-converter)
+- [Aimlabs official converter](https://preview.aimlabs.com/mouse-sensitivity-converter)
   describes cm/360 as the universal physical comparison and lists Aimlabs,
   Valorant, CS2, Apex Legends, and PUBG as distinct game choices. Its current
   live result for Aimlabs `0.175` at 2400 DPI is Valorant `0.125` and
@@ -47,6 +49,10 @@ was copied.
 - [Aimlabs official profile guide](https://aimlabs.com/articles/aimlabs/how-to-configure-and-convert-your-sensitivity-in-aimlabs/)
   explains that switching Game Profiles preserves physical mouse distance and
   that CPI/DPI and FOV must be entered correctly.
+- [Aimlabs' official Game Profile guide](https://aimlabs.com/articles/aimlabs/did-you-know-aimlabs-has-a-sensitivity-converter-built-in/)
+  confirms that the active Aimlabs profile changes how its displayed
+  sensitivity number is interpreted. Compare FindMySensi `0.175` with Aimlabs
+  Default `0.175`; Aimlabs' Valorant profile expects the Valorant number.
 - [W3C Pointer Lock 2.0](https://www.w3.org/TR/pointerlock-2/) defines locked
   `mousemove` deltas as unbounded by the browser or screen edge and defines
   `unadjustedMovement: true` as bypassing platform mouse acceleration. The

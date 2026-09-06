@@ -1,18 +1,18 @@
 import {
   AngleUnits,
-  CameraBounds,
-  clampPitchToBounds,
-  clampYawToBounds,
+  clampPitch,
   createAngleUnits,
   createPitchUnits,
   createPrngV1,
   createShotTracker,
   createSnapshotBuffer,
+  DEFAULT_MAX_PITCH_UNITS,
   FULL_TURN_UNITS,
   PitchUnits,
   PrngV1,
-  resolveCameraBounds,
+  RenderSnapshotView,
   SnapshotBuffer,
+  wrapYaw,
 } from "@findmysensi/aim-core";
 import {
   createInputRingBuffer,
@@ -69,6 +69,8 @@ export interface SensitivityInputVerificationSnapshot {
   readonly expectedPitchDegrees: number;
   readonly actualEngineYawDegrees: number;
   readonly actualEnginePitchDegrees: number;
+  readonly viewYawDegrees: number;
+  readonly viewPitchDegrees: number;
   readonly yawResidualFixedPointUnits: number;
   readonly pitchResidualFixedPointUnits: number;
 }
@@ -86,10 +88,22 @@ export class PracticeRunController {
   private callbacks: PracticeRunCallbacks;
 
   private readonly totalDurationTicks: number;
-  private readonly cameraBounds: CameraBounds;
   private inputScaler: DeterministicBrowserInputScaler;
   private playerYaw: AngleUnits = createAngleUnits(0);
   private playerPitch: PitchUnits = createPitchUnits(0);
+  // Display-only camera, in the same angle-unit scale as playerYaw/Pitch but
+  // deliberately NOT tick-quantized: it is advanced the instant the browser
+  // delivers a mouse event (see recordDisplayMovement), independent of the
+  // 128Hz simulation tick. playerYaw/playerPitch remain the sole input to
+  // hit detection, scoring, and replay -- this field only ever feeds the
+  // renderer, so nothing here can affect determinism or ranked fairness.
+  // Kept as an unbranded float (not AngleUnits/PitchUnits): sub-angle-unit
+  // rounding error here is visually meaningless (1 angle unit is ~0.00002
+  // degrees), and paying for the deterministic scaler's fixed-point residual
+  // tracking on top of the real one buys nothing for a value nothing reads
+  // back into the simulation.
+  private displayYawUnits: number = 0;
+  private displayPitchUnits: number = 0;
   private totalInputUnitsX: number = 0;
   private totalInputUnitsY: number = 0;
   private movementEventCount: number = 0;
@@ -121,12 +135,6 @@ export class PracticeRunController {
     this.adapter = adapter;
     this.totalDurationTicks =
       options.durationTicks ?? adapter.definition.durationTicks;
-    // Bound the camera to this mode's play area so overshooting a flick can
-    // never strand the player in empty space against the 89.9 deg gimbal clamp.
-    this.cameraBounds = resolveCameraBounds(
-      adapter.definition.simulation.spawnAreaWidthUnits,
-      adapter.definition.simulation.spawnAreaHeightUnits,
-    );
     this.inputScaler = createBrowserInputScaler(gain);
     this.ringBuffer = createInputRingBuffer(capacity);
     this.batchTarget = createRawInputBatchTarget(capacity);
@@ -161,6 +169,10 @@ export class PracticeRunController {
   public getSensitivityInputVerificationSnapshot(): SensitivityInputVerificationSnapshot {
     const gain = this.inputScaler.getGain();
     const residuals = this.inputScaler.getResiduals();
+    const signedViewYaw =
+      this.playerYaw > FULL_TURN_UNITS / 2
+        ? this.playerYaw - FULL_TURN_UNITS
+        : this.playerYaw;
     return Object.freeze({
       totalInputUnitsX: this.totalInputUnitsX,
       totalInputUnitsY: this.totalInputUnitsY,
@@ -174,6 +186,8 @@ export class PracticeRunController {
         (this.cumulativeEngineYawAngleUnits / FULL_TURN_UNITS) * 360,
       actualEnginePitchDegrees:
         (this.cumulativeEnginePitchAngleUnits / FULL_TURN_UNITS) * 360,
+      viewYawDegrees: (signedViewYaw / FULL_TURN_UNITS) * 360,
+      viewPitchDegrees: (this.playerPitch / FULL_TURN_UNITS) * 360,
       yawResidualFixedPointUnits: residuals.yaw,
       pitchResidualFixedPointUnits: residuals.pitch,
     });
@@ -186,6 +200,8 @@ export class PracticeRunController {
     this.shotTracker.reset();
     this.playerYaw = createAngleUnits(0);
     this.playerPitch = createPitchUnits(0);
+    this.displayYawUnits = 0;
+    this.displayPitchUnits = 0;
     this.inputScaler.reset();
     this.totalInputUnitsX = 0;
     this.totalInputUnitsY = 0;
@@ -205,9 +221,23 @@ export class PracticeRunController {
       tickRateHz: 128,
       maxCatchUpTicksPerFrame: 8,
       onTick: (tick) => this.handleSimulationTick(tick),
+      // Render from the display camera (advanced immediately on every mouse
+      // event via recordDisplayMovement), never from the tick-quantized
+      // playerYaw/playerPitch used for hit detection. The simulation only
+      // advances every 1/128s; rendering the raw tick value would visibly
+      // hold the camera still on the roughly 3 out of 4 frames a 240Hz
+      // display repaints between two ticks. A fixed-timestep game normally
+      // fixes that by interpolating the render one tick behind, trading a
+      // constant ~7.8ms of camera lag for smoothness -- but real FPS engines
+      // (Aimlabs included, confirmed on 2026-09-06) don't do that for the
+      // player's own view: they apply mouse input to the camera every
+      // rendered frame with no added latency, and reserve the fixed tick for
+      // state that must stay deterministic and replayable. This matches
+      // that: zero added latency, and playerYaw/playerPitch (and therefore
+      // every existing scoring/replay test) are completely untouched.
       onRender: () => {
         if (this.renderer) {
-          this.renderer.render(this.snapshotBuffer.getLatest());
+          this.renderer.render(this.getDisplayRenderView());
         }
       },
     });
@@ -276,14 +306,12 @@ export class PracticeRunController {
           if (event.kind === "move") {
             const yawDelta = this.inputScaler.scaleYaw(event.dx);
             const pitchDelta = this.inputScaler.scalePitch(event.dy);
-            this.playerYaw = clampYawToBounds(
-              this.playerYaw + yawDelta,
-              this.cameraBounds,
-            );
-            this.playerPitch = clampPitchToBounds(
-              this.playerPitch - pitchDelta,
-              this.cameraBounds,
-            );
+            // Pointer Lock supplies unbounded relative motion. Keep yaw free
+            // through a full 360 degrees and only stop pitch at the physical
+            // camera pole. Scenario spawn extents must never act like an
+            // invisible mouse wall.
+            this.playerYaw = wrapYaw(this.playerYaw + yawDelta);
+            this.playerPitch = clampPitch(this.playerPitch - pitchDelta);
             this.cumulativeEngineYawAngleUnits += yawDelta;
             this.cumulativeEnginePitchAngleUnits -= pitchDelta;
           } else if (event.kind === "shot") {
@@ -315,6 +343,44 @@ export class PracticeRunController {
     this.adapter.onShot(tick, this.playerYaw, this.playerPitch, this.prng);
 
     this.publishMetrics(currentTick + 1);
+  }
+
+  /**
+   * Advances the display-only camera. Called once per accepted browser mouse
+   * event (see attachInputListener's onMovementAccepted in TrainerBootstrap),
+   * i.e. at native mouse-report rate, independent of the 128Hz simulation
+   * tick -- this is what makes rendering track the mouse with no added
+   * latency instead of only updating every 1/128s.
+   *
+   * Deliberately bypasses DeterministicBrowserInputScaler: that scaler's
+   * fixed-point residual tracking exists so the *replayed* yaw/pitch is
+   * bit-exact, which a display-only value has no need of, and sharing one
+   * scaler instance between two independent call streams would corrupt its
+   * residual state for the real (simulation) path.
+   */
+  public recordDisplayMovement(dx: number, dy: number): void {
+    const gain = this.inputScaler.getGain();
+    const angleUnitsPerCount =
+      gain.fixedPointAngleUnitsPerInputUnit / gain.fixedPointScale;
+
+    const nextYaw = this.displayYawUnits + dx * angleUnitsPerCount;
+    this.displayYawUnits =
+      ((nextYaw % FULL_TURN_UNITS) + FULL_TURN_UNITS) % FULL_TURN_UNITS;
+
+    const nextPitch = this.displayPitchUnits - dy * angleUnitsPerCount;
+    this.displayPitchUnits = Math.max(
+      -DEFAULT_MAX_PITCH_UNITS,
+      Math.min(DEFAULT_MAX_PITCH_UNITS, nextPitch),
+    );
+  }
+
+  private getDisplayRenderView(): RenderSnapshotView {
+    const latest = this.snapshotBuffer.getLatest();
+    return {
+      ...latest,
+      playerYaw: wrapYaw(Math.round(this.displayYawUnits)),
+      playerPitch: clampPitch(Math.round(this.displayPitchUnits)),
+    };
   }
 
   private writeSnapshot(tick: number): void {

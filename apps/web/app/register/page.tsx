@@ -22,12 +22,7 @@ export default function RegisterPage() {
     ageAttested: false,
   });
   const [verificationEmail, setVerificationEmail] = useState<string | null>(
-    () => {
-      if (typeof window !== "undefined") {
-        return sessionStorage.getItem("fms_pending_verification_email");
-      }
-      return null;
-    },
+    null,
   );
   const [otp, setOtp] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -38,6 +33,12 @@ export default function RegisterPage() {
   const [resendCount, setResendCount] = useState(0);
 
   const MAX_RESENDS = 3;
+
+  useEffect(() => {
+    setVerificationEmail(
+      sessionStorage.getItem("fms_pending_verification_email"),
+    );
+  }, []);
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -82,21 +83,23 @@ export default function RegisterPage() {
     }
 
     setLoading(true);
-    const client = new BrowserApiClient();
-    const result = await client.register(parsed.data);
-    if (!result.ok) {
-      setError(result.error ?? "Registration failed. Please try again.");
-      setLoading(false);
-      return;
-    }
+    try {
+      const client = new BrowserApiClient();
+      const result = await client.register(parsed.data);
+      if (!result.ok) {
+        setError(result.error ?? "Registration failed. Please try again.");
+        return;
+      }
 
-    const email = parsed.data.email.trim().toLowerCase();
-    setVerificationEmail(email);
-    if (typeof window !== "undefined") {
+      const email = parsed.data.email.trim().toLowerCase();
+      setVerificationEmail(email);
       sessionStorage.setItem("fms_pending_verification_email", email);
+      setForm((current) => ({ ...current, password: "", confirmPassword: "" }));
+    } catch {
+      setError("Registration failed. Please try again.");
+    } finally {
+      setLoading(false);
     }
-    setForm((current) => ({ ...current, password: "", confirmPassword: "" }));
-    setLoading(false);
   };
 
   const handleVerify = async (event: React.FormEvent) => {
@@ -104,19 +107,22 @@ export default function RegisterPage() {
     if (!verificationEmail) return;
     setLoading(true);
     setError(null);
-    const result = await new BrowserApiClient().verifyEmailOtp(
-      verificationEmail,
-      otp,
-    );
-    if (result.ok) {
-      if (typeof window !== "undefined") {
+    try {
+      const result = await new BrowserApiClient().verifyEmailOtp(
+        verificationEmail,
+        otp,
+      );
+      if (result.ok) {
         sessionStorage.removeItem("fms_pending_verification_email");
+        router.push("/login?verified=1");
+        return;
       }
-      router.push("/login?verified=1");
-      return;
+      setError(result.error ?? "Invalid or expired code.");
+    } catch {
+      setError("Could not verify code. Please try again.");
+    } finally {
+      setLoading(false);
     }
-    setError(result.error ?? "Invalid or expired code.");
-    setLoading(false);
   };
 
   const handleResend = async () => {
@@ -130,17 +136,22 @@ export default function RegisterPage() {
     setResending(true);
     setError(null);
     setResendMessage(null);
-    const result = await new BrowserApiClient().resendEmailOtp(
-      verificationEmail,
-    );
-    if (result.ok) {
-      setResendMessage("A new verification code has been sent.");
-      setResendCooldown(60);
-      setResendCount((count) => count + 1);
-    } else {
-      setError(result.error ?? "Failed to resend verification code.");
+    try {
+      const result = await new BrowserApiClient().resendEmailOtp(
+        verificationEmail,
+      );
+      if (result.ok) {
+        setResendMessage("A new verification code has been sent.");
+        setResendCooldown(60);
+        setResendCount((count) => count + 1);
+      } else {
+        setError(result.error ?? "Failed to resend verification code.");
+      }
+    } catch {
+      setError("Failed to resend verification code.");
+    } finally {
+      setResending(false);
     }
-    setResending(false);
   };
 
   return (
@@ -197,7 +208,7 @@ export default function RegisterPage() {
                 }}
               />
             </div>
-            <button disabled={loading} className="app-button">
+            <button type="submit" disabled={loading} className="app-button">
               {loading ? "Verifying..." : "Verify Email"}
             </button>
             <div
@@ -222,7 +233,9 @@ export default function RegisterPage() {
                   border: "none",
                   cursor: "pointer",
                   opacity:
-                    resending || resendCooldown > 0 || resendCount >= MAX_RESENDS
+                    resending ||
+                    resendCooldown > 0 ||
+                    resendCount >= MAX_RESENDS
                       ? 0.5
                       : 1,
                 }}
@@ -236,12 +249,10 @@ export default function RegisterPage() {
                       : `Request new code (${MAX_RESENDS - resendCount} left)`}
               </button>
             </div>
-            {resendMessage ? (
-              <p className="app-note">{resendMessage}</p>
-            ) : null}
+            {resendMessage ? <p className="app-note">{resendMessage}</p> : null}
             <p className="app-help" style={{ textAlign: "center" }}>
-              Verification email is sent by the configured transactional
-              email provider. No fallback code is generated in the UI.
+              Verification email is sent by the configured transactional email
+              provider. No fallback code is generated in the UI.
             </p>
           </form>
         ) : (
@@ -312,7 +323,7 @@ export default function RegisterPage() {
               FindMySensi records this age-policy attestation only. We do not
               ask for or store your date of birth.
             </p>
-            <button disabled={loading} className="app-button">
+            <button type="submit" disabled={loading} className="app-button">
               {loading ? "Creating account..." : "Create Account"}
             </button>
           </form>

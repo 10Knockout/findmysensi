@@ -65,7 +65,7 @@ describe("Semantic-Boundary-Preserving Input Reducer", () => {
     expect(segments.length).toBe(1);
     const seg = segments[0]!;
     expect(seg.tick).toBe(0);
-    expect(seg.events.length).toBe(3);
+    expect(seg.events.length).toBe(4);
 
     // Event 0: Aggregated pre-shot Move (+30, +20)
     expect(seg.events[0]).toEqual({
@@ -84,13 +84,22 @@ describe("Semantic-Boundary-Preserving Input Reducer", () => {
       button: 0,
     });
 
-    // Event 2: Aggregated post-shot Move (-20, 0)
+    // Event 2: First post-shot direction segment
     expect(seg.events[2]).toEqual({
       kind: "move",
       tick: 0,
       order: 2,
-      dx: -20,
-      dy: 0,
+      dx: -5,
+      dy: 2,
+    });
+
+    // Event 3: Y-axis reversal remains a separate causal segment
+    expect(seg.events[3]).toEqual({
+      kind: "move",
+      tick: 0,
+      order: 3,
+      dx: -15,
+      dy: -2,
     });
   });
 
@@ -154,6 +163,35 @@ describe("Semantic-Boundary-Preserving Input Reducer", () => {
     expect(events[2]?.kind).toBe("move");
   });
 
+  it("preserves a direction reversal inside one tick", () => {
+    const batch = createRawInputBatchTarget(16);
+    batch.count = 4;
+
+    batch.kinds[0] = EVENT_KIND_MOVE;
+    batch.dy[0] = 200;
+    batch.timeIndices[0] = 1.0;
+
+    batch.kinds[1] = EVENT_KIND_MOVE;
+    batch.dy[1] = 200;
+    batch.timeIndices[1] = 2.0;
+
+    batch.kinds[2] = EVENT_KIND_MOVE;
+    batch.dy[2] = -20;
+    batch.timeIndices[2] = 3.0;
+
+    batch.kinds[3] = EVENT_KIND_MOVE;
+    batch.dy[3] = -30;
+    batch.timeIndices[3] = 4.0;
+
+    const segments = reduceRawEvents(batch, clock);
+
+    expect(segments).toHaveLength(1);
+    expect(segments[0]?.events).toEqual([
+      { kind: "move", tick: 0, order: 0, dx: 0, dy: 400 },
+      { kind: "move", tick: 0, order: 1, dx: 0, dy: -50 },
+    ]);
+  });
+
   it("preserves total angular delta across multiple consecutive moves", () => {
     const batch = createRawInputBatchTarget(100);
     batch.count = 50;
@@ -174,14 +212,19 @@ describe("Semantic-Boundary-Preserving Input Reducer", () => {
 
     const segments = reduceRawEvents(batch, clock);
     expect(segments.length).toBe(1);
-    expect(segments[0]?.events.length).toBe(1);
-
-    const move = segments[0]?.events[0];
-    if (move?.kind === "move") {
-      expect(move.dx).toBe(expectedDx);
-      expect(move.dy).toBe(expectedDy);
-    } else {
-      expect.fail("Expected single reduced move event");
-    }
+    const moves = segments[0]?.events ?? [];
+    expect(moves.length).toBeGreaterThan(0);
+    expect(
+      moves.reduce(
+        (total, event) => total + (event.kind === "move" ? event.dx : 0),
+        0,
+      ),
+    ).toBe(expectedDx);
+    expect(
+      moves.reduce(
+        (total, event) => total + (event.kind === "move" ? event.dy : 0),
+        0,
+      ),
+    ).toBe(expectedDy);
   });
 });

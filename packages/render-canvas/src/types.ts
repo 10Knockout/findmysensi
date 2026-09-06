@@ -22,6 +22,9 @@ export interface TargetRenderConfig {
   readonly borderWidth: number;
 }
 
+export type RendererGraphicsPreset =
+  "automatic" | "potato" | "low" | "balanced" | "high";
+
 export interface PlayAreaRenderConfig {
   /** Full width of the scenario spawn area, in angle units. */
   readonly widthUnits: number;
@@ -34,6 +37,7 @@ export interface PlayAreaRenderConfig {
 
 export interface PotatoRendererOptions {
   readonly backgroundColor?: string | undefined;
+  readonly graphicsPreset?: RendererGraphicsPreset | undefined;
   readonly crosshair?: Partial<CrosshairConfig> | undefined;
   readonly target?: Partial<TargetRenderConfig> | undefined;
   /**

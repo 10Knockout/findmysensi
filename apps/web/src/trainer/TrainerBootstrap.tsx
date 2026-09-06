@@ -33,8 +33,8 @@ import { InGameSettingsModal } from "./InGameSettingsModal.js";
 import { trainerModeManifest } from "./mode-manifest.js";
 import { startRunIfPointerLocked } from "./pointer-lock-guard.js";
 import {
-  GridshotRuntimeConfig,
-  resolveGridshotRuntimeConfig,
+  TrainerRuntimeConfig,
+  resolveTrainerRuntimeConfig,
 } from "./runtime-config.js";
 
 interface TrainerBootstrapProps {
@@ -49,6 +49,56 @@ interface TrainerBootstrapProps {
 
 const MAX_PAUSE_MS = 10 * 60 * 1000;
 
+/**
+ * Wall-clock health of the browser -> listener -> rAF path. Movement can look
+ * "blocked" for three very different reasons: the browser stops delivering
+ * mousemove, the frame loop stalls, or the simulation clamps the value. These
+ * counters separate those cases; they are sampled once per second so a freeze
+ * shows up as a gap spike rather than an averaged-away blip.
+ */
+export interface InputHealthTelemetry {
+  readonly eventsPerSecond: number;
+  readonly maxEventGapMs: number;
+  readonly maxFrameMs: number;
+  readonly peakDx: number;
+  readonly peakDy: number;
+  readonly pointerLockDrops: number;
+}
+
+/**
+ * A gap this long between accepted movement events is not normal jitter. A
+ * 1000 Hz mouse delivers roughly every 1 ms and even a 30 fps coalescing
+ * browser delivers every ~33 ms, so 40 ms means something upstream stopped.
+ */
+const INPUT_STALL_THRESHOLD_MS = 40;
+const MAX_RECORDED_STALLS = 24;
+
+/**
+ * One observed freeze, captured at the moment input resumed. `source` says
+ * which layer went quiet: "event" means the browser stopped delivering
+ * mousemove, "frame" means the render loop itself stopped running.
+ */
+export interface InputStallRecord {
+  readonly source: "event" | "frame";
+  readonly atSeconds: number;
+  readonly gapMs: number;
+  readonly eventsPerSecondBefore: number;
+  readonly peakDx: number;
+  readonly peakDy: number;
+  readonly viewYawDegrees: number;
+  readonly viewPitchDegrees: number;
+  readonly pointerLocked: boolean;
+}
+
+const EMPTY_INPUT_HEALTH: InputHealthTelemetry = {
+  eventsPerSecond: 0,
+  maxEventGapMs: 0,
+  maxFrameMs: 0,
+  peakDx: 0,
+  peakDy: 0,
+  pointerLockDrops: 0,
+};
+
 const EMPTY_VERIFICATION_SNAPSHOT: SensitivityInputVerificationSnapshot = {
   totalInputUnitsX: 0,
   totalInputUnitsY: 0,
@@ -57,9 +107,16 @@ const EMPTY_VERIFICATION_SNAPSHOT: SensitivityInputVerificationSnapshot = {
   expectedPitchDegrees: 0,
   actualEngineYawDegrees: 0,
   actualEnginePitchDegrees: 0,
+  viewYawDegrees: 0,
+  viewPitchDegrees: 0,
   yawResidualFixedPointUnits: 0,
   pitchResidualFixedPointUnits: 0,
 };
+
+const UNKNOWN_BROWSER_DETAILS = {
+  platform: "unknown",
+  userAgent: "unknown",
+} as const;
 
 export function TrainerBootstrap({
   mode,
@@ -85,7 +142,7 @@ export function TrainerBootstrap({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const controllerRef = useRef<PracticeRunController | null>(null);
   const rendererRef = useRef<ReturnType<typeof createAimRenderer> | null>(null);
-  const runtimeConfigRef = useRef<GridshotRuntimeConfig | null>(null);
+  const runtimeConfigRef = useRef<TrainerRuntimeConfig | null>(null);
   const savedCrosshairRef = useRef<SavedCrosshairConfig>(
     CROSSHAIR_PRESETS[0]!.config,
   );
@@ -97,7 +154,7 @@ export function TrainerBootstrap({
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [initialConfigLoaded, setInitialConfigLoaded] = useState(false);
   const [runtimeConfig, setRuntimeConfig] =
-    useState<GridshotRuntimeConfig | null>(null);
+    useState<TrainerRuntimeConfig | null>(null);
   const [settingsError, setSettingsError] = useState<string | null>(null);
   const [settingsAttempt, setSettingsAttempt] = useState(0);
   const [gameState, setGameState] = useState<PracticeRunState>("ready");
@@ -115,6 +172,27 @@ export function TrainerBootstrap({
     useState<PointerLockResult | null>(null);
   const [verificationSnapshot, setVerificationSnapshot] =
     useState<SensitivityInputVerificationSnapshot>(EMPTY_VERIFICATION_SNAPSHOT);
+  const [inputHealth, setInputHealth] =
+    useState<InputHealthTelemetry>(EMPTY_INPUT_HEALTH);
+  const [inputStalls, setInputStalls] = useState<readonly InputStallRecord[]>(
+    [],
+  );
+  const inputStallsRef = useRef<InputStallRecord[]>([]);
+  const inputHealthRef = useRef({
+    windowStartMs: 0,
+    lastEventMs: 0,
+    lastFrameMs: 0,
+    events: 0,
+    maxEventGapMs: 0,
+    maxFrameMs: 0,
+    peakDx: 0,
+    peakDy: 0,
+    pointerLockDrops: 0,
+    lastEventsPerSecond: 0,
+  });
+  const [browserDetails, setBrowserDetails] = useState<
+    Readonly<{ platform: string; userAgent: string }>
+  >(UNKNOWN_BROWSER_DETAILS);
 
   useEffect(() => {
     const onFsChange = () =>
@@ -125,6 +203,10 @@ export function TrainerBootstrap({
 
   useEffect(() => {
     if (process.env.NODE_ENV !== "development") return;
+    setBrowserDetails({
+      platform: navigator.platform || "unknown",
+      userAgent: navigator.userAgent || "unknown",
+    });
     setInputDebugEnabled(
       new URLSearchParams(window.location.search).get("inputDebug") === "1",
     );
@@ -138,6 +220,29 @@ export function TrainerBootstrap({
         setVerificationSnapshot(
           controller.getSensitivityInputVerificationSnapshot(),
         );
+      }
+
+      const health = inputHealthRef.current;
+      const now = performance.now();
+      const elapsedMs = now - health.windowStartMs;
+      if (elapsedMs >= 1000) {
+        health.lastEventsPerSecond = Math.round(
+          (health.events * 1000) / elapsedMs,
+        );
+        setInputHealth({
+          eventsPerSecond: health.lastEventsPerSecond,
+          maxEventGapMs: Math.round(health.maxEventGapMs),
+          maxFrameMs: Math.round(health.maxFrameMs),
+          peakDx: health.peakDx,
+          peakDy: health.peakDy,
+          pointerLockDrops: health.pointerLockDrops,
+        });
+        health.windowStartMs = now;
+        health.events = 0;
+        health.maxEventGapMs = 0;
+        health.maxFrameMs = 0;
+        health.peakDx = 0;
+        health.peakDy = 0;
       }
     }, 100);
     return () => window.clearInterval(interval);
@@ -155,6 +260,28 @@ export function TrainerBootstrap({
     }
   };
 
+  /**
+   * Windowed Pointer Lock on Windows/Chromium does not reliably confine the
+   * real OS cursor: on a multi-monitor desktop it can travel to, and get
+   * physically pinned at, an actual monitor edge. Once pinned, every
+   * movementX/Y the OS reports is 0 (both the previous and current cursor
+   * position are the same clamped point), so the browser stops firing
+   * mousemove entirely -- input looks "blocked" until the player reverses
+   * far enough to leave the clamped edge. Fullscreen puts the browser in
+   * exclusive control of one monitor, which is the standard, browser-vendor
+   * -documented mitigation for this class of bug. Best-effort: a user or
+   * browser that denies fullscreen still gets Pointer Lock, just without
+   * this protection.
+   */
+  const ensureFullscreenBeforeLock = async (): Promise<void> => {
+    if (document.fullscreenElement) return;
+    try {
+      await containerRef.current?.requestFullscreen();
+    } catch {
+      // ignore -- Pointer Lock is still attempted without fullscreen.
+    }
+  };
+
   useEffect(() => {
     let active = true;
     const client = new BrowserApiClient();
@@ -166,7 +293,7 @@ export function TrainerBootstrap({
       if (settingsOverride) {
         try {
           const settings = TrainerSettingsSchema.parse(settingsOverride);
-          const resolved = resolveGridshotRuntimeConfig(settings);
+          const resolved = resolveTrainerRuntimeConfig(settings);
           savedCrosshairRef.current = resolveSavedCrosshair(
             resolved.crosshairCode,
           );
@@ -201,7 +328,7 @@ export function TrainerBootstrap({
       try {
         const settings = TrainerSettingsSchema.parse(result.data);
         setRawSettings(settings);
-        const resolved = resolveGridshotRuntimeConfig(settings);
+        const resolved = resolveTrainerRuntimeConfig(settings);
         const crosshair = resolveSavedCrosshair(resolved.crosshairCode);
         savedCrosshairRef.current = crosshair;
         setRuntimeConfig(resolved);
@@ -230,7 +357,6 @@ export function TrainerBootstrap({
       return;
 
     const runtimeConfig = runtimeConfigRef.current;
-    const modeSimulation = modeEntry.scenarioEntry.definition.simulation;
     const inputGain = sensitivityOverride
       ? resolveBrowserInputGain(sensitivityOverride)
       : runtimeConfig.inputGain;
@@ -270,15 +396,12 @@ export function TrainerBootstrap({
       if (!rendererInitialized) {
         renderer.initialize(canvas, viewport, {
           crosshair: savedCrosshairRef.current,
+          graphicsPreset: activeCfg.graphicsPreset,
           target: {
             bodyColor: activeCfg.targetColor,
             opacity: activeCfg.targetOpacity,
             borderWidth: activeCfg.targetOutline ? 2 : 0,
             borderColor: "#ffffff",
-          },
-          playArea: {
-            widthUnits: modeSimulation.spawnAreaWidthUnits,
-            heightUnits: modeSimulation.spawnAreaHeightUnits,
           },
         });
         rendererInitialized = true;
@@ -286,15 +409,12 @@ export function TrainerBootstrap({
         renderer.resize(viewport);
         renderer.initialize(canvas, viewport, {
           crosshair: savedCrosshairRef.current,
+          graphicsPreset: activeCfg.graphicsPreset,
           target: {
             bodyColor: activeCfg.targetColor,
             opacity: activeCfg.targetOpacity,
             borderWidth: activeCfg.targetOutline ? 2 : 0,
             borderColor: "#ffffff",
-          },
-          playArea: {
-            widthUnits: modeSimulation.spawnAreaWidthUnits,
-            heightUnits: modeSimulation.spawnAreaHeightUnits,
           },
         });
       }
@@ -352,6 +472,28 @@ export function TrainerBootstrap({
     );
 
     controllerRef.current = controller;
+
+    const recordStall = (source: "event" | "frame", gapMs: number) => {
+      const health = inputHealthRef.current;
+      const view = controller.getSensitivityInputVerificationSnapshot();
+      const record: InputStallRecord = {
+        source,
+        atSeconds: Number((performance.now() / 1000).toFixed(2)),
+        gapMs: Math.round(gapMs),
+        eventsPerSecondBefore: health.lastEventsPerSecond,
+        peakDx: health.peakDx,
+        peakDy: health.peakDy,
+        viewYawDegrees: Number(view.viewYawDegrees.toFixed(2)),
+        viewPitchDegrees: Number(view.viewPitchDegrees.toFixed(2)),
+        pointerLocked: document.pointerLockElement === canvas,
+      };
+      const list = inputStallsRef.current;
+      list.push(record);
+      if (list.length > MAX_RECORDED_STALLS) list.shift();
+      setInputStalls([...list]);
+      console.warn("[input-stall]", JSON.stringify(record));
+    };
+
     const diagnosticsEnabled =
       process.env.NODE_ENV === "development" &&
       new URLSearchParams(window.location.search).get("inputDebug") === "1";
@@ -363,17 +505,49 @@ export function TrainerBootstrap({
         shouldCaptureGameplayInput: () =>
           controller.getState() === "playing" &&
           document.pointerLockElement === canvas,
-        ...(diagnosticsEnabled
-          ? {
-              onMovementAccepted: ({ dx, dy }: { dx: number; dy: number }) => {
-                controller.recordBrowserInputEvent(dx, dy);
-              },
+        // Always on, not just under diagnostics: this is what makes the
+        // camera track the mouse every rendered frame instead of only every
+        // 1/128s simulation tick (see recordDisplayMovement's doc comment).
+        onMovementAccepted: ({ dx, dy }: { dx: number; dy: number }) => {
+          controller.recordDisplayMovement(dx, dy);
+          if (!diagnosticsEnabled) return;
+
+          controller.recordBrowserInputEvent(dx, dy);
+          // Wall-clock arrival time, not event.timeStamp: a browser that
+          // stops delivering events still backdates them on resume, so
+          // only real elapsed time exposes a delivery stall.
+          const health = inputHealthRef.current;
+          const now = performance.now();
+          if (health.lastEventMs > 0) {
+            const gap = now - health.lastEventMs;
+            if (gap > health.maxEventGapMs) health.maxEventGapMs = gap;
+            if (gap >= INPUT_STALL_THRESHOLD_MS) {
+              recordStall("event", gap);
             }
-          : {}),
+          }
+          health.lastEventMs = now;
+          health.events++;
+          if (Math.abs(dx) > Math.abs(health.peakDx)) health.peakDx = dx;
+          if (Math.abs(dy) > Math.abs(health.peakDy)) health.peakDy = dy;
+        },
       },
     );
 
     const loop = (now: number) => {
+      if (diagnosticsEnabled) {
+        const health = inputHealthRef.current;
+        if (health.lastFrameMs > 0) {
+          const frameMs = now - health.lastFrameMs;
+          if (frameMs > health.maxFrameMs) health.maxFrameMs = frameMs;
+          if (
+            frameMs >= INPUT_STALL_THRESHOLD_MS &&
+            controller.getState() === "playing"
+          ) {
+            recordStall("frame", frameMs);
+          }
+        }
+        health.lastFrameMs = now;
+      }
       controller.onAnimationFrame(now);
       animationFrameId = requestAnimationFrame(loop);
     };
@@ -381,6 +555,8 @@ export function TrainerBootstrap({
 
     const onPointerLockChange = () => {
       if (document.pointerLockElement) return;
+
+      inputHealthRef.current.pointerLockDrops++;
 
       if (countdownIntervalRef.current !== null) {
         window.clearInterval(countdownIntervalRef.current);
@@ -515,6 +691,7 @@ export function TrainerBootstrap({
     }
 
     setLockError(null);
+    await ensureFullscreenBeforeLock();
     const acquisition = await acquirePointerLock(canvas);
     setPointerLockResult(acquisition);
     if (!acquisition.locked) {
@@ -530,42 +707,37 @@ export function TrainerBootstrap({
     }
 
     setCountdown(3);
+    let remaining = 3;
     countdownIntervalRef.current = window.setInterval(() => {
-      setCountdown((previous) => {
-        if (previous === null) {
-          if (countdownIntervalRef.current !== null) {
-            window.clearInterval(countdownIntervalRef.current);
-            countdownIntervalRef.current = null;
-          }
-          return null;
+      remaining -= 1;
+      if (remaining <= 0) {
+        if (countdownIntervalRef.current !== null) {
+          window.clearInterval(countdownIntervalRef.current);
+          countdownIntervalRef.current = null;
         }
 
-        if (previous <= 1) {
-          if (countdownIntervalRef.current !== null) {
-            window.clearInterval(countdownIntervalRef.current);
-            countdownIntervalRef.current = null;
-          }
-
-          const started = startRunIfPointerLocked(
-            canvas,
-            document.pointerLockElement,
-            () => controllerRef.current?.start(),
+        setCountdown(null);
+        const started = startRunIfPointerLocked(
+          canvas,
+          document.pointerLockElement,
+          () => controllerRef.current?.start(),
+        );
+        if (!started) {
+          setLockError(
+            "Mouse lock was released before the run started. Click Start again.",
           );
-          if (!started) {
-            setLockError(
-              "Mouse lock was released before the run started. Click Start again.",
-            );
-          }
-          return null;
         }
-        return previous - 1;
-      });
+        return;
+      }
+
+      setCountdown(remaining);
     }, 1000);
   };
 
   const handleResume = async () => {
     if (!canvasRef.current) return;
     setLockError(null);
+    await ensureFullscreenBeforeLock();
     const acquisition = await acquirePointerLock(canvasRef.current);
     setPointerLockResult(acquisition);
     if (!acquisition.locked) {
@@ -595,7 +767,7 @@ export function TrainerBootstrap({
     }
 
     setRawSettings(newSettings);
-    const resolved = resolveGridshotRuntimeConfig(newSettings);
+    const resolved = resolveTrainerRuntimeConfig(newSettings);
     setRuntimeConfig(resolved);
     runtimeConfigRef.current = resolved;
     savedCrosshairRef.current = newCrosshair;
@@ -636,18 +808,7 @@ export function TrainerBootstrap({
               ["SCORE", score.toLocaleString()],
             ]}
           />
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={toggleFullscreen}
-              className="pointer-events-auto app-chip"
-              style={{ minHeight: "auto", padding: "6px 12px" }}
-              title="Toggle Fullscreen"
-            >
-              {isFullscreen ? "EXIT FULLSCREEN" : "⛶ FULLSCREEN"}
-            </button>
-            <HudGroup items={getRuntimeHudItems(runtimeMetrics)} />
-          </div>
+          <HudGroup items={getRuntimeHudItems(runtimeMetrics)} />
         </div>
       ) : null}
 
@@ -823,6 +984,8 @@ export function TrainerBootstrap({
       {!lockedConfiguration && inputDebugEnabled && runtimeConfig ? (
         <InputVerificationOverlay
           snapshot={verificationSnapshot}
+          inputHealth={inputHealth}
+          inputStalls={inputStalls}
           sensitivity={runtimeConfig.inputGain.fmsSensitivity}
           pointerLockResult={pointerLockResult}
           pointerLockActive={Boolean(
@@ -830,6 +993,7 @@ export function TrainerBootstrap({
             document.pointerLockElement === canvasRef.current,
           )}
           inputSource={POINTER_LOCK_MOVEMENT_SOURCE}
+          browserDetails={browserDetails}
         />
       ) : null}
     </div>
@@ -842,7 +1006,7 @@ function resolveSavedCrosshair(code: string | null): SavedCrosshairConfig {
 }
 
 function resolveBackingResolution(
-  config: GridshotRuntimeConfig,
+  config: TrainerRuntimeConfig,
   cssWidth: number,
   cssHeight: number,
   dpr: number,
@@ -976,16 +1140,22 @@ async function acquirePointerLock(
 
 function InputVerificationOverlay({
   snapshot,
+  inputHealth,
+  inputStalls,
   sensitivity,
   pointerLockResult,
   pointerLockActive,
   inputSource,
+  browserDetails,
 }: {
   snapshot: SensitivityInputVerificationSnapshot;
+  inputHealth: InputHealthTelemetry;
+  inputStalls: readonly InputStallRecord[];
   sensitivity: string;
   pointerLockResult: PointerLockResult | null;
   pointerLockActive: boolean;
   inputSource: string;
+  browserDetails: Readonly<{ platform: string; userAgent: string }>;
 }) {
   const rows: readonly (readonly [string, string])[] = [
     ["FMS / Aimlabs Default", sensitivity],
@@ -999,6 +1169,8 @@ function InputVerificationOverlay({
     ["Engine yaw", `${snapshot.actualEngineYawDegrees.toFixed(6)}°`],
     ["Expected pitch", `${snapshot.expectedPitchDegrees.toFixed(6)}°`],
     ["Engine pitch", `${snapshot.actualEnginePitchDegrees.toFixed(6)}°`],
+    ["View yaw", `${snapshot.viewYawDegrees.toFixed(6)}°`],
+    ["View pitch", `${snapshot.viewPitchDegrees.toFixed(6)}°`],
     ["Raw requested", pointerLockResult?.rawRequested ? "yes" : "not yet"],
     [
       "Raw option accepted",
@@ -1009,8 +1181,14 @@ function InputVerificationOverlay({
         : "not yet",
     ],
     ["Pointer lock active", pointerLockActive ? "yes" : "no"],
-    ["Platform", navigator.platform || "unknown"],
-    ["Browser", navigator.userAgent],
+    ["Pointer lock drops", inputHealth.pointerLockDrops.toString()],
+    ["Events / sec", inputHealth.eventsPerSecond.toLocaleString()],
+    ["Max event gap", `${inputHealth.maxEventGapMs} ms`],
+    ["Max frame time", `${inputHealth.maxFrameMs} ms`],
+    ["Peak dx / dy", `${inputHealth.peakDx} / ${inputHealth.peakDy} counts`],
+    ["Stalls recorded", inputStalls.length.toString()],
+    ["Platform", browserDetails.platform],
+    ["Browser", browserDetails.userAgent],
   ];
 
   return (
@@ -1034,6 +1212,34 @@ function InputVerificationOverlay({
           </React.Fragment>
         ))}
       </div>
+      {inputStalls.length > 0 ? (
+        <div className="mt-2 border-t border-zinc-800 pt-2">
+          <strong className="text-[10px] uppercase tracking-wider text-amber-300">
+            Input stalls (newest last)
+          </strong>
+          <div className="mt-1 max-h-40 overflow-y-auto">
+            {inputStalls.slice(-8).map((stall, index) => (
+              <div
+                key={`${stall.atSeconds}-${stall.source}-${index}`}
+                className="text-[10px] text-zinc-300"
+              >
+                <span
+                  className={
+                    stall.source === "event" ? "text-rose-300" : "text-sky-300"
+                  }
+                >
+                  {stall.source}
+                </span>{" "}
+                {stall.gapMs}ms @{stall.atSeconds}s · rate{" "}
+                {stall.eventsPerSecondBefore}/s · peak {stall.peakDx}/
+                {stall.peakDy} · view {stall.viewYawDegrees}°/
+                {stall.viewPitchDegrees}° · lock{" "}
+                {stall.pointerLocked ? "on" : "OFF"}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
       <p className="mt-2 text-zinc-500">
         Raw support is recorded only after the Pointer Lock promise accepts the
         unadjustedMovement request. Compare the same physical sweep in Aimlabs

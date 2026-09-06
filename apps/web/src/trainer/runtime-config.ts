@@ -5,7 +5,7 @@ import {
   resolveBrowserInputGain,
 } from "@findmysensi/sensitivity";
 
-export interface GridshotRuntimeConfig {
+export interface TrainerRuntimeConfig {
   readonly fovDegrees: number;
   readonly inputGain: BrowserInputGain;
   readonly inputBufferCapacity: number;
@@ -20,9 +20,9 @@ export interface GridshotRuntimeConfig {
   readonly customResolutionHeight: number | null;
 }
 
-export function resolveGridshotRuntimeConfig(
+export function resolveTrainerRuntimeConfig(
   settings: TrainerSettings,
-): GridshotRuntimeConfig {
+): TrainerRuntimeConfig {
   if (
     settings.resolution === "custom" &&
     (settings.customResolutionWidth === null ||

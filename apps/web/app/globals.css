@@ -1192,6 +1192,20 @@ html {
   color: rgba(255, 255, 255, 0.3);
 }
 
+/*
+ * <option> inherits `color: white` from .app-input above, but the browser
+ * renders the open dropdown list against its own native (light) popup
+ * background that this stylesheet cannot restyle -- white text on that
+ * background is invisible except on the one row highlighted by hover/
+ * keyboard focus. Force a dark, readable color for the closed-popup rows;
+ * the closed <select> box itself is unaffected, since its own background
+ * and text color come from .app-input, not from its <option> children.
+ */
+.app-input option {
+  color: #111318;
+  background: #ffffff;
+}
+
 .app-help {
   margin-top: 6px;
   color: rgba(255, 255, 255, 0.46);

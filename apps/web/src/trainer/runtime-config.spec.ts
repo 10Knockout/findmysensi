@@ -1,12 +1,12 @@
 import { TrainerSettingsSchema } from "@findmysensi/protocol";
 import { describe, expect, it } from "vitest";
-import { resolveGridshotRuntimeConfig } from "./runtime-config.js";
+import { resolveTrainerRuntimeConfig } from "./runtime-config.js";
 
-describe("Gridshot runtime configuration", () => {
+describe("shared trainer runtime configuration", () => {
   const defaults = TrainerSettingsSchema.parse({});
 
-  it("maps FindMySensi sensitivity into the canonical Q20 browser gain", () => {
-    const resolved = resolveGridshotRuntimeConfig({
+  it("maps one Aimlabs-native sensitivity into the canonical Q20 browser gain", () => {
+    const resolved = resolveTrainerRuntimeConfig({
       ...defaults,
       fmsSensitivity: "1.5",
     });
@@ -16,34 +16,49 @@ describe("Gridshot runtime configuration", () => {
     );
   });
 
+  it("accepts one global sensitivity and rejects per-game settings", () => {
+    const resolved = resolveTrainerRuntimeConfig({
+      ...defaults,
+      fmsSensitivity: "0.175",
+    });
+
+    expect(resolved.inputGain.fmsSensitivity).toBe("0.175");
+    expect(
+      TrainerSettingsSchema.safeParse({
+        ...defaults,
+        sensitivityByGame: { grid: "0.175", reaction: "0.2" },
+      }).success,
+    ).toBe(false);
+  });
+
   it("always resolves the safe, 8000 Hz-capable input buffer with no user-facing preset", () => {
-    expect(resolveGridshotRuntimeConfig(defaults).inputBufferCapacity).toBe(
+    expect(resolveTrainerRuntimeConfig(defaults).inputBufferCapacity).toBe(
       16_384,
     );
     // The legacy inputProcessing field may still be present on old
     // persisted settings; it must be accepted but ignored, never consulted
     // for buffer sizing.
     expect(
-      resolveGridshotRuntimeConfig({ ...defaults, inputProcessing: "1000" })
+      resolveTrainerRuntimeConfig({ ...defaults, inputProcessing: "1000" })
         .inputBufferCapacity,
     ).toBe(16_384);
     expect(
-      resolveGridshotRuntimeConfig({ ...defaults, inputProcessing: "8000" })
+      resolveTrainerRuntimeConfig({ ...defaults, inputProcessing: "8000" })
         .inputBufferCapacity,
     ).toBe(16_384);
     expect(
-      resolveGridshotRuntimeConfig({ ...defaults, inputProcessing: "maximum" })
+      resolveTrainerRuntimeConfig({ ...defaults, inputProcessing: "maximum" })
         .inputBufferCapacity,
     ).toBe(16_384);
   });
 
   it("never changes sensitivity or buffer capacity based on the legacy input processing field", () => {
-    const low = resolveGridshotRuntimeConfig({
+    const low = resolveTrainerRuntimeConfig({
       ...defaults,
       fmsSensitivity: "1.25",
       inputProcessing: "1000",
     });
-    const high = resolveGridshotRuntimeConfig({
+    const high = resolveTrainerRuntimeConfig({
       ...defaults,
       fmsSensitivity: "1.25",
       inputProcessing: "8000",
@@ -54,7 +69,7 @@ describe("Gridshot runtime configuration", () => {
   });
 
   it("preserves presentation settings without creating mechanical target controls", () => {
-    const resolved = resolveGridshotRuntimeConfig({
+    const resolved = resolveTrainerRuntimeConfig({
       ...defaults,
       fovDegrees: 120,
       targetColor: "#FF00AA",

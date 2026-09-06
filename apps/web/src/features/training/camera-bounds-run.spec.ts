@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { FULL_TURN_UNITS, resolveCameraBounds } from "@findmysensi/aim-core";
+import {
+  DEFAULT_MAX_PITCH_UNITS,
+  FULL_TURN_UNITS,
+} from "@findmysensi/aim-core";
 import { DEFAULT_BROWSER_INPUT_GAIN } from "@findmysensi/sensitivity";
 import { createGridModeAdapter } from "@findmysensi/trainer-runtime";
 import { PracticeRunController } from "./PracticeRunController.js";
@@ -53,49 +56,52 @@ function yawDeg(controller: PracticeRunController): number {
   return toDegrees(signed);
 }
 
-describe("camera stays inside the play area", () => {
-  const bounds = resolveCameraBounds(1_200_000, 720_000);
-  const maxPitch = toDegrees(bounds.maxPitchUnits);
-  const maxYaw = toDegrees(bounds.maxYawUnits);
+describe("free-look camera", () => {
+  const maxPitch = toDegrees(DEFAULT_MAX_PITCH_UNITS);
 
-  it("stops a long downward drag at the play-area floor, not at 89.9 degrees", () => {
+  it("looks down to the physical camera pole instead of an early play-area wall", () => {
     const controller = makeController();
     drive(controller, 0, 8, 400);
 
     expect(pitchDeg(controller)).toBeCloseTo(-maxPitch, 3);
-    expect(Math.abs(pitchDeg(controller))).toBeLessThan(89);
+    expect(Math.abs(pitchDeg(controller))).toBeGreaterThan(89);
   });
 
-  it("stops a long upward drag at the play-area ceiling", () => {
+  it("looks up to the physical camera pole", () => {
     const controller = makeController();
     drive(controller, 0, -8, 400);
 
     expect(pitchDeg(controller)).toBeCloseTo(maxPitch, 3);
   });
 
-  it("bounds yaw in both directions instead of wrapping a full turn", () => {
-    const right = makeController();
-    drive(right, 8, 0, 800);
-    expect(yawDeg(right)).toBeCloseTo(maxYaw, 3);
+  it("allows full 360-degree yaw in both directions", () => {
+    const controller = makeController();
+    drive(controller, 180, 0, 400);
 
-    const left = makeController();
-    drive(left, -8, 0, 800);
-    expect(yawDeg(left)).toBeCloseTo(-maxYaw, 3);
+    // 72,000 counts at 0.05 degrees/count is ten complete turns.
+    expect(yawDeg(controller)).toBeCloseTo(0, 3);
   });
 
-  it("keeps the play area reachable: the grid corner stays inside the bound", () => {
-    // Gridshot's furthest slot sits at +/-(spawn area / 2).
-    expect(maxPitch).toBeGreaterThan(toDegrees(720_000 / 2));
-    expect(maxYaw).toBeGreaterThan(toDegrees(1_200_000 / 2));
-  });
-
-  it("recovers immediately when the player moves back off the floor", () => {
+  it("recovers on the first reverse movement at the floor", () => {
     const controller = makeController();
     const t = drive(controller, 0, 8, 400);
     expect(pitchDeg(controller)).toBeCloseTo(-maxPitch, 3);
 
-    drive(controller, 0, -8, 40, t);
-    expect(pitchDeg(controller)).toBeGreaterThan(-maxPitch + 10);
+    drive(controller, 0, -8, 1, t);
+    expect(pitchDeg(controller)).toBeGreaterThan(-maxPitch);
+  });
+
+  it("recovers from the floor when a fast reversal lands in one simulation tick", () => {
+    const controller = makeController();
+    const t = drive(controller, 0, 8, 400);
+    expect(pitchDeg(controller)).toBeCloseTo(-maxPitch, 3);
+
+    const ring = controller.getRingBuffer();
+    ring.pushMove(0, 400, t);
+    ring.pushMove(0, -8, t + 0.1);
+    controller.onAnimationFrame(t + 16);
+
+    expect(pitchDeg(controller)).toBeGreaterThan(-maxPitch);
   });
 
   it("does not clamp normal in-area aiming", () => {
