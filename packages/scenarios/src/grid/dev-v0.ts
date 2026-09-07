@@ -40,7 +40,15 @@ export const GRID_DEV_V0_DEFINITION: RankedScenarioDefinition = {
     targetRadiusAngleUnits: 93_207,
     spawnAreaWidthUnits: MEDIUM_SPAWN_WIDTH_UNITS,
     spawnAreaHeightUnits: MEDIUM_SPAWN_HEIGHT_UNITS,
-    minTargetSeparationUnits: 792_500,
+    // Grid doesn't rejection-sample against this like Reaction/Multi/Pinpoint/
+    // Switch Track do -- GridScenarioEngine excludes the occupied and
+    // last-hit slot indices directly, which already guarantees no two active
+    // targets share a slot regardless of this value. It's set to the true
+    // minimum center-to-center distance between distinct slots in the current
+    // 5x5 lattice (adjacent rows, one column step: MEDIUM_SPAWN_HEIGHT_UNITS
+    // / 4) so the serialized definition documents real geometry instead of a
+    // stale figure from the lattice's previous, larger extents.
+    minTargetSeparationUnits: MEDIUM_SPAWN_HEIGHT_UNITS / 4,
     gridRows: 5,
     gridCols: 5,
   },

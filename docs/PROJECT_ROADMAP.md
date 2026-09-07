@@ -1,8 +1,11 @@
 # FindMySensi — Project Roadmap & Status
 
-**Last updated:** 2026-09-07
-**Public repo HEAD:** `015c3a1` (M0-M12 complete and pushed)
-**Secure repo HEAD:** `fdd7fb4` (M14 deploy adapter/config pushed)
+**Last updated:** 2026-09-08
+**Public repo HEAD:** `96c9dc4` on `feat/twelve-mode-catalog`, committed
+locally, not yet pushed (FOV-safe spawn envelopes, weapon viewmodel,
+security/email hardening, and protocol v2 client groundwork)
+**Secure repo HEAD:** `dfd9683` on `main`, committed locally, not yet pushed
+(security/email hardening and protocol v2 backend groundwork)
 
 This is the single durable reference for where FindMySensi is, why it's built the
 way it is, and what's left. Read this before picking up work in a new session
@@ -193,11 +196,16 @@ the documented health, registration, and email-delivery smoke checks.
 
 - **Grid Rush (`grid`):** 3 targets, 93,207 fixed-angle-unit radius (4.0 deg
   across), 128 Hz simulation, exactly 7,680 ticks (60s) per run, 5×5 grid
-  slots spanning ±34° × ±22°, canonical wrapped yaw, inverted pitch from
-  browser `movementY`. The spawn extents are rounded so both the half-width
-  and the slot step stay whole multiples of a small gain — that is what keeps
-  slot centres exactly addressable from integer mouse input in the
-  deterministic tests, at a cost of 0.02° versus the raw spec figure.
+  slots spanning the shared medium front-facing envelope
+  (`packages/scenarios/src/front-facing-area.ts`) — roughly ±24° × ±14°,
+  sized so the opposite edge stays visible at the canonical 103° FOV. Every
+  front-facing drill (Grid Rush, Precision Six, Multi Burst, Reflex Rush,
+  Anchor Flick, Motion Flick, Headshot Lane, Strafe Track, Switch Track)
+  shares this envelope. Its half-extents are rounded to a documented lattice
+  quantum (`LATTICE_QUANTUM_UNITS`, twice the 2,500-unit deterministic input
+  gain) — that is what keeps Grid Rush's 5×5 slot centres exactly
+  addressable from integer mouse input in the deterministic tests, at a cost
+  of under 0.06° versus the raw 24°/14° spec figures.
 - **Angle units:** 2^24 per full turn, so 1° = 46,603 units. Every scenario
   is authored in angular terms; there is no Z axis anywhere. "Depth" in
   Headshot Lane and Sphere Track is expressed purely as angular size and
