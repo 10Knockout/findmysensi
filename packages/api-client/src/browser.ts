@@ -1,9 +1,17 @@
+import {
+  LeaderboardResponseV2Schema,
+  PracticeRunSubmissionV2Schema,
+  PracticeRunSubmissionResponseV2Schema,
+} from "@findmysensi/protocol";
 import type {
   ForgotPasswordRequest,
   HandshakeRequest,
   HandshakeResponse,
   LeaderboardResponse,
+  LeaderboardResponseV2,
   LoginRequest,
+  PracticeRunSubmissionResponseV2,
+  PracticeRunSubmissionV2,
   ProfileSettings,
   RegisterRequest,
   ResetPasswordRequest,
@@ -305,6 +313,77 @@ export class BrowserApiClient {
       `/api/v1/leaderboards/${encodeURIComponent(modeId)}`,
       { method: "GET", cache: "no-store" },
     );
+  }
+
+  async getLeaderboardV2(
+    modeId: string,
+    scenarioVersion: number,
+    scoringVersion: number,
+  ): Promise<ApiResult<LeaderboardResponseV2>> {
+    const query = new URLSearchParams({
+      scenarioVersion: String(scenarioVersion),
+      scoringVersion: String(scoringVersion),
+    });
+    const result = await this.requestJson<unknown>(
+      `/api/v2/leaderboards/${encodeURIComponent(modeId)}?${query.toString()}`,
+      { method: "GET", cache: "no-store" },
+    );
+    if (!result.ok) {
+      return {
+        ok: false,
+        ...(result.error ? { error: result.error } : {}),
+      };
+    }
+
+    const parsed = LeaderboardResponseV2Schema.safeParse(result.data);
+    const expectedBoardId = `${modeId}:scenario-${scenarioVersion}:scoring-${scoringVersion}`;
+    if (
+      !parsed.success ||
+      parsed.data.board.boardId !== expectedBoardId ||
+      parsed.data.board.modeId !== modeId ||
+      parsed.data.board.scenarioVersion !== scenarioVersion ||
+      parsed.data.board.scoringVersion !== scoringVersion
+    ) {
+      return { ok: false, error: "The leaderboard response was invalid." };
+    }
+    return { ok: true, data: parsed.data };
+  }
+
+  async submitPracticeRunV2(
+    run: PracticeRunSubmissionV2,
+  ): Promise<ApiResult<PracticeRunSubmissionResponseV2>> {
+    const parsedRun = PracticeRunSubmissionV2Schema.safeParse(run);
+    if (!parsedRun.success) {
+      return { ok: false, error: "The local run record was invalid." };
+    }
+
+    const result = await this.requestJson<unknown>("/api/v2/runs", {
+      method: "POST",
+      body: JSON.stringify(parsedRun.data),
+      keepalive: true,
+    });
+    if (!result.ok) {
+      return {
+        ok: false,
+        ...(result.error ? { error: result.error } : {}),
+      };
+    }
+
+    const parsed = PracticeRunSubmissionResponseV2Schema.safeParse(result.data);
+    const expectedBoardId = `${parsedRun.data.modeId}:scenario-${parsedRun.data.scenarioVersion}:scoring-${parsedRun.data.scoringVersion}`;
+    if (
+      !parsed.success ||
+      parsed.data.runId !== parsedRun.data.runId ||
+      parsed.data.leaderboard.board.boardId !== expectedBoardId ||
+      parsed.data.leaderboard.board.modeId !== parsedRun.data.modeId ||
+      parsed.data.leaderboard.board.scenarioVersion !==
+        parsedRun.data.scenarioVersion ||
+      parsed.data.leaderboard.board.scoringVersion !==
+        parsedRun.data.scoringVersion
+    ) {
+      return { ok: false, error: "The run-sync response was invalid." };
+    }
+    return { ok: true, data: parsed.data };
   }
 
   async getTrainerSettings(): Promise<ApiResult<TrainerSettings>> {

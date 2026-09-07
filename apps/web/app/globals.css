@@ -1559,10 +1559,125 @@ html {
   text-transform: uppercase;
 }
 
+.app-results-page {
+  display: flex;
+  align-items: flex-start;
+  padding-top: clamp(36px, 6vw, 72px);
+}
+
+.app-results-overview {
+  width: min(980px, 100%);
+  margin: 0 auto;
+}
+
+.app-results-header {
+  margin-bottom: 30px;
+  padding-bottom: 26px;
+  border-bottom: 1px solid var(--fms-line-dark);
+}
+
+.app-results-header .app-results-tag {
+  margin-bottom: 22px;
+}
+
+.app-results-header .app-section-label {
+  margin-bottom: 8px;
+}
+
+.app-results-header .app-heading {
+  font-size: clamp(30px, 4vw, 42px);
+}
+
+.app-results-section-title {
+  margin-bottom: 12px;
+  color: rgba(255, 255, 255, 0.72);
+  font-family: var(--font-turret-road), monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.app-results-summary-grid {
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  border: 0;
+  background: transparent;
+}
+
+.app-results-detail-grid {
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  border: 0;
+  background: transparent;
+}
+
+.app-results-overview .app-stat-card {
+  border: 1px solid var(--fms-line-dark);
+}
+
+.app-results-overview .app-stat-card-featured strong {
+  font-size: clamp(24px, 3vw, 30px);
+}
+
+.app-results-overview .app-stat-card-accent strong {
+  color: var(--fms-acid);
+}
+
+.app-results-overview .app-stat-card-positive strong {
+  color: var(--fms-acid);
+}
+
+.app-results-overview .app-stat-card-negative strong {
+  color: #f2bb55;
+}
+
+.app-results-overview .app-stat-card-muted strong {
+  color: rgba(255, 255, 255, 0.46);
+}
+
+.app-results-eligibility {
+  margin: -8px 0 28px;
+  padding: 15px 18px;
+  border: 1px solid var(--fms-line-dark);
+  border-left: 3px solid rgba(255, 255, 255, 0.38);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.app-results-eligibility strong {
+  color: rgba(255, 255, 255, 0.82);
+  font-family: var(--font-turret-road), monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.app-results-eligibility p {
+  margin-top: 5px;
+  color: rgba(255, 255, 255, 0.56);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.app-results-empty {
+  min-height: 120px;
+  padding: 30px 0;
+}
+
 .app-results-actions {
   display: flex;
   gap: 14px;
   margin-top: 32px;
+}
+
+.app-results-actions .app-button {
+  flex: 1;
+}
+
+@media (max-width: 600px) {
+  .app-results-actions {
+    flex-direction: column;
+  }
 }
 
 /* In-game settings modal chrome - overlay above the Canvas2D trainer, still

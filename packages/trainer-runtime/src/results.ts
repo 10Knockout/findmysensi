@@ -14,6 +14,11 @@ interface ClickPracticeSummaryBase extends PracticeRunSummaryBase {
   readonly misses: number;
   readonly accuracyPercentage: number;
   readonly killsPerSecond: number;
+  /**
+   * Target appearance/previous kill to successful hit, at 128 Hz. Optional so
+   * summaries written before analytics v1 remain readable from localStorage.
+   */
+  readonly averageAcquisitionTicks?: number;
 }
 
 export interface GridPracticeSummary extends ClickPracticeSummaryBase {

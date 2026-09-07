@@ -140,7 +140,7 @@ test("authenticated Gridshot shell initializes the real trainer canvas", async (
     session: {
       id: "browser-session",
       userId: "browser-user",
-      expiresAt: "2026-09-02T00:00:00.000Z",
+      expiresAt: "2099-09-02T00:00:00.000Z",
     },
   };
   const trainerSettings = {
@@ -507,24 +507,118 @@ test("authenticated Results page displays honest local results wording and metri
     });
   });
 
+  await page.route("**/api/v2/runs", async (route) => {
+    const submitted = route.request().postDataJSON() as {
+      runId: string;
+      modeId: string;
+      scenarioVersion: number;
+      scoringVersion: number;
+    };
+    await route.fulfill({
+      status: 201,
+      contentType: "application/json",
+      body: JSON.stringify({
+        protocolVersion: 2,
+        runId: submitted.runId,
+        submissionStatus: "stored",
+        runClass: "practice",
+        competitiveStatus: "practice-only",
+        leaderboard: {
+          board: {
+            boardId: `${submitted.modeId}:scenario-${submitted.scenarioVersion}:scoring-${submitted.scoringVersion}`,
+            modeId: submitted.modeId,
+            scenarioVersion: submitted.scenarioVersion,
+            scoringVersion: submitted.scoringVersion,
+          },
+          totalPlayers: 0,
+          percentileMinimumPlayers: 10,
+          standing: null,
+        },
+      }),
+    });
+  });
+
   await page.addInitScript(() => {
+    const completedAt = Date.now();
+    const previousCompletedAt = completedAt - 120_000;
+    const settings = {
+      fmsSensitivity: "0.175",
+      nominalDpi: 800,
+      cmPer360: 46.68,
+      fovDegrees: 103,
+      resolution: "1920x1080",
+      backingWidth: 1920,
+      backingHeight: 1080,
+      cssWidth: 1920,
+      cssHeight: 1080,
+      devicePixelRatio: 1,
+      scalingMode: "fill",
+      fullscreen: true,
+      graphicsPreset: "automatic",
+      crosshairCode: null,
+      rawPointerInputAccepted: false,
+      platform: "Windows",
+      browser: "Chrome",
+      medianRenderFps: null,
+      p95FrameTimeMs: null,
+      inputOverflowEvents: 0,
+      inputHighWaterMark: 8,
+    };
+    const summary = {
+      id: "practice-test-1",
+      modeId: "grid",
+      timestamp: completedAt,
+      score: 72450,
+      hits: 65,
+      shots: 70,
+      misses: 5,
+      accuracyPercentage: (65 / 70) * 100,
+      durationSeconds: 60,
+      killsPerSecond: 1.08,
+      averageAcquisitionTicks: 38.4,
+      exactReplayPreserved: true,
+      inputOverflowEvents: 0,
+      inputHighWaterMark: 8,
+    };
     window.localStorage.setItem(
-      "findmysensi:practice_history:v1",
+      "fms_run_records_v1",
       JSON.stringify([
         {
-          id: "practice-test-1",
+          runId: "practice-test-1",
           modeId: "grid",
-          timestamp: Date.now(),
-          score: 72450,
-          hits: 65,
-          shots: 70,
-          misses: 5,
-          accuracyPercentage: 93,
-          durationSeconds: 60,
-          killsPerSecond: 1.08,
-          exactReplayPreserved: true,
-          inputOverflowEvents: 0,
-          inputHighWaterMark: 8,
+          scenarioVersion: 0,
+          scoringVersion: 0,
+          analyticsVersion: 1,
+          seed: [1, 2, 3, 4],
+          startedAt: completedAt - 60_000,
+          completedAt,
+          activeDurationMs: 60_000,
+          finalScore: 72450,
+          leaderboardEligible: false,
+          invalidationReasons: ["raw-input-unavailable"],
+          settings,
+          summary,
+        },
+        {
+          runId: "practice-test-pb",
+          modeId: "grid",
+          scenarioVersion: 0,
+          scoringVersion: 0,
+          analyticsVersion: 1,
+          seed: [5, 6, 7, 8],
+          startedAt: previousCompletedAt - 60_000,
+          completedAt: previousCompletedAt,
+          activeDurationMs: 60_000,
+          finalScore: 75000,
+          leaderboardEligible: true,
+          invalidationReasons: [],
+          settings: { ...settings, rawPointerInputAccepted: true },
+          summary: {
+            ...summary,
+            id: "practice-test-pb",
+            timestamp: previousCompletedAt,
+            score: 75000,
+          },
         },
       ]),
     );
@@ -533,17 +627,36 @@ test("authenticated Results page displays honest local results wording and metri
   const response = await page.goto("/app/train/grid/results");
   expect(response?.ok()).toBe(true);
 
-  // Assert honest local results badge and explanation
-  await expect(page.locator("text=Local Result · Not Submitted")).toBeVisible();
+  // Assert honest practice-sync badge and explanation.
+  await expect(page.getByText("Saved to Account · Practice")).toBeVisible();
+  await expect(page.getByText(/Saved privately to your account/)).toBeVisible();
+
+  await expect(page.getByRole("heading", { name: "Grid Rush" })).toBeVisible();
+  const runSummary = page.getByRole("region", { name: "Run Summary" });
+  await expect(runSummary.getByText("72,450", { exact: true })).toBeVisible();
+  await expect(runSummary.getByText("75,000", { exact: true })).toBeVisible();
+  await expect(page.locator("text=−2,550")).toBeVisible();
+  await expect(runSummary.getByText("92.86%", { exact: true })).toBeVisible();
+  await expect(page.getByText("Not leaderboard eligible")).toBeVisible();
   await expect(
-    page.locator(
-      "text=This run is stored locally. Official leaderboard verification is not enabled yet.",
-    ),
+    page.getByText("Raw mouse input was not available."),
   ).toBeVisible();
 
-  // Assert score card displays formatted score
-  await expect(page.locator("text=72,450")).toBeVisible();
-  await expect(page.locator("text=93%")).toBeVisible();
+  const taskMetrics = page.getByRole("region", { name: "Task Metrics" });
+  await expect(taskMetrics.getByText("65", { exact: true })).toBeVisible();
+  await expect(taskMetrics.getByText("70", { exact: true })).toBeVisible();
+  await expect(taskMetrics.getByText("300 ms", { exact: true })).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole("link", { name: "Play Again" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Return to Hub" })).toBeVisible();
+  expect(
+    await page.evaluate(
+      () =>
+        document.documentElement.scrollWidth <=
+        document.documentElement.clientWidth,
+    ),
+  ).toBe(true);
 
   // Assert obsolete "Practice Mode" copy is NOT present
   await expect(page.locator("body")).not.toContainText(

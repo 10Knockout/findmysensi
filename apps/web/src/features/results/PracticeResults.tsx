@@ -1,118 +1,233 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { BrowserApiClient } from "@findmysensi/api-client";
 import {
-  localPracticeHistory,
-  PracticeSummaryRecord,
-} from "../training/local-history.js";
+  RUN_INVALIDATION_MESSAGES,
+  type RunRecord,
+} from "@findmysensi/trainer-runtime";
+import { localRunHistory } from "../training/local-run-history.js";
+import { toPracticeRunSubmissionV2 } from "../training/run-sync.js";
+import {
+  buildResultsOverview,
+  type OverviewMetric,
+  type ResultsOverview,
+} from "./results-overview.js";
 import { getPracticeResultsRoutes } from "./routes.js";
 
-export function PracticeResults({ mode = "grid" }: { mode?: string }) {
-  const [latestRun, setLatestRun] = useState<PracticeSummaryRecord | null>(
-    null,
-  );
+interface PracticeResultsProps {
+  readonly mode?: string;
+  readonly taskName?: string;
+  readonly syncEnabled?: boolean;
+}
+
+type RunSyncState = "local" | "syncing" | "saved" | "pending";
+
+export function PracticeResults({
+  mode = "grid",
+  taskName,
+  syncEnabled = false,
+}: PracticeResultsProps) {
+  const [latestRun, setLatestRun] = useState<RunRecord | null>(null);
+  const [overview, setOverview] = useState<ResultsOverview | null>(null);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [syncState, setSyncState] = useState<RunSyncState>("local");
+  const attemptedRunId = useRef<string | null>(null);
   const routes = getPracticeResultsRoutes(mode);
-  const modeLabel = mode
-    .split("-")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
+  const resolvedTaskName = taskName ?? formatModeLabel(mode);
+  const syncCopy = getRunSyncCopy(syncState);
 
   useEffect(() => {
-    const history = localPracticeHistory.getAll(mode);
-    if (history.length > 0) {
-      setLatestRun(history[0] || null);
-    }
+    setHistoryLoaded(false);
+    const history = localRunHistory.getAll();
+    const run = history.find((entry) => entry.modeId === mode) ?? null;
+    setLatestRun(run);
+    setOverview(run ? buildResultsOverview(run, history) : null);
+    setSyncState("local");
+    setHistoryLoaded(true);
   }, [mode]);
 
+  useEffect(() => {
+    if (
+      !syncEnabled ||
+      !latestRun ||
+      attemptedRunId.current === latestRun.runId
+    ) {
+      return;
+    }
+
+    attemptedRunId.current = latestRun.runId;
+    let active = true;
+    setSyncState("syncing");
+
+    void (async () => {
+      try {
+        const result = await new BrowserApiClient().submitPracticeRunV2(
+          toPracticeRunSubmissionV2(latestRun),
+        );
+        if (!active) return;
+        if (!result.ok || !result.data) {
+          setSyncState("pending");
+          return;
+        }
+
+        const history = localRunHistory.getAll();
+        setOverview(
+          buildResultsOverview(latestRun, history, result.data.leaderboard),
+        );
+        setSyncState("saved");
+      } catch {
+        if (active) setSyncState("pending");
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [latestRun, syncEnabled]);
+
   return (
-    <div className="app-card app-card-wide" style={{ margin: "60px auto" }}>
-      <div className="app-results-tag">Local Result · Not Submitted</div>
+    <main className="app-page app-results-page">
+      <div className="app-page-inner">
+        <article className="app-card app-card-wide app-results-overview">
+          <header className="app-results-header">
+            <div className="app-results-tag">{syncCopy.tag}</div>
+            <p className="app-section-label">Overview</p>
+            <h1 className="app-heading">{resolvedTaskName}</h1>
+            <p className="app-subtext">{syncCopy.description}</p>
+          </header>
 
-      <h1 className="app-heading" style={{ fontSize: "clamp(30px,4vw,40px)" }}>
-        Run Complete
-      </h1>
-      <p className="app-subtext">
-        This run is stored locally. Official leaderboard verification is not
-        enabled yet.
-      </p>
+          {latestRun && overview ? (
+            <>
+              <section aria-labelledby="run-summary-heading">
+                <h2
+                  id="run-summary-heading"
+                  className="app-results-section-title"
+                >
+                  Run Summary
+                </h2>
+                <div className="app-stat-grid app-results-summary-grid">
+                  {overview.summaryMetrics.map((metric, index) => (
+                    <ResultStat
+                      key={metric.label}
+                      metric={metric}
+                      featured={index < 3}
+                    />
+                  ))}
+                </div>
+              </section>
 
-      {latestRun ? (
-        <div className="app-stat-grid" style={{ marginTop: 28 }}>
-          {getResultStats(latestRun).map(([label, value], index) => (
-            <ResultStat
-              key={label}
-              label={label}
-              value={value}
-              featured={index < 2}
-            />
-          ))}
-        </div>
-      ) : (
-        <p className="app-subtext">No recent local {modeLabel} result found.</p>
-      )}
+              {!latestRun.leaderboardEligible ? (
+                <div className="app-results-eligibility" role="note">
+                  <strong>Not leaderboard eligible</strong>
+                  <p>
+                    This run still remains in your local history.
+                    {latestRun.invalidationReasons.length > 0
+                      ? ` ${latestRun.invalidationReasons
+                          .map((reason) => RUN_INVALIDATION_MESSAGES[reason])
+                          .join(" ")}`
+                      : " It could not be verified for ranked play."}
+                  </p>
+                </div>
+              ) : null}
 
-      <div className="app-results-actions">
-        <a href={routes.playAgain} className="app-button" style={{ flex: 1 }}>
-          Play Again
-        </a>
-        <a
-          href={routes.hub}
-          className="app-button app-button-ghost"
-          style={{ flex: 1 }}
-        >
-          Return to Hub
-        </a>
+              <section aria-labelledby="task-metrics-heading">
+                <h2
+                  id="task-metrics-heading"
+                  className="app-results-section-title"
+                >
+                  Task Metrics
+                </h2>
+                <div className="app-stat-grid app-results-detail-grid">
+                  {overview.detailMetrics.map((metric) => (
+                    <ResultStat
+                      key={metric.label}
+                      metric={metric}
+                      featured={false}
+                    />
+                  ))}
+                </div>
+              </section>
+            </>
+          ) : historyLoaded ? (
+            <p className="app-subtext app-results-empty">
+              No recent local {resolvedTaskName} result found.
+            </p>
+          ) : (
+            <p className="app-subtext app-results-empty">
+              Loading local result...
+            </p>
+          )}
+
+          <div className="app-results-actions">
+            <a href={routes.playAgain} className="app-button">
+              Play Again
+            </a>
+            <a href={routes.hub} className="app-button app-button-ghost">
+              Return to Hub
+            </a>
+          </div>
+        </article>
       </div>
-    </div>
+    </main>
   );
 }
 
-function getResultStats(record: PracticeSummaryRecord): [string, string][] {
-  const score: [string, string] = ["Score", record.score.toLocaleString()];
-  if (record.modeId === "smooth-track" || record.modeId === "strafe") {
-    return [
-      score,
-      ["On Target", `${record.onTargetPercentage}%`],
-      ["Average Error", record.averageErrorUnits.toLocaleString()],
-      ["Max Error", record.maxErrorUnits.toLocaleString()],
-    ];
+function getRunSyncCopy(state: RunSyncState): {
+  readonly tag: string;
+  readonly description: string;
+} {
+  switch (state) {
+    case "syncing":
+      return {
+        tag: "Saving to Account",
+        description:
+          "Run complete. Your local result is safe while private account sync finishes.",
+      };
+    case "saved":
+      return {
+        tag: "Saved to Account · Practice",
+        description:
+          "Saved privately to your account. Practice runs cannot enter the official leaderboard without authoritative Ranked verification.",
+      };
+    case "pending":
+      return {
+        tag: "Local Result · Sync Pending",
+        description:
+          "Your result is safe locally. Account sync can retry when this page is opened again.",
+      };
+    default:
+      return {
+        tag: "Local Result · Not Submitted",
+        description:
+          "Run complete. This result is stored locally; official leaderboard verification is not enabled yet.",
+      };
   }
-  if (record.modeId === "switch-track") {
-    return [
-      score,
-      ["Switches", String(record.switchesCompleted)],
-      ["On Target", `${record.onTargetPercentage}%`],
-      ["Avg Acquisition", `${record.averageAcquisitionTicks} ticks`],
-    ];
-  }
-  return [
-    score,
-    ["Accuracy", `${record.accuracyPercentage}%`],
-    ["Hits / Shots", `${record.hits} / ${record.shots}`],
-    ["Kills / Sec", String(record.killsPerSecond)],
-  ];
 }
 
 function ResultStat({
-  label,
-  value,
+  metric,
   featured,
 }: {
-  label: string;
-  value: string;
-  featured: boolean;
+  readonly metric: OverviewMetric;
+  readonly featured: boolean;
 }) {
+  const toneClass = metric.tone ? ` app-stat-card-${metric.tone}` : "";
+
   return (
-    <div className="app-stat-card">
-      <b>{label}</b>
-      <strong
-        style={{
-          fontSize: featured ? 28 : 22,
-          color: label === "Score" ? "var(--fms-acid)" : undefined,
-        }}
-      >
-        {value}
-      </strong>
+    <div
+      className={`app-stat-card${featured ? " app-stat-card-featured" : ""}${toneClass}`}
+    >
+      <b>{metric.label}</b>
+      <strong>{metric.value}</strong>
+      {metric.note ? <span>{metric.note}</span> : null}
     </div>
   );
+}
+
+function formatModeLabel(mode: string): string {
+  return mode
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }

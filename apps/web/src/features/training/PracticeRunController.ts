@@ -30,10 +30,14 @@ import {
   DeterministicBrowserInputScaler,
 } from "@findmysensi/sensitivity";
 import {
+  ANALYTICS_VERSION,
   createGridModeAdapter,
+  evaluateRunEligibility,
   ModeRuntimeAdapter,
   RuntimeMetrics,
   RuntimeScoreResult,
+  type RunRecord,
+  type RunSettingsSnapshot,
 } from "@findmysensi/trainer-runtime";
 import {
   createFixedTickRunner,
@@ -43,6 +47,7 @@ import {
   localPracticeHistory,
   type PracticeSummaryRecord,
 } from "./local-history.js";
+import { localRunHistory } from "./local-run-history.js";
 import { generateRunSeed } from "./seed.js";
 
 export type PracticeRunState =
@@ -59,6 +64,19 @@ export interface PracticeRunOptions {
   readonly durationTicks?: number;
   readonly inputGain?: BrowserInputGain;
   readonly inputBufferCapacity?: number;
+  /**
+   * Captures configuration as it stands the moment the run begins.
+   *
+   * A callback rather than a value because the controller is constructed
+   * before the countdown and pointer-lock handshake, so facts like whether
+   * raw input was actually granted are not yet known at construction. The
+   * snapshot has to describe the run that was really played.
+   *
+   * Supplied by the trainer shell, the only layer that can see the DOM.
+   * Omitted in tests and headless harnesses, in which case no run record is
+   * written.
+   */
+  readonly captureSettingsSnapshot?: () => RunSettingsSnapshot | null;
 }
 
 export interface SensitivityInputVerificationSnapshot {
@@ -130,6 +148,13 @@ export class PracticeRunController {
   private highWaterMark: number = 0;
   private exactReplayPreserved: boolean = true;
   private activeSeed: readonly [number, number, number, number] | null = null;
+  /** Sticky for the whole run: a run that was ever paused stays unranked. */
+  private wasPaused: boolean = false;
+  private pointerLockLost: boolean = false;
+  private startedAtMs: number = 0;
+  private settingsSnapshot: RunSettingsSnapshot | null = null;
+  private readonly captureSettingsSnapshot:
+    (() => RunSettingsSnapshot | null) | null;
 
   constructor(
     callbacks: PracticeRunCallbacks,
@@ -156,6 +181,7 @@ export class PracticeRunController {
     this.ringBuffer = createInputRingBuffer(capacity);
     this.batchTarget = createRawInputBatchTarget(capacity);
     this.snapshotBuffer = createSnapshotBuffer(32);
+    this.captureSettingsSnapshot = options.captureSettingsSnapshot ?? null;
   }
 
   public getRingBuffer(): InputRingBuffer {
@@ -263,6 +289,10 @@ export class PracticeRunController {
     this.totalOverflowEvents = 0;
     this.highWaterMark = 0;
     this.exactReplayPreserved = true;
+    this.wasPaused = false;
+    this.pointerLockLost = false;
+    this.startedAtMs = Date.now();
+    this.settingsSnapshot = this.captureSettingsSnapshot?.() ?? null;
     this.ringBuffer.reset();
 
     this.adapter.initialize(this.prng);
@@ -303,8 +333,20 @@ export class PracticeRunController {
     if (this.state === "playing" && this.runner) {
       this.runner.stop("manual_abort");
       this.state = "paused";
+      // Sticky: resuming does not restore eligibility, because the pause gave
+      // the player time the clock did not charge them for.
+      this.wasPaused = true;
       this.callbacks.onStateChange(this.state);
     }
+  }
+
+  /**
+   * Records that mouse lock was interrupted. An ordinary browser event, not
+   * evidence of wrongdoing, but it breaks the input guarantees a ranked run
+   * depends on.
+   */
+  public notePointerLockLost(): void {
+    this.pointerLockLost = true;
   }
 
   public resume(): void {
@@ -471,9 +513,10 @@ export class PracticeRunController {
     const finalMetrics = this.adapter.computeMetrics(this.totalDurationTicks);
     const finalScore = this.adapter.computeScore(finalMetrics);
 
+    const completedAt = Date.now();
     const summaryBase = {
-      id: `practice-${Date.now()}`,
-      timestamp: Date.now(),
+      id: `practice-${globalThis.crypto.randomUUID()}`,
+      timestamp: completedAt,
       score: finalScore.score,
       durationSeconds: Math.round(this.totalDurationTicks / 128),
       exactReplayPreserved: this.exactReplayPreserved,
@@ -491,6 +534,7 @@ export class PracticeRunController {
         misses: finalMetrics.misses,
         accuracyPercentage: finalMetrics.accuracyPercentage,
         killsPerSecond: finalMetrics.killsPerSecond,
+        averageAcquisitionTicks: finalMetrics.avgAcquisitionTicks,
       } as PracticeSummaryRecord;
     } else if (isSwitchTrackMetrics(finalMetrics)) {
       summary = {
@@ -513,8 +557,63 @@ export class PracticeRunController {
       );
     }
     localPracticeHistory.save(summary);
+    this.saveRunRecord(summary, finalScore.score, completedAt);
 
     this.callbacks.onComplete(finalScore);
+  }
+
+  /**
+   * Writes the durable run record. Skipped entirely when no settings snapshot
+   * was supplied: a record without the configuration it was played under
+   * cannot be compared to anything later, and storing one anyway would put a
+   * misleading row in the player's history. Test harnesses and the headless
+   * browser suite deliberately fall into this case.
+   */
+  private saveRunRecord(
+    summary: PracticeSummaryRecord,
+    finalScore: number,
+    completedAt: number,
+  ): void {
+    const settings = this.settingsSnapshot;
+    if (!settings || !this.activeSeed) return;
+
+    const { leaderboardEligible, invalidationReasons } = evaluateRunEligibility(
+      {
+        wasPaused: this.wasPaused,
+        // Configuration is locked for the duration of a run, so neither of
+        // these can currently drift mid-run. They stay in the model because
+        // in-run settings changes are a real future feature and silently
+        // dropping the check then would be the dangerous outcome.
+        settingsChangedMidRun: false,
+        sensitivityChangedMidRun: false,
+        pointerLockLost: this.pointerLockLost,
+        rawPointerInputAccepted: settings.rawPointerInputAccepted,
+        exactReplayPreserved: this.exactReplayPreserved,
+        debugOverrideActive: false,
+        completed: this.state === "completed",
+      },
+    );
+
+    const record: RunRecord = {
+      runId: summary.id,
+      modeId: summary.modeId,
+      scenarioVersion: this.adapter.definition.scenarioVersion,
+      scoringVersion: this.adapter.definition.scoringVersion,
+      analyticsVersion: ANALYTICS_VERSION,
+      seed: this.activeSeed,
+      startedAt: this.startedAtMs,
+      completedAt,
+      // Simulation time is the authoritative active duration. Wall time also
+      // includes any pause, tab scheduling delay, or countdown jitter.
+      activeDurationMs: Math.round((this.totalDurationTicks / 128) * 1000),
+      finalScore,
+      leaderboardEligible,
+      invalidationReasons,
+      settings,
+      summary,
+    };
+
+    localRunHistory.save(record);
   }
 
   private publishMetrics(elapsedTicks: number): void {

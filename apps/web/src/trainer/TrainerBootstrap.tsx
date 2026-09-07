@@ -19,7 +19,10 @@ import {
   createAimRenderer,
   createViewportTransform,
 } from "@findmysensi/render-canvas";
-import { resolveBrowserInputGain } from "@findmysensi/sensitivity";
+import {
+  resolveBrowserInputGain,
+  sensitivityToCmPer360,
+} from "@findmysensi/sensitivity";
 import type {
   RuntimeMetrics,
   RuntimeScoreResult,
@@ -158,6 +161,12 @@ export function TrainerBootstrap({
   const handleResizeRef = useRef<(() => void) | null>(null);
   const pauseDeadlineRef = useRef<number | null>(null);
   const countdownIntervalRef = useRef<number | null>(null);
+  // Mirrors of state the run-start snapshot needs. The snapshot callback is
+  // created once, inside the setup effect, so reading the state variables
+  // directly would capture whatever they held before the countdown and
+  // pointer-lock handshake -- exactly the values that must not be recorded.
+  const rawSettingsRef = useRef<TrainerSettings | null>(null);
+  const pointerLockResultRef = useRef<PointerLockResult | null>(null);
 
   const [rawSettings, setRawSettings] = useState<TrainerSettings | null>(null);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
@@ -202,6 +211,17 @@ export function TrainerBootstrap({
   const [browserDetails, setBrowserDetails] = useState<
     Readonly<{ platform: string; userAgent: string }>
   >(UNKNOWN_BROWSER_DETAILS);
+
+  // Keep the snapshot mirrors current. Cheap, and it means the run record
+  // describes the run that was actually played rather than the state the
+  // setup effect happened to close over.
+  useEffect(() => {
+    rawSettingsRef.current = rawSettings;
+  }, [rawSettings]);
+
+  useEffect(() => {
+    pointerLockResultRef.current = pointerLockResult;
+  }, [pointerLockResult]);
 
   useEffect(() => {
     const onFsChange = () =>
@@ -476,6 +496,50 @@ export function TrainerBootstrap({
         durationTicks: modeDurationTicks,
         inputGain,
         inputBufferCapacity: runtimeConfig.inputBufferCapacity,
+        // Evaluated when the run actually starts, so it reflects the
+        // configuration and pointer-lock outcome the player really played
+        // under rather than whatever was true at setup time.
+        captureSettingsSnapshot: () => {
+          const settings = rawSettingsRef.current;
+          if (!settings) return null;
+          const activeCfg = runtimeConfigRef.current ?? runtimeConfig;
+          const lock = pointerLockResultRef.current;
+          const rect = canvas.getBoundingClientRect();
+
+          return {
+            fmsSensitivity: activeCfg.inputGain.fmsSensitivity,
+            nominalDpi: settings.nominalDpi,
+            cmPer360: resolveCmPer360(
+              activeCfg.inputGain.fmsSensitivity,
+              settings.nominalDpi,
+            ),
+            fovDegrees: activeCfg.fovDegrees,
+            resolution: activeCfg.resolution,
+            backingWidth: canvas.width,
+            backingHeight: canvas.height,
+            cssWidth: Math.round(rect.width),
+            cssHeight: Math.round(rect.height),
+            devicePixelRatio: window.devicePixelRatio || 1,
+            scalingMode: activeCfg.scalingMode,
+            fullscreen: Boolean(document.fullscreenElement),
+            graphicsPreset: activeCfg.graphicsPreset,
+            crosshairCode: activeCfg.crosshairCode,
+            rawPointerInputAccepted: Boolean(lock?.rawGranted),
+            platform: coarsePlatform(),
+            browser: coarseBrowser(),
+            // Null until frame timing is actually measured. Never labelled a
+            // refresh rate: a browser cannot read the monitor's, and a
+            // rAF-derived number presented as hardware truth would be a
+            // fabrication.
+            medianRenderFps: null,
+            p95FrameTimeMs: null,
+            // Zero by definition: the snapshot is taken as the run begins,
+            // before any input has been buffered. The run's real input health
+            // lands on the summary at finalize.
+            inputOverflowEvents: 0,
+            inputHighWaterMark: 0,
+          };
+        },
       },
       adapter,
     );
@@ -570,7 +634,7 @@ export function TrainerBootstrap({
     animationFrameId = requestAnimationFrame(loop);
 
     const onPointerLockChange = () => {
-      if (document.pointerLockElement) return;
+      if (document.pointerLockElement === canvas) return;
 
       inputHealthRef.current.pointerLockDrops++;
 
@@ -584,6 +648,7 @@ export function TrainerBootstrap({
       }
 
       if (controller.getState() === "playing") {
+        controller.notePointerLockLost();
         controller.pause();
       }
     };
@@ -709,6 +774,7 @@ export function TrainerBootstrap({
     setLockError(null);
     await ensureFullscreenBeforeLock();
     const acquisition = await acquirePointerLock(canvas);
+    pointerLockResultRef.current = acquisition;
     setPointerLockResult(acquisition);
     if (!acquisition.locked) {
       setLockError(
@@ -755,6 +821,7 @@ export function TrainerBootstrap({
     setLockError(null);
     await ensureFullscreenBeforeLock();
     const acquisition = await acquirePointerLock(canvasRef.current);
+    pointerLockResultRef.current = acquisition;
     setPointerLockResult(acquisition);
     if (!acquisition.locked) {
       setLockError("Mouse lock was not granted. The run remains paused.");
@@ -1104,6 +1171,51 @@ function getRuntimeHudItems(
     ["ACCURACY", "--"],
     ["HITS / MISS", "--"],
   ];
+}
+
+/**
+ * Canonical physical turn distance for the run's sensitivity, which is the
+ * only figure comparable across different DPI and different games. Null when
+ * DPI is unknown, because guessing one would make every downstream
+ * sensitivity comparison quietly wrong.
+ */
+function resolveCmPer360(
+  fmsSensitivity: string,
+  nominalDpi: number | null,
+): number | null {
+  if (!nominalDpi) return null;
+  try {
+    return sensitivityToCmPer360("aimlab-default", fmsSensitivity, nominalDpi);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Coarse platform and browser labels: enough to spot "this only happens on
+ * Safari" in aggregate, deliberately too blunt to identify anyone.
+ */
+function coarsePlatform(): string {
+  if (typeof navigator === "undefined") return "unknown";
+  const ua = navigator.userAgent;
+  if (/Windows/i.test(ua)) return "Windows";
+  if (/Mac OS X|Macintosh/i.test(ua)) return "macOS";
+  if (/Android/i.test(ua)) return "Android";
+  if (/Linux/i.test(ua)) return "Linux";
+  if (/iPhone|iPad|iPod/i.test(ua)) return "iOS";
+  return "unknown";
+}
+
+function coarseBrowser(): string {
+  if (typeof navigator === "undefined") return "unknown";
+  const ua = navigator.userAgent;
+  // Order matters: Edge and Opera both also claim to be Chrome.
+  if (/Edg\//i.test(ua)) return "Edge";
+  if (/OPR\//i.test(ua)) return "Opera";
+  if (/Firefox\//i.test(ua)) return "Firefox";
+  if (/Chrome\//i.test(ua)) return "Chrome";
+  if (/Safari\//i.test(ua)) return "Safari";
+  return "unknown";
 }
 
 function formatPauseTime(seconds: number): string {

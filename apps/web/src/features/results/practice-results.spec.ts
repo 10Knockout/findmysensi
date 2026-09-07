@@ -2,15 +2,13 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 describe("results terminology integrity", () => {
-  it("does not contain obsolete user-facing 'Practice Mode' or 'practice session' copy", () => {
+  it("uses truthful local-result and eligibility copy", () => {
     const source = readFileSync(
       new URL("./PracticeResults.tsx", import.meta.url),
       "utf8",
     );
-
     const normalizedSource = source.replace(/\s+/g, " ");
 
-    // Forbidden obsolete strings
     expect(normalizedSource).not.toContain(
       "Practice Mode (Offline / Not Synced)",
     );
@@ -18,14 +16,18 @@ describe("results terminology integrity", () => {
       "Results from your practice session.",
     );
     expect(normalizedSource).not.toContain("No recent practice run recorded.");
-
-    // Required truthful strings
     expect(normalizedSource).toContain("Local Result · Not Submitted");
     expect(normalizedSource).toContain(
-      "This run is stored locally. Official leaderboard verification is not enabled yet.",
+      "Run complete. This result is stored locally; official leaderboard verification is not enabled yet.",
     );
     expect(normalizedSource).toContain(
-      "No recent local {modeLabel} result found.",
+      "No recent local {resolvedTaskName} result found.",
+    );
+    expect(normalizedSource).toContain("Not leaderboard eligible");
+    expect(normalizedSource).toContain("submitPracticeRunV2");
+    expect(normalizedSource).toContain("Saved to Account · Practice");
+    expect(normalizedSource).toContain(
+      "Practice runs cannot enter the official leaderboard without authoritative Ranked verification.",
     );
   });
 

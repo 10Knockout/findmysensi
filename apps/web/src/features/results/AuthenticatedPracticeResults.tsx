@@ -6,7 +6,13 @@ import { BrowserApiClient } from "@findmysensi/api-client";
 import { PracticeResults } from "./PracticeResults.js";
 import { getPracticeResultsRoutes } from "./routes.js";
 
-export function AuthenticatedPracticeResults({ mode }: { mode: string }) {
+export function AuthenticatedPracticeResults({
+  mode,
+  taskName,
+}: {
+  mode: string;
+  taskName: string;
+}) {
   const router = useRouter();
   const [authorized, setAuthorized] = useState(false);
 
@@ -28,7 +34,7 @@ export function AuthenticatedPracticeResults({ mode }: { mode: string }) {
   }, [mode, router]);
 
   return authorized ? (
-    <PracticeResults mode={mode} />
+    <PracticeResults mode={mode} taskName={taskName} syncEnabled />
   ) : (
     <main className="min-h-screen bg-zinc-950 text-zinc-300 grid place-items-center">
       <p className="font-mono text-sm">Checking your session...</p>

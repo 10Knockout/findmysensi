@@ -45,7 +45,7 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
-function isPracticeSummaryRecord(
+export function isPracticeSummaryRecord(
   value: unknown,
 ): value is PracticeSummaryRecord {
   if (typeof value !== "object" || value === null) return false;
@@ -69,7 +69,9 @@ function isPracticeSummaryRecord(
       isFiniteNumber(record.shots) &&
       isFiniteNumber(record.misses) &&
       isFiniteNumber(record.accuracyPercentage) &&
-      isFiniteNumber(record.killsPerSecond)
+      isFiniteNumber(record.killsPerSecond) &&
+      (record.averageAcquisitionTicks === undefined ||
+        isFiniteNumber(record.averageAcquisitionTicks))
     );
   }
   if (TRACKING_MODE_IDS.has(record.modeId as PracticeSummaryRecord["modeId"])) {

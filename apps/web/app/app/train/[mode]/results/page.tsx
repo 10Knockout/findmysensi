@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { AuthenticatedPracticeResults } from "../../../../../src/features/results/AuthenticatedPracticeResults.js";
-import { isTrainerModeEnabled } from "../../../../../src/trainer/mode-manifest.js";
+import { trainerModeManifest } from "../../../../../src/trainer/mode-manifest.js";
 
 export default async function ResultsPage({
   params,
@@ -8,6 +8,12 @@ export default async function ResultsPage({
   params: Promise<{ mode: string }>;
 }) {
   const { mode } = await params;
-  if (!isTrainerModeEnabled(mode)) notFound();
-  return <AuthenticatedPracticeResults mode={mode} />;
+  const modeEntry = trainerModeManifest.get(mode);
+  if (!modeEntry?.enabled) notFound();
+  return (
+    <AuthenticatedPracticeResults
+      mode={mode}
+      taskName={modeEntry.scenarioEntry.presentation.title}
+    />
+  );
 }

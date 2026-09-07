@@ -1,0 +1,8 @@
+{
+  "status": "draft",
+  "v1Modified": false,
+  "practiceSync": "implemented-locally",
+  "competitiveSubmission": "disabled-pending-authoritative-verifier",
+  "securityReview": "pending",
+  "files": ["compatibility.md", "runs.md"]
+}
