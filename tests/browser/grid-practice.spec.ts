@@ -12,7 +12,6 @@ import {
   createReactionModeAdapter,
   createSmoothTrackModeAdapter,
   createSwitchTrackModeAdapter,
-  createTempoModeAdapter,
 } from "@findmysensi/trainer-runtime";
 import {
   BROWSER_GAIN_FIXED_POINT_SCALE,
@@ -118,7 +117,6 @@ describe("Grid Practice Run Flow & Lifecycle", () => {
 
   it.each([
     ["smooth-track", createSmoothTrackModeAdapter],
-    ["tempo", createTempoModeAdapter],
     ["microshot", createMicroshotModeAdapter],
     ["reaction", createReactionModeAdapter],
     ["switch-track", createSwitchTrackModeAdapter],

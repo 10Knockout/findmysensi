@@ -4,7 +4,6 @@ import { computeMultiDevScore } from "../src/multi/dev-v0.js";
 import { computeHeadlineDevScore } from "../src/headline/dev-v0.js";
 import { computeStrafeDevScore } from "../src/strafe/dev-v0.js";
 import { computeSmoothTrackDevScore } from "../src/smooth-track/dev-v0.js";
-import { computeTempoDevScore } from "../src/tempo/dev-v0.js";
 import type { FlickMetrics } from "@findmysensi/analytics";
 
 function makeFlickMetrics(overrides: Partial<FlickMetrics> = {}): FlickMetrics {
@@ -139,36 +138,5 @@ describe("Smooth Track Scoring", () => {
       maxErrorUnits: 300000,
     });
     expect(result.score).toBe(Math.floor(70000 * 0.9));
-  });
-});
-
-describe("Tempo Scoring", () => {
-  it("scores 1000 perfect + 500 early + 300 late + 0 miss", () => {
-    const result = computeTempoDevScore({
-      perfect: 10,
-      early: 5,
-      late: 3,
-      miss: 2,
-      totalBeats: 20,
-      perfectPercentage: 50,
-      hitPercentage: 90,
-    });
-    expect(result.score).toBe(10 * 1000 + 5 * 500 + 3 * 300);
-  });
-
-  it("applies 1.25x streak bonus for ≥10 consecutive perfects", () => {
-    const result = computeTempoDevScore(
-      {
-        perfect: 15,
-        early: 0,
-        late: 0,
-        miss: 0,
-        totalBeats: 15,
-        perfectPercentage: 100,
-        hitPercentage: 100,
-      },
-      12,
-    );
-    expect(result.score).toBe(Math.floor(15 * 1000 * 1.25));
   });
 });

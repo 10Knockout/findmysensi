@@ -10,7 +10,6 @@ const MODES = [
   "Headline",
   "Strafe",
   "Smooth Track",
-  "Tempo",
   "Microshot",
   "Reaction",
   "Switch Track",

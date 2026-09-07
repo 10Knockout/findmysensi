@@ -11,7 +11,6 @@ describe("trainer dashboard catalog", () => {
       "headline",
       "strafe",
       "smooth-track",
-      "tempo",
       "microshot",
       "reaction",
       "switch-track",

@@ -29,11 +29,6 @@ const TRAINING_MODES = [
   ],
   ["strafe", "Strafe", "Moving targets with reversals and changing speeds."],
   ["smooth-track", "Smooth Track", "Continuous tracking along a smooth path."],
-  [
-    "tempo",
-    "Tempo",
-    "Rhythmic clicks judged as perfect, early, late, or miss.",
-  ],
   ["microshot", "Microshot", "Tiny targets for fast, controlled corrections."],
   ["reaction", "Reaction", "Tick-timed visual reaction and acquisition."],
   ["switch-track", "Switch Track", "Acquire, hold, switch, and reacquire."],
@@ -153,6 +148,9 @@ export default function AppDashboardPage() {
             <Link href="/app/sensi-battle" className="app-chip">
               Sensi Battle
             </Link>
+            <Link href="/tools/mouse-swap" className="app-chip">
+              Mouse Swap
+            </Link>
             <Link href="/app/workouts" className="app-chip">
               Workouts
             </Link>
@@ -212,8 +210,8 @@ export default function AppDashboardPage() {
           <p className="app-section-label">Training</p>
           <h2 className="app-section-title">Aim Training</h2>
           <p className="app-section-copy">
-            Ten focused exercises. Results stay local until verified scoring
-            is enabled.
+            Ten focused exercises. Results stay local until verified scoring is
+            enabled.
           </p>
           <div className="app-mode-grid">
             {TRAINING_MODES.map(([modeId, title, description]) => (

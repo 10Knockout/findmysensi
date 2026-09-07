@@ -505,11 +505,9 @@ export class PracticeRunController {
         ...finalMetrics,
       };
     } else {
-      summary = {
-        ...summaryBase,
-        modeId: "tempo",
-        ...finalMetrics,
-      };
+      throw new Error(
+        `Unrecognized metrics shape for mode "${this.adapter.modeId}".`,
+      );
     }
     localPracticeHistory.save(summary);
 
@@ -527,7 +525,7 @@ export class PracticeRunController {
 
 type ClickModeId = Exclude<
   PracticeSummaryRecord["modeId"],
-  "smooth-track" | "tempo" | "switch-track"
+  "smooth-track" | "switch-track"
 >;
 
 function isClickMetrics(

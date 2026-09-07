@@ -53,17 +53,6 @@ export interface SmoothTrackPracticeSummary extends PracticeRunSummaryBase {
   readonly maxErrorUnits: number;
 }
 
-export interface TempoPracticeSummary extends PracticeRunSummaryBase {
-  readonly modeId: "tempo";
-  readonly perfect: number;
-  readonly early: number;
-  readonly late: number;
-  readonly miss: number;
-  readonly totalBeats: number;
-  readonly perfectPercentage: number;
-  readonly hitPercentage: number;
-}
-
 export interface SwitchTrackPracticeSummary extends PracticeRunSummaryBase {
   readonly modeId: "switch-track";
   readonly switchesCompleted: number;
@@ -84,5 +73,4 @@ export type PracticeSummaryRecord =
   | MicroshotPracticeSummary
   | ReactionPracticeSummary
   | SmoothTrackPracticeSummary
-  | TempoPracticeSummary
   | SwitchTrackPracticeSummary;

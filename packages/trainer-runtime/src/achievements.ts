@@ -23,8 +23,7 @@ export interface AchievementDefinition {
   readonly id: string;
   readonly name: string;
   readonly description: string;
-  readonly category:
-    "volume" | "accuracy" | "coverage" | "tracking" | "tempo" | "rank";
+  readonly category: "volume" | "accuracy" | "coverage" | "tracking" | "rank";
   readonly isUnlocked: (
     history: readonly PracticeSummaryRecord[],
     lifetime: LifetimeStats,
@@ -50,7 +49,6 @@ export const ALL_MODE_IDS: readonly PracticeSummaryRecord["modeId"][] = [
   "microshot",
   "reaction",
   "smooth-track",
-  "tempo",
   "switch-track",
 ];
 
@@ -101,17 +99,6 @@ function bestOnTargetPercentage(
         r.modeId === modeId,
     )
     .reduce((max, r) => Math.max(max, r.onTargetPercentage), 0);
-}
-
-function bestPerfectPercentage(
-  history: readonly PracticeSummaryRecord[],
-): number {
-  return history
-    .filter(
-      (r): r is Extract<PracticeSummaryRecord, { modeId: "tempo" }> =>
-        r.modeId === "tempo",
-    )
-    .reduce((max, r) => Math.max(max, r.perfectPercentage), 0);
 }
 
 export const ACHIEVEMENT_DEFINITIONS: readonly AchievementDefinition[] = [
@@ -232,7 +219,7 @@ export const ACHIEVEMENT_DEFINITIONS: readonly AchievementDefinition[] = [
   {
     id: "coverage-all-modes",
     name: "Completionist",
-    description: "Play all 10 exercises at least once.",
+    description: "Play all 9 exercises at least once.",
     category: "coverage",
     isUnlocked: (h) => distinctModesPlayed(h).size >= ALL_MODE_IDS.length,
   },
@@ -271,21 +258,6 @@ export const ACHIEVEMENT_DEFINITIONS: readonly AchievementDefinition[] = [
     description: "Hold 75%+ on-target time in a Switch Track run.",
     category: "tracking",
     isUnlocked: (h) => bestOnTargetPercentage(h, "switch-track") >= 75,
-  },
-  // Tempo
-  {
-    id: "tempo-perfect-70",
-    name: "On the Beat",
-    description: "Score 70%+ perfect hits in a Tempo run.",
-    category: "tempo",
-    isUnlocked: (h) => bestPerfectPercentage(h) >= 70,
-  },
-  {
-    id: "tempo-perfect-90",
-    name: "Metronome",
-    description: "Score 90%+ perfect hits in a Tempo run.",
-    category: "tempo",
-    isUnlocked: (h) => bestPerfectPercentage(h) >= 90,
   },
   // Rank
   {

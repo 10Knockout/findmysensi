@@ -9,7 +9,6 @@ import {
   createSmoothTrackModeAdapter,
   createStrafeModeAdapter,
   createSwitchTrackModeAdapter,
-  createTempoModeAdapter,
   ModeRuntimeAdapter,
 } from "@findmysensi/trainer-runtime";
 
@@ -52,7 +51,6 @@ export const trainerModeManifest: ReadonlyMap<
     "smooth-track",
     buildEntry("smooth-track", true, createSmoothTrackModeAdapter),
   ],
-  ["tempo", buildEntry("tempo", true, createTempoModeAdapter)],
   ["microshot", buildEntry("microshot", true, createMicroshotModeAdapter)],
   ["reaction", buildEntry("reaction", true, createReactionModeAdapter)],
   [

@@ -4,7 +4,9 @@ import React, { useMemo, useState } from "react";
 import { BrowserApiClient } from "@findmysensi/api-client";
 import { TrainerSettings } from "@findmysensi/protocol";
 import {
+  DEFAULT_BROWSER_INPUT_CALIBRATION_SCALE,
   SENSITIVITY_PROFILES,
+  applyBrowserInputCalibration,
   convertSensitivity,
   type VerifiedSensitivityProfileId,
 } from "@findmysensi/sensitivity";
@@ -70,6 +72,18 @@ export function QuickSetupModal({
     }
   }, [dpi, sourceGame, sourceSensitivity]);
 
+  const canonicalSensitivity = conversion
+    ? Number(conversion.formattedTargetSensitivity)
+    : null;
+  const calibratedSensitivity =
+    canonicalSensitivity !== null && Number.isFinite(canonicalSensitivity)
+      ? applyBrowserInputCalibration(canonicalSensitivity)
+      : null;
+  const calibratedSensitivityText =
+    calibratedSensitivity !== null
+      ? Number(calibratedSensitivity.toFixed(6)).toString()
+      : null;
+
   if (!isOpen) return null;
 
   const handleGameSelect = (gameId: VerifiedSensitivityProfileId) => {
@@ -82,6 +96,7 @@ export function QuickSetupModal({
     const parsedFov = Number(fov);
     if (
       !conversion ||
+      !calibratedSensitivityText ||
       !Number.isInteger(parsedDpi) ||
       parsedDpi < 100 ||
       parsedDpi > 100_000 ||
@@ -98,7 +113,7 @@ export function QuickSetupModal({
     try {
       const updated: TrainerSettings = {
         ...currentSettings,
-        fmsSensitivity: conversion.formattedTargetSensitivity,
+        fmsSensitivity: calibratedSensitivityText,
         nominalDpi: parsedDpi,
         fovDegrees: parsedFov,
       };
@@ -297,7 +312,7 @@ export function QuickSetupModal({
                   fontSize: 24,
                 }}
               >
-                {conversion?.formattedTargetSensitivity ?? "--"}
+                {calibratedSensitivityText ?? "--"}
               </span>
             </div>
             <div>
@@ -310,10 +325,10 @@ export function QuickSetupModal({
             </div>
           </div>
           <p className="app-help" style={{ marginTop: 10 }}>
-            Example: Valorant 0.125 becomes FindMySensi 0.175 at the same DPI.
-            In Aimlabs, compare that 0.175 only in the Aimlabs Default profile.
-            If Aimlabs is using its Valorant profile, enter the original 0.125
-            instead.
+            Example: Valorant 0.125 becomes FindMySensi 0.245 at the same DPI.
+            That is the 0.175 cm/360 match ×{" "}
+            {DEFAULT_BROWSER_INPUT_CALIBRATION_SCALE} browser input calibration,
+            so the on-screen turn matches your game.
           </p>
         </div>
 

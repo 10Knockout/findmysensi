@@ -8,14 +8,13 @@ const REAL_MODE_IDS = new Set([
   "headline",
   "strafe",
   "smooth-track",
-  "tempo",
   "microshot",
   "reaction",
   "switch-track",
 ]);
 
 describe("WORKOUT_DEFINITIONS", () => {
-  it("every workout draws only from the fixed 10-exercise catalog", () => {
+  it("every workout draws only from the fixed exercise catalog", () => {
     for (const workout of WORKOUT_DEFINITIONS) {
       expect(workout.modeIds.length).toBeGreaterThan(0);
       for (const modeId of workout.modeIds) {

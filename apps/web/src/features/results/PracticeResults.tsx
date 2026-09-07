@@ -28,10 +28,7 @@ export function PracticeResults({ mode = "grid" }: { mode?: string }) {
     <div className="app-card app-card-wide" style={{ margin: "60px auto" }}>
       <div className="app-results-tag">Local Result · Not Submitted</div>
 
-      <h1
-        className="app-heading"
-        style={{ fontSize: "clamp(30px,4vw,40px)" }}
-      >
+      <h1 className="app-heading" style={{ fontSize: "clamp(30px,4vw,40px)" }}>
         Run Complete
       </h1>
       <p className="app-subtext">
@@ -51,9 +48,7 @@ export function PracticeResults({ mode = "grid" }: { mode?: string }) {
           ))}
         </div>
       ) : (
-        <p className="app-subtext">
-          No recent local {modeLabel} result found.
-        </p>
+        <p className="app-subtext">No recent local {modeLabel} result found.</p>
       )}
 
       <div className="app-results-actions">
@@ -80,14 +75,6 @@ function getResultStats(record: PracticeSummaryRecord): [string, string][] {
       ["On Target", `${record.onTargetPercentage}%`],
       ["Average Error", record.averageErrorUnits.toLocaleString()],
       ["Max Error", record.maxErrorUnits.toLocaleString()],
-    ];
-  }
-  if (record.modeId === "tempo") {
-    return [
-      score,
-      ["Perfect", `${record.perfectPercentage}%`],
-      ["Perfect / Early", `${record.perfect} / ${record.early}`],
-      ["Late / Miss", `${record.late} / ${record.miss}`],
     ];
   }
   if (record.modeId === "switch-track") {

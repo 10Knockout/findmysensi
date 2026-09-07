@@ -3,7 +3,9 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
+  DEFAULT_BROWSER_INPUT_CALIBRATION_SCALE,
   SENSITIVITY_PROFILES,
+  applyBrowserInputCalibration,
   convertSensitivity,
   type VerifiedSensitivityProfileId,
 } from "@findmysensi/sensitivity";
@@ -46,6 +48,14 @@ export default function SensitivityConverterPage() {
     }
   }, [sourceDpi, sourceGame, sourceSensitivity]);
 
+  const canonicalSensitivity = result
+    ? Number(result.formattedTargetSensitivity)
+    : null;
+  const calibratedSensitivity =
+    canonicalSensitivity !== null && Number.isFinite(canonicalSensitivity)
+      ? applyBrowserInputCalibration(canonicalSensitivity)
+      : null;
+
   return (
     <main className="min-h-screen bg-zinc-950 px-6 py-10 text-zinc-100">
       <div className="mx-auto max-w-4xl">
@@ -60,6 +70,15 @@ export default function SensitivityConverterPage() {
             <h1 className="mt-2 text-3xl font-black text-white sm:text-4xl">
               FindMySensi Converter
             </h1>
+            <p className="mt-2 text-sm text-zinc-400">
+              Switched mouse or DPI?{" "}
+              <Link
+                href="/tools/mouse-swap"
+                className="font-semibold text-emerald-400 hover:underline"
+              >
+                Mouse Swap →
+              </Link>
+            </p>
           </div>
           <div className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 font-mono text-xs text-zinc-400">
             HIPFIRE • SAME DPI
@@ -125,18 +144,33 @@ export default function SensitivityConverterPage() {
               data-testid="fms-sensitivity-result"
               className="mt-3 font-mono text-5xl font-black text-emerald-400 sm:text-6xl"
             >
-              {result?.formattedTargetSensitivity ?? "—"}
+              {calibratedSensitivity !== null
+                ? formatSensitivity(calibratedSensitivity)
+                : "—"}
             </div>
+            {canonicalSensitivity !== null ? (
+              <div
+                data-testid="fms-sensitivity-canonical"
+                className="mt-2 font-mono text-xs text-zinc-500"
+              >
+                cm/360 match {formatSensitivity(canonicalSensitivity)} ×{" "}
+                {DEFAULT_BROWSER_INPUT_CALIBRATION_SCALE} browser calibration
+              </div>
+            ) : null}
             <p className="mt-4 text-sm leading-6 text-zinc-300">
               Enter this number once in FindMySensi. Every training game uses
-              it. No source-game profile remains active during training. In
-              Aimlabs, use that number only with its Default profile; its
-              Valorant profile expects the original Valorant number.
+              it. It already includes this browser&apos;s input calibration, so
+              your on-screen turn matches your game even though a browser
+              reports mouse movement differently from a native client. No
+              source-game profile stays active during training.
             </p>
             <div className="mt-6 rounded-xl border border-zinc-800 bg-black/30 p-4">
               <div className="text-xs text-zinc-500">Required example</div>
               <div className="mt-1 font-mono font-bold text-white">
-                Valorant 0.125 = FindMySensi 0.175
+                Valorant 0.125 = FindMySensi 0.245
+              </div>
+              <div className="mt-1 font-mono text-xs text-zinc-500">
+                0.175 cm/360 match × {DEFAULT_BROWSER_INPUT_CALIBRATION_SCALE}
               </div>
             </div>
           </section>
@@ -225,3 +259,7 @@ function Metric({ label, value }: { label: string; value: string }) {
 
 const inputClass =
   "w-full rounded-lg border border-zinc-700 bg-black/50 px-4 py-3 text-white outline-none focus:border-emerald-400";
+
+function formatSensitivity(value: number): string {
+  return Number(value.toFixed(6)).toString();
+}

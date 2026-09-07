@@ -134,7 +134,7 @@ describe("Privacy-Safe Local Practice History", () => {
     expect(history.getAll("grid")).toEqual([]);
   });
 
-  it("restores valid tracking and tempo summaries from local storage", () => {
+  it("restores valid tracking summaries from local storage", () => {
     const base = {
       timestamp: 1,
       score: 100,
@@ -154,18 +154,6 @@ describe("Privacy-Safe Local Practice History", () => {
         averageErrorUnits: 10,
         maxErrorUnits: 20,
       },
-      {
-        ...base,
-        id: "tempo",
-        modeId: "tempo",
-        perfect: 1,
-        early: 2,
-        late: 3,
-        miss: 4,
-        totalBeats: 10,
-        perfectPercentage: 10,
-        hitPercentage: 60,
-      },
     ];
     vi.stubGlobal("window", {
       localStorage: {
@@ -177,6 +165,5 @@ describe("Privacy-Safe Local Practice History", () => {
 
     const history = new LocalPracticeHistory();
     expect(history.getAll("smooth-track")[0]?.id).toBe("track");
-    expect(history.getAll("tempo")[0]?.id).toBe("tempo");
   });
 });

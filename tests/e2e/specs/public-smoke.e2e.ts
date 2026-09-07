@@ -50,13 +50,16 @@ test("converter maps Valorant into the single FindMySensi sensitivity scale", as
   const response = await page.goto("/tools/converter");
   expect(response?.ok()).toBe(true);
   await expect(page.getByLabel("SENSITIVITY")).toHaveValue("0.125");
-  await expect(page.getByTestId("fms-sensitivity-result")).toHaveText("0.175");
+  await expect(page.getByTestId("fms-sensitivity-result")).toHaveText("0.245");
+  await expect(page.getByTestId("fms-sensitivity-canonical")).toContainText(
+    "0.175",
+  );
   await expect(
     page.getByText("Every training game uses it.", { exact: false }),
   ).toBeVisible();
 
   await page.getByLabel("SENSITIVITY").fill("0.25");
-  await expect(page.getByTestId("fms-sensitivity-result")).toHaveText("0.35");
+  await expect(page.getByTestId("fms-sensitivity-result")).toHaveText("0.49");
   expect(browserErrors).toEqual([]);
 });
 

@@ -66,26 +66,8 @@ describe("PracticeSummaryRecord discriminated union", () => {
       inputOverflowEvents: 0,
       inputHighWaterMark: 1,
     };
-    const tempo: PracticeSummaryRecord = {
-      id: "run-tempo",
-      modeId: "tempo",
-      timestamp: 2,
-      score: 1_000,
-      durationSeconds: 60,
-      perfect: 1,
-      early: 0,
-      late: 0,
-      miss: 0,
-      totalBeats: 1,
-      perfectPercentage: 100,
-      hitPercentage: 100,
-      exactReplayPreserved: true,
-      inputOverflowEvents: 0,
-      inputHighWaterMark: 1,
-    };
 
     expect(tracking.modeId).toBe("smooth-track");
-    expect(tempo.modeId).toBe("tempo");
   });
 
   it("accepts a switch-tracking summary", () => {

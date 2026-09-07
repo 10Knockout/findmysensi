@@ -113,6 +113,33 @@ Aimlabs' displayed `0.175` in that profile is `0.245` on the Default/FMS scale
 (`0.175 × 0.07 / 0.05`). The remaining difference between `0.245` and the rough
 hand estimate is not evidence for a browser-wide multiplier.
 
+## Browser input calibration layer
+
+`packages/sensitivity/src/browser-calibration.ts` adds one explicit factor
+between the canonical cross-game result and the number a player types into
+FindMySensi. Rationale: the web platform does not guarantee that one Pointer
+Lock `movementX` unit equals one hardware mouse count (MDN documents the unit
+as browser- and OS-dependent), so the "type this in" value can differ from the
+canonical cm/360-matching value by a constant per-platform scale.
+
+- Default scale: `1.4` (`DEFAULT_BROWSER_INPUT_CALIBRATION_SCALE`), from the
+  product owner's repeated physical match of Valorant `0.125` / Aimlabs
+  `0.175` against FindMySensi `0.245` on Chrome + Windows (`0.245 / 0.175`).
+- Applied by the converter UI (`/tools/converter`) and Quick Setup only. A
+  visitor entering Valorant `0.125` is shown FindMySensi `0.245`, and the
+  page also shows the canonical `0.175` cm/360 value beside it.
+- The canonical layer is unchanged. `convertSensitivity`,
+  `gameSensitivityToFms`, `sensitivityToCmPer360`, the yaw constants, and
+  `converters.spec.ts` still return and assert `Valorant 0.125 -> 0.175`.
+- Not independently verified. `0.245` is also exactly the value of Aimlabs'
+  `VALORANT` profile at `0.175` on the Default/FMS scale, so the wrong-profile
+  explanation in "Frozen regression vectors" above remains equally consistent
+  with the evidence. Set the scale to `1`
+  (`IDENTITY_BROWSER_INPUT_CALIBRATION`) to make canonical == typed value.
+- `browser-calibration.spec.ts` freezes the `1.4` default, the Valorant /
+  Aimlabs / CS2 / Apex mappings through it, the apply/remove round trip, and
+  the `0.25 - 4` trusted-scale bound.
+
 ## PUBG hold
 
 No official current formula or sufficiently complete agreeing set of observable

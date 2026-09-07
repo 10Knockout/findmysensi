@@ -10,7 +10,6 @@ describe("Trainer mode manifest", () => {
       "headline",
       "strafe",
       "smooth-track",
-      "tempo",
       "microshot",
       "reaction",
       "switch-track",
@@ -20,14 +19,13 @@ describe("Trainer mode manifest", () => {
     }
   });
 
-  it("enables all seven completed practice modes", () => {
+  it("enables every completed practice mode", () => {
     expect(isTrainerModeEnabled("grid")).toBe(true);
     expect(isTrainerModeEnabled("pinpoint")).toBe(true);
     expect(isTrainerModeEnabled("multi")).toBe(true);
     expect(isTrainerModeEnabled("headline")).toBe(true);
     expect(isTrainerModeEnabled("strafe")).toBe(true);
     expect(isTrainerModeEnabled("smooth-track")).toBe(true);
-    expect(isTrainerModeEnabled("tempo")).toBe(true);
     expect(isTrainerModeEnabled("microshot")).toBe(true);
     expect(isTrainerModeEnabled("reaction")).toBe(true);
     expect(isTrainerModeEnabled("switch-track")).toBe(true);
@@ -44,7 +42,6 @@ describe("Trainer mode manifest", () => {
     "headline",
     "strafe",
     "smooth-track",
-    "tempo",
     "microshot",
     "reaction",
     "switch-track",

@@ -1098,12 +1098,11 @@ function getRuntimeHudItems(
       ["AVG ERROR", metrics.averageErrorUnits.toLocaleString()],
     ];
   }
+  // Every shipped metric family is handled above; this keeps the HUD total
+  // rather than blanking mid-run if a new family lands without a branch.
   return [
-    ["PERFECT", `${metrics.perfectPercentage}%`],
-    [
-      "P / E / L / M",
-      `${metrics.perfect} / ${metrics.early} / ${metrics.late} / ${metrics.miss}`,
-    ],
+    ["ACCURACY", "--"],
+    ["HITS / MISS", "--"],
   ];
 }
 

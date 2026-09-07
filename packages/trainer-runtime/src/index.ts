@@ -6,7 +6,6 @@ export * from "./multi-adapter.js";
 export * from "./headline-adapter.js";
 export * from "./strafe-adapter.js";
 export * from "./smooth-track-adapter.js";
-export * from "./tempo-adapter.js";
 export * from "./microshot-adapter.js";
 export * from "./reaction-adapter.js";
 export * from "./switch-track-adapter.js";

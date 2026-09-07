@@ -7,7 +7,7 @@ export type SkillCategory = "flick" | "precision" | "switching" | "tracking";
  * Which of each category's real exercises currently share the click-family
  * accuracyPercentage metric. Mirrors the actual presentation.category
  * values already registered in @findmysensi/scenarios -- not a separate,
- * invented grouping. Modes without a shared metric (Tempo, Smooth Track,
+ * invented grouping. Modes without a shared metric (Smooth Track,
  * Switch Track) are real members of these categories but do not yet
  * contribute a comparable number; adding their own metric families to this
  * benchmark is future work, not something to fake here.

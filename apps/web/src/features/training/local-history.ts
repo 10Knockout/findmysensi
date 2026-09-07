@@ -73,17 +73,6 @@ function isPracticeSummaryRecord(
       isFiniteNumber(record.maxErrorUnits)
     );
   }
-  if (record.modeId === "tempo") {
-    return (
-      isFiniteNumber(record.perfect) &&
-      isFiniteNumber(record.early) &&
-      isFiniteNumber(record.late) &&
-      isFiniteNumber(record.miss) &&
-      isFiniteNumber(record.totalBeats) &&
-      isFiniteNumber(record.perfectPercentage) &&
-      isFiniteNumber(record.hitPercentage)
-    );
-  }
   if (record.modeId === "switch-track") {
     return (
       isFiniteNumber(record.switchesCompleted) &&

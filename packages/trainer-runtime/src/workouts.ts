@@ -4,12 +4,12 @@ export interface WorkoutDefinition {
   readonly id: string;
   readonly title: string;
   readonly description: string;
-  /** Ordered sequence of exercises to play, drawn only from the fixed 10-mode catalog. */
+  /** Ordered sequence of exercises to play, drawn only from the fixed mode catalog. */
   readonly modeIds: readonly PracticeSummaryRecord["modeId"][];
 }
 
 /**
- * Curated preset workouts. Every mode id here must be one of the 10 real,
+ * Curated preset workouts. Every mode id here must be one of the real,
  * shipped exercises -- no user-generated content, no custom exercise
  * creation. Ordering is deliberate (warm-up-style progression within each
  * workout), not alphabetical or arbitrary.
@@ -39,8 +39,15 @@ export const WORKOUT_DEFINITIONS: readonly WorkoutDefinition[] = [
     id: "complete-aim-workout",
     title: "Complete Aim Workout",
     description:
-      "One pass through every skill category: flick, precision, switching, tracking, and timing.",
-    modeIds: ["grid", "pinpoint", "multi", "smooth-track", "tempo", "reaction"],
+      "One pass through every skill category: flick, precision, switching, and tracking.",
+    modeIds: [
+      "grid",
+      "pinpoint",
+      "multi",
+      "smooth-track",
+      "switch-track",
+      "reaction",
+    ],
   },
 ];
 

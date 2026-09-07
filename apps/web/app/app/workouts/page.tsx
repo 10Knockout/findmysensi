@@ -14,7 +14,6 @@ const MODE_TITLES: Record<string, string> = {
   headline: "Headline",
   strafe: "Strafe",
   "smooth-track": "Smooth Track",
-  tempo: "Tempo",
   microshot: "Microshot",
   reaction: "Reaction",
   "switch-track": "Switch Track",
@@ -84,8 +83,8 @@ export default function WorkoutsPage() {
           Workouts
         </h1>
         <p className="app-section-copy">
-          Curated sequences from the 10 exercise catalog. Play each exercise
-          in order; there is no auto-advance yet.
+          Curated sequences from the 9 exercise catalog. Play each exercise in
+          order; there is no auto-advance yet.
         </p>
 
         {WORKOUT_DEFINITIONS.map((workout) => (

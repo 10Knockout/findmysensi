@@ -3,7 +3,6 @@ import type {
   GridMetrics,
   MissDirection,
   SwitchTrackMetrics,
-  TempoMetrics,
   TrackingMetrics,
 } from "@findmysensi/analytics";
 import type { Tick } from "@findmysensi/protocol";
@@ -14,7 +13,7 @@ import type {
 
 export type ClickMetrics = GridMetrics;
 export type RuntimeMetrics =
-  ClickMetrics | TrackingMetrics | TempoMetrics | SwitchTrackMetrics;
+  ClickMetrics | TrackingMetrics | SwitchTrackMetrics;
 
 export interface RuntimeScoreResult<
   TMetrics extends RuntimeMetrics = RuntimeMetrics,
@@ -55,8 +54,8 @@ export interface ModeRuntimeAdapter<
  * Optional capability: adapters for click-discrete modes with a meaningful
  * spatial miss (a shot fired at open space, near a real target) can
  * implement this to expose a "why did I miss" breakdown. Not part of
- * ModeRuntimeAdapter itself -- modes without a spatial miss concept (Tempo's
- * timing judgement, Smooth Track's continuous tracking) never implement it.
+ * ModeRuntimeAdapter itself -- modes without a spatial miss concept (Smooth
+ * Track's continuous tracking) never implement it.
  * Callers feature-detect with `"getMissBreakdown" in adapter`.
  */
 export interface MissBreakdownCapable {

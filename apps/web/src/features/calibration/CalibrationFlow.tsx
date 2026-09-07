@@ -11,19 +11,48 @@ import {
   buildCandidateOrder,
   decideBattle,
   generateSensitivityCandidates,
-  recommendSensitivity,
+  recommendSensitivityAcrossModes,
   type BattleDecision,
   type CandidateResult,
+  type ModeCandidateScore,
+  type MultiModeRecommendation,
   type RuntimeScoreResult,
-  type SensitivityRecommendation,
 } from "@findmysensi/trainer-runtime";
 import { TrainerBootstrap } from "../../trainer/TrainerBootstrap.js";
 
-const BLOCK_DURATION_TICKS = 15 * 128;
+const BATTLE_BLOCK_DURATION_TICKS = 15 * 128;
+const FIND_BLOCK_DURATION_TICKS = 12 * 128;
+
+// Five families that stress different parts of aim: flicking, target
+// selection, moving targets, smooth tracking, and reaction acquisition. A
+// sensitivity that only wins at Gridshot is not the one to keep.
+const FIND_MODES = [
+  "grid",
+  "multi",
+  "strafe",
+  "smooth-track",
+  "reaction",
+] as const;
+type FindModeId = (typeof FIND_MODES)[number];
+const FIND_MODE_LABELS: Record<FindModeId, string> = {
+  grid: "Gridshot",
+  multi: "Multishot",
+  strafe: "Strafe",
+  "smooth-track": "Tracking",
+  reaction: "Reaction",
+};
+
+// Most players track moving targets poorly at every sensitivity, so a
+// Tracking block says more about raw skill than about fit. It still counts,
+// at half weight, so it can break a tie without dominating the result.
+const FIND_MODE_WEIGHTS: Partial<Record<FindModeId, number>> = {
+  "smooth-track": 0.5,
+};
 
 interface CalibrationBlock {
   readonly id: string;
   readonly sensitivity: number;
+  readonly modeId: string;
 }
 
 export function CalibrationFlow({ kind }: { kind: "find" | "battle" }) {
@@ -33,8 +62,11 @@ export function CalibrationFlow({ kind }: { kind: "find" | "battle" }) {
   const [blocks, setBlocks] = useState<readonly CalibrationBlock[]>([]);
   const [blockIndex, setBlockIndex] = useState(0);
   const [results, setResults] = useState<readonly CandidateResult[]>([]);
+  const [modeScores, setModeScores] = useState<readonly ModeCandidateScore[]>(
+    [],
+  );
   const [recommendation, setRecommendation] =
-    useState<SensitivityRecommendation | null>(null);
+    useState<MultiModeRecommendation | null>(null);
   const [battleDecision, setBattleDecision] = useState<BattleDecision | null>(
     null,
   );
@@ -98,13 +130,27 @@ export function CalibrationFlow({ kind }: { kind: "find" | "battle" }) {
         );
         return;
       }
-      const order = buildCandidateOrder(candidates.length, seed);
-      setBlocks(
-        order.map((candidateIndex, index) => ({
-          id: `block-${index + 1}`,
-          sensitivity: candidates[candidateIndex]!,
-        })),
-      );
+      const built: CalibrationBlock[] = [];
+      FIND_MODES.forEach((modeId, modeIndex) => {
+        // Shuffle each mode's five candidates independently so block order is
+        // counterbalanced within every mode, not just once overall.
+        const modeSeed: readonly [number, number, number, number] = [
+          (seed[0] ^ (modeIndex * 0x9e3779b1)) >>> 0,
+          (seed[1] + modeIndex * 0x85ebca6b) >>> 0,
+          (seed[2] ^ ((modeIndex + 1) * 0xc2b2ae35)) >>> 0,
+          (seed[3] + modeIndex + 1) >>> 0,
+        ];
+        buildCandidateOrder(candidates.length, modeSeed).forEach(
+          (candidateIndex, blockIndex) => {
+            built.push({
+              id: `${modeId}-${blockIndex + 1}`,
+              sensitivity: candidates[candidateIndex]!,
+              modeId,
+            });
+          },
+        );
+      });
+      setBlocks(built);
     } else {
       const a = parseSensitivity(candidateA);
       const b = parseSensitivity(candidateB);
@@ -114,12 +160,17 @@ export function CalibrationFlow({ kind }: { kind: "find" | "battle" }) {
       }
       const values = { A: a, B: b } as const;
       setBlocks(
-        buildBattleOrder(seed).map((id) => ({ id, sensitivity: values[id] })),
+        buildBattleOrder(seed).map((id) => ({
+          id,
+          sensitivity: values[id],
+          modeId: "grid",
+        })),
       );
     }
     setError(null);
     setBlockIndex(0);
     setResults([]);
+    setModeScores([]);
     setRecommendation(null);
     setBattleDecision(null);
     setSaved(false);
@@ -127,7 +178,34 @@ export function CalibrationFlow({ kind }: { kind: "find" | "battle" }) {
 
   const completeBlock = useCallback(
     (score: RuntimeScoreResult) => {
-      if (!currentBlock || !("accuracyPercentage" in score.metrics)) return;
+      if (!currentBlock) return;
+
+      if (kind === "find") {
+        // score.score is the one number every mode adapter reports; raw
+        // ranges differ per mode and are normalized later.
+        const nextScores = [
+          ...modeScores,
+          {
+            modeId: currentBlock.modeId,
+            sensitivity: currentBlock.sensitivity,
+            score: score.score,
+          },
+        ];
+        setModeScores(nextScores);
+        if (blockIndex + 1 < blocks.length) {
+          setBlockIndex(blockIndex + 1);
+          return;
+        }
+        setRecommendation(
+          recommendSensitivityAcrossModes(nextScores, {
+            startingSensitivity: Number(settings?.fmsSensitivity ?? "1"),
+            weights: FIND_MODE_WEIGHTS,
+          }),
+        );
+        return;
+      }
+
+      if (!("accuracyPercentage" in score.metrics)) return;
       const nextResults = [
         ...results,
         {
@@ -140,29 +218,17 @@ export function CalibrationFlow({ kind }: { kind: "find" | "battle" }) {
         setBlockIndex(blockIndex + 1);
         return;
       }
-      if (kind === "find") {
-        setRecommendation(recommendSensitivity(nextResults));
-      } else {
-        const byId = new Map(
-          blocks.map(
-            (block, index) => [block.id, nextResults[index]!] as const,
-          ),
-        );
-        setBattleDecision(
-          decideBattle(
-            {
-              id: "A",
-              accuracyPercentage: byId.get("A")!.accuracyPercentage,
-            },
-            {
-              id: "B",
-              accuracyPercentage: byId.get("B")!.accuracyPercentage,
-            },
-          ),
-        );
-      }
+      const byId = new Map(
+        blocks.map((block, index) => [block.id, nextResults[index]!] as const),
+      );
+      setBattleDecision(
+        decideBattle(
+          { id: "A", accuracyPercentage: byId.get("A")!.accuracyPercentage },
+          { id: "B", accuracyPercentage: byId.get("B")!.accuracyPercentage },
+        ),
+      );
     },
-    [blockIndex, blocks, currentBlock, kind, results],
+    [blockIndex, blocks, currentBlock, kind, modeScores, results, settings],
   );
 
   const selectedSensitivity = useMemo(() => {
@@ -196,6 +262,7 @@ export function CalibrationFlow({ kind }: { kind: "find" | "battle" }) {
     setBlocks([]);
     setBlockIndex(0);
     setResults([]);
+    setModeScores([]);
     setRecommendation(null);
     setBattleDecision(null);
     setError(null);
@@ -208,11 +275,22 @@ export function CalibrationFlow({ kind }: { kind: "find" | "battle" }) {
   if (currentBlock && !recommendation && !battleDecision) {
     return (
       <TrainerBootstrap
-        mode="grid"
-        durationTicks={BLOCK_DURATION_TICKS}
+        mode={currentBlock.modeId}
+        durationTicks={
+          kind === "find"
+            ? FIND_BLOCK_DURATION_TICKS
+            : BATTLE_BLOCK_DURATION_TICKS
+        }
         sensitivityOverride={formatSensitivity(currentBlock.sensitivity)}
         settingsOverride={settings}
-        runLabel={`${title}: block ${blockIndex + 1} of ${blocks.length}`}
+        runLabel={
+          kind === "find"
+            ? `${title}: ${
+                FIND_MODE_LABELS[currentBlock.modeId as FindModeId] ??
+                currentBlock.modeId
+              }, block ${blockIndex + 1} of ${blocks.length}`
+            : `${title}: block ${blockIndex + 1} of ${blocks.length}`
+        }
         onRunComplete={completeBlock}
         lockedConfiguration
       />
@@ -299,7 +377,7 @@ export function CalibrationFlow({ kind }: { kind: "find" | "battle" }) {
         <h1 className="app-heading">{title}</h1>
         <p className="app-subtext">
           {kind === "find"
-            ? "Run five blinded 15-second Gridshot blocks. Recommendation uses measured accuracy only."
+            ? "Run 25 blinded 12-second blocks: five sensitivities across Gridshot, Multishot, Strafe, Tracking, and Reaction. Each mode is scored on its own scale, then combined. Tracking counts half -- most players track moving targets poorly at any sensitivity."
             : "Run two counterbalanced 15-second Gridshot blocks. Gaps under 3 points return no winner."}
         </p>
         {kind === "battle" ? (
