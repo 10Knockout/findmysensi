@@ -12,12 +12,15 @@ export const MICROSHOT_DEV_V0_DEFINITION: RankedScenarioDefinition = {
   engineVersion: 1,
   scoringVersion: 0,
   durationTicks: 128 * 60,
+  // Micro Flick spec: 1.6 deg diameter, alternating between a centre anchor
+  // and a peripheral target 4-12 deg away. The offset band is carried in
+  // minTargetSeparationUnits (4 deg) and half the spawn width (12 deg).
   simulation: {
     maxActiveTargets: 1,
-    targetRadiusAngleUnits: 10_000,
-    spawnAreaWidthUnits: 360_000,
-    spawnAreaHeightUnits: 360_000,
-    minTargetSeparationUnits: 50_000,
+    targetRadiusAngleUnits: 37_283,
+    spawnAreaWidthUnits: 1_118_481,
+    spawnAreaHeightUnits: 1_118_481,
+    minTargetSeparationUnits: 186_414,
   },
   rankedSettings: {
     rankedEnabled: false,
@@ -29,10 +32,10 @@ export const MICROSHOT_DEV_V0_DEFINITION: RankedScenarioDefinition = {
 export const MICROSHOT_DEV_V0_ENTRY: ScenarioEntry = {
   definition: MICROSHOT_DEV_V0_DEFINITION,
   presentation: {
-    title: "Microshot (Dev v0)",
-    subtitle: "Small Correction Precision",
+    title: "Micro Flick",
+    subtitle: "Short-Range Corrections",
     description:
-      "Make fast, precise micro-corrections as each tiny target appears near your last hit.",
+      "Rapidly make tiny corrections around your crosshair. Designed for precise wrist and fingertip adjustments.",
     category: "precision",
     thumbnailUrl: "/thumbnails/microshot.webp",
     tags: ["microshot", "precision", "correction", "practice"],
@@ -41,12 +44,28 @@ export const MICROSHOT_DEV_V0_ENTRY: ScenarioEntry = {
 
 defaultScenarioRegistry.register(MICROSHOT_DEV_V0_ENTRY);
 
+/**
+ * Micro Flick alternates between a fixed centre anchor and a peripheral
+ * target a short distance away:
+ *
+ *   centre -> peripheral -> centre -> peripheral -> ...
+ *
+ * The centre target always sits at (0, 0), so every peripheral flick starts
+ * from the same known place and the measured flick distance is meaningful.
+ * That anchoring is the whole point of the exercise -- it is what separates
+ * Micro Flick from a chain of arbitrary short hops, and it is what makes
+ * "distance travelled" comparable between one repetition and the next.
+ *
+ * The only difference from Anchor Flick is the offset band: Micro Flick uses
+ * 4-12 deg, Anchor Flick uses 18-40 deg.
+ */
 export class MicroshotScenarioEngine {
   private readonly radiusUnits: number;
   private readonly maxOffset: number;
   private readonly minOffset: number;
   private activeTarget: TargetSpawnSpec | null = null;
   private nextTargetId = 1;
+  private atCentre = true;
 
   constructor(
     definition: RankedScenarioDefinition = MICROSHOT_DEV_V0_DEFINITION,
@@ -56,9 +75,10 @@ export class MicroshotScenarioEngine {
     this.minOffset = definition.simulation.minTargetSeparationUnits;
   }
 
-  public initialize(prng: PrngV1): TargetSpawnSpec {
+  public initialize(_prng: PrngV1): TargetSpawnSpec {
     this.nextTargetId = 1;
-    this.activeTarget = this.spawnNear(0, 0, prng);
+    this.atCentre = true;
+    this.activeTarget = this.spawnCentre();
     return this.activeTarget;
   }
 
@@ -68,20 +88,30 @@ export class MicroshotScenarioEngine {
 
   public onTargetHit(
     targetId: number,
-    playerYaw: number,
-    playerPitch: number,
+    _playerYaw: number,
+    _playerPitch: number,
     prng: PrngV1,
   ): TargetSpawnSpec | null {
     if (this.activeTarget?.id !== targetId) return null;
-    this.activeTarget = this.spawnNear(playerYaw, playerPitch, prng);
+    // Just destroyed the centre target -> go outward. Just destroyed a
+    // peripheral target -> come back to centre.
+    this.activeTarget = this.atCentre
+      ? this.spawnPeripheral(prng)
+      : this.spawnCentre();
+    this.atCentre = !this.atCentre;
     return this.activeTarget;
   }
 
-  private spawnNear(
-    anchorYaw: number,
-    anchorPitch: number,
-    prng: PrngV1,
-  ): TargetSpawnSpec {
+  private spawnCentre(): TargetSpawnSpec {
+    return {
+      id: this.nextTargetId++,
+      xAngleUnits: wrapYaw(0),
+      yAngleUnits: clampPitch(0),
+      radiusAngleUnits: this.radiusUnits,
+    };
+  }
+
+  private spawnPeripheral(prng: PrngV1): TargetSpawnSpec {
     let dx = 0;
     let dy = 0;
     for (let attempt = 0; attempt < 100; attempt++) {
@@ -97,8 +127,8 @@ export class MicroshotScenarioEngine {
     }
     return {
       id: this.nextTargetId++,
-      xAngleUnits: wrapYaw(anchorYaw + dx),
-      yAngleUnits: clampPitch(anchorPitch + dy),
+      xAngleUnits: wrapYaw(dx),
+      yAngleUnits: clampPitch(dy),
       radiusAngleUnits: this.radiusUnits,
     };
   }

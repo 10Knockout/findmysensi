@@ -1,83 +1,110 @@
-import { createPrngV1, FULL_TURN_UNITS } from "@findmysensi/aim-core";
+import { FULL_TURN_UNITS, createPrngV1 } from "@findmysensi/aim-core";
 import { describe, expect, it } from "vitest";
-import { StrafeScenarioEngine } from "../src/strafe/dev-v0.js";
+import {
+  STRAFE_HALF_WIDTH_UNITS,
+  STRAFE_MAX_REVERSAL_TICKS,
+  STRAFE_RADIUS_UNITS,
+  STRAFE_SPEED_UNITS_PER_TICK,
+  StrafeScenarioEngine,
+} from "../src/strafe/dev-v0.js";
 
-describe("Strafe Scenario (dev-v0)", () => {
-  const seed: [number, number, number, number] = [1000, 2000, 3000, 4000];
+/** Yaw is stored wrapped, so re-sign it about zero for range assertions. */
+function signedYaw(x: number): number {
+  return x > FULL_TURN_UNITS / 2 ? x - FULL_TURN_UNITS : x;
+}
 
-  it("initializes with 2 moving targets", () => {
+describe("Strafe Track scenario (dev-v0)", () => {
+  it("starts with a single centred target moving at the spec speed", () => {
     const engine = new StrafeScenarioEngine();
-    const prng = createPrngV1(seed);
+    const target = engine.initialize(createPrngV1([1, 2, 3, 4]));
 
-    const targets = engine.initialize(prng, 0);
-    expect(targets.length).toBe(2);
+    expect(target.id).toBe(1);
+    expect(signedYaw(target.xAngleUnits)).toBe(0);
+    expect(target.yAngleUnits).toBe(0);
+    expect(target.radiusAngleUnits).toBe(STRAFE_RADIUS_UNITS);
+    expect(Math.abs(target.velocityUnitsPerTick)).toBe(
+      STRAFE_SPEED_UNITS_PER_TICK,
+    );
+  });
 
-    for (const t of targets) {
-      expect(["linear", "oscillating"]).toContain(t.pattern);
-      expect(["left", "right"]).toContain(t.direction);
-      expect(t.velocityUnitsPerTick).not.toBe(0);
-      expect(t.xAngleUnits).toBeGreaterThanOrEqual(0);
-      expect(t.xAngleUnits).toBeLessThan(FULL_TURN_UNITS);
+  it("moves the target every tick and keeps it inside the patrol range", () => {
+    const engine = new StrafeScenarioEngine();
+    const prng = createPrngV1([5, 6, 7, 8]);
+    engine.initialize(prng);
+
+    let previous = signedYaw(engine.getTarget().xAngleUnits);
+    for (let tick = 1; tick <= 2_000; tick++) {
+      const sample = engine.tick(tick, 0, 0, prng);
+      const x = signedYaw(sample.target.xAngleUnits);
+      expect(Math.abs(x)).toBeLessThanOrEqual(STRAFE_HALF_WIDTH_UNITS);
+      // Movement is continuous: one tick never jumps further than a step of
+      // travel, so the target never teleports across a reversal.
+      expect(Math.abs(x - previous)).toBeLessThanOrEqual(
+        STRAFE_SPEED_UNITS_PER_TICK * 2,
+      );
+      previous = x;
     }
   });
 
-  it("targets move on tick", () => {
+  it("reverses direction within the spec window", () => {
     const engine = new StrafeScenarioEngine();
-    const prng = createPrngV1(seed);
+    const prng = createPrngV1([2, 2, 2, 2]);
+    engine.initialize(prng);
 
-    engine.initialize(prng, 0);
-    const beforePositions = engine.getActiveTargets().map((t) => t.xAngleUnits);
-
-    engine.tick(1);
-    const afterPositions = engine.getActiveTargets().map((t) => t.xAngleUnits);
-
-    // At least one target should have moved
-    const moved = beforePositions.some((x, i) => x !== afterPositions[i]);
-    expect(moved).toBe(true);
-  });
-
-  it("targets bounce off boundaries after many ticks", () => {
-    const engine = new StrafeScenarioEngine();
-    const prng = createPrngV1(seed);
-
-    engine.initialize(prng, 0);
-    const halfW = Math.floor(1400000 / 2);
-
-    // Run many ticks
-    for (let i = 1; i <= 1000; i++) {
-      engine.tick(i);
+    let sawReversal = false;
+    for (let tick = 1; tick <= STRAFE_MAX_REVERSAL_TICKS + 1; tick++) {
+      if (engine.tick(tick, 0, 0, prng).reversed) {
+        sawReversal = true;
+        break;
+      }
     }
 
-    // All targets should still be within bounds
-    for (const t of engine.getActiveTargets()) {
-      expect(
-        Math.min(t.xAngleUnits, FULL_TURN_UNITS - t.xAngleUnits),
-      ).toBeLessThanOrEqual(halfW + 100000);
-    }
+    expect(sawReversal).toBe(true);
   });
 
-  it("replaces a hit target with a new moving target", () => {
+  it("counts a crosshair sitting on the target as on-target time", () => {
     const engine = new StrafeScenarioEngine();
-    const prng = createPrngV1(seed);
+    const prng = createPrngV1([3, 3, 3, 3]);
+    engine.initialize(prng);
 
-    engine.initialize(prng, 0);
-    const hitTarget = engine.getActiveTargets()[0]!;
-    const replacement = engine.onTargetHit(hitTarget.id, prng, 50);
+    for (let tick = 1; tick <= 200; tick++) {
+      // Track perfectly by reading the target's own position each tick.
+      const target = engine.getTarget();
+      engine.tick(tick, target.xAngleUnits, target.yAngleUnits, prng);
+    }
 
-    expect(replacement).toBeDefined();
-    expect(replacement!.id).not.toBe(hitTarget.id);
-    expect(engine.getActiveTargets().length).toBe(2);
+    const metrics = engine.getTrackingMetrics();
+    expect(metrics.totalTicks).toBe(200);
+    expect(metrics.onTargetPercentage).toBeGreaterThan(90);
   });
 
-  it("is deterministic with the same seed", () => {
-    const engine1 = new StrafeScenarioEngine();
-    const prng1 = createPrngV1(seed);
-    const targets1 = engine1.initialize(prng1, 0);
+  it("reports zero on-target time for a crosshair parked far away", () => {
+    const engine = new StrafeScenarioEngine();
+    const prng = createPrngV1([4, 4, 4, 4]);
+    engine.initialize(prng);
 
-    const engine2 = new StrafeScenarioEngine();
-    const prng2 = createPrngV1(seed);
-    const targets2 = engine2.initialize(prng2, 0);
+    for (let tick = 1; tick <= 100; tick++) {
+      engine.tick(tick, 0, 4_000_000, prng);
+    }
 
-    expect(targets1).toEqual(targets2);
+    const metrics = engine.getTrackingMetrics();
+    expect(metrics.onTargetTicks).toBe(0);
+    expect(metrics.onTargetPercentage).toBe(0);
+    expect(metrics.averageErrorUnits).toBeGreaterThan(STRAFE_RADIUS_UNITS);
+  });
+
+  it("is deterministic for the same seed", () => {
+    const first = new StrafeScenarioEngine();
+    const second = new StrafeScenarioEngine();
+    const prngA = createPrngV1([9, 9, 9, 9]);
+    const prngB = createPrngV1([9, 9, 9, 9]);
+    first.initialize(prngA);
+    second.initialize(prngB);
+
+    for (let tick = 1; tick <= 300; tick++) {
+      expect(first.tick(tick, 0, 0, prngA)).toEqual(
+        second.tick(tick, 0, 0, prngB),
+      );
+    }
   });
 });

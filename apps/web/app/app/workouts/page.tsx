@@ -8,15 +8,18 @@ import type { SessionUser } from "@findmysensi/protocol";
 import { WORKOUT_DEFINITIONS } from "@findmysensi/trainer-runtime";
 
 const MODE_TITLES: Record<string, string> = {
-  grid: "Gridshot",
-  pinpoint: "Pinpoint",
-  multi: "Multi",
-  headline: "Headline",
-  strafe: "Strafe",
-  "smooth-track": "Smooth Track",
-  microshot: "Microshot",
-  reaction: "Reaction",
+  grid: "Grid Rush",
+  pinpoint: "Precision Six",
+  multi: "Multi Burst",
+  headline: "Headshot Lane",
+  strafe: "Strafe Track",
+  "smooth-track": "Sphere Track",
+  microshot: "Micro Flick",
+  reaction: "Reflex Rush",
   "switch-track": "Switch Track",
+  "anchor-flick": "Anchor Flick",
+  "motion-flick": "Motion Flick",
+  turn180: "180 Flick",
 };
 
 export default function WorkoutsPage() {

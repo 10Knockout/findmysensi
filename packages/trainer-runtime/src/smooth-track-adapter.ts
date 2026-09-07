@@ -19,14 +19,14 @@ import type { ModeRuntimeAdapter } from "./adapter.js";
 class SmoothTrackModeAdapter implements ModeRuntimeAdapter<TrackingMetrics> {
   public readonly modeId = "smooth-track";
   public readonly definition = SMOOTH_TRACK_DEV_V0_DEFINITION;
-  private readonly engine = new SmoothTrackScenarioEngine(
-    SMOOTH_TRACK_DEV_V0_DEFINITION,
-  );
+  private readonly engine = new SmoothTrackScenarioEngine();
   private metricsTracker: TrackingMetricsTracker =
     createTrackingMetricsTracker();
+  private prng: PrngV1 | null = null;
 
   public initialize(prng: PrngV1): void {
     this.metricsTracker = createTrackingMetricsTracker();
+    this.prng = prng;
     this.engine.initialize(prng);
   }
 
@@ -35,7 +35,8 @@ class SmoothTrackModeAdapter implements ModeRuntimeAdapter<TrackingMetrics> {
     playerYaw: AngleUnits,
     playerPitch: PitchUnits,
   ): void {
-    const sample = this.engine.tick(tick, playerYaw, playerPitch);
+    if (!this.prng) return;
+    const sample = this.engine.tick(tick, playerYaw, playerPitch, this.prng);
     this.metricsTracker.recordSample(sample.errorUnits, sample.onTarget);
   }
 

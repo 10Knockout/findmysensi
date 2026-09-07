@@ -18,7 +18,7 @@ describe("createPinpointModeAdapter", () => {
 
     const targets = adapter.getRenderTargets();
     expect(targets.length).toBe(6);
-    expect(targets.every((t) => t.radiusAngleUnits === 12_000)).toBe(true);
+    expect(targets.every((t) => t.radiusAngleUnits === 29_127)).toBe(true);
   });
 
   it("records a hit via onShot and reflects it in computeMetrics", () => {

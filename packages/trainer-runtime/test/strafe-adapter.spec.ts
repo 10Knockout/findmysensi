@@ -2,104 +2,90 @@ import {
   createAngleUnits,
   createPitchUnits,
   createPrngV1,
-  wrapYaw,
 } from "@findmysensi/aim-core";
 import { createTick } from "@findmysensi/protocol";
+import { STRAFE_RADIUS_UNITS } from "@findmysensi/scenarios";
 import { describe, expect, it } from "vitest";
 import { createStrafeModeAdapter } from "../src/strafe-adapter.js";
 
 describe("createStrafeModeAdapter", () => {
-  it("moves targets on every simulation tick", () => {
+  it("renders exactly one invincible target", () => {
     const adapter = createStrafeModeAdapter();
     adapter.initialize(createPrngV1([1, 2, 3, 4]));
-    const before = adapter
-      .getRenderTargets()
-      .map((target) => target.xAngleUnits);
 
-    adapter.onSimulationTick(
-      createTick(1),
-      createAngleUnits(0),
-      createPitchUnits(0),
-    );
-
-    expect(
-      adapter.getRenderTargets().map((target) => target.xAngleUnits),
-    ).not.toEqual(before);
+    const targets = adapter.getRenderTargets();
+    expect(targets.length).toBe(1);
+    expect(targets[0]!.radiusAngleUnits).toBe(STRAFE_RADIUS_UNITS);
   });
 
-  it("hit-tests moved positions and replaces a hit target", () => {
+  it("accumulates on-target time when the crosshair follows the target", () => {
     const adapter = createStrafeModeAdapter();
-    const prng = createPrngV1([1, 2, 3, 4]);
-    adapter.initialize(prng);
-    adapter.onSimulationTick(
-      createTick(1),
-      createAngleUnits(0),
-      createPitchUnits(0),
-    );
-    const target = adapter.getRenderTargets()[0]!;
+    adapter.initialize(createPrngV1([5, 5, 5, 5]));
 
-    adapter.onShot(
-      createTick(1),
-      createAngleUnits(target.xAngleUnits),
-      createPitchUnits(target.yAngleUnits),
-      prng,
-    );
+    for (let tick = 1; tick <= 200; tick++) {
+      const target = adapter.getRenderTargets()[0]!;
+      adapter.onSimulationTick(
+        createTick(tick),
+        createAngleUnits(target.xAngleUnits),
+        createPitchUnits(target.yAngleUnits),
+      );
+    }
 
-    expect(adapter.computeMetrics(2)).toMatchObject({
-      hits: 1,
-      shots: 1,
-      misses: 0,
-    });
-    expect(adapter.getRenderTargets()).toHaveLength(2);
+    const metrics = adapter.computeMetrics(200);
+    expect(metrics.totalTicks).toBe(200);
+    expect(metrics.onTargetPercentage).toBeGreaterThan(90);
+    expect(adapter.computeScore(metrics).score).toBeGreaterThan(0);
   });
 
-  it("records misses and uses Strafe scoring", () => {
+  it("scores zero for a run that never touched the target", () => {
     const adapter = createStrafeModeAdapter();
-    const prng = createPrngV1([9, 8, 7, 6]);
-    adapter.initialize(prng);
-    adapter.onShot(
-      createTick(1),
-      createAngleUnits(0),
-      createPitchUnits(1_000_000),
-      prng,
-    );
-    expect(adapter.computeMetrics(2)).toMatchObject({ hits: 0, misses: 1 });
+    adapter.initialize(createPrngV1([6, 6, 6, 6]));
 
-    const target = adapter.getRenderTargets()[0]!;
-    adapter.onShot(
-      createTick(2),
-      createAngleUnits(target.xAngleUnits),
-      createPitchUnits(target.yAngleUnits),
-      prng,
-    );
-    expect(adapter.computeScore(adapter.computeMetrics(3)).score).toBe(950);
+    for (let tick = 1; tick <= 100; tick++) {
+      adapter.onSimulationTick(
+        createTick(tick),
+        createAngleUnits(0),
+        createPitchUnits(4_000_000),
+      );
+    }
+
+    const metrics = adapter.computeMetrics(100);
+    expect(metrics.onTargetTicks).toBe(0);
+    expect(adapter.computeScore(metrics).score).toBe(0);
   });
 
-  it("classifies a miss's direction via getMissBreakdown", () => {
+  it("ignores clicks entirely -- the target cannot be destroyed", () => {
     const adapter = createStrafeModeAdapter();
-    const prng = createPrngV1([1, 2, 3, 4]);
+    const prng = createPrngV1([7, 7, 7, 7]);
     adapter.initialize(prng);
-    const target = adapter.getRenderTargets()[0]!;
+
+    const before = adapter.getRenderTargets()[0]!;
     adapter.onShot(
       createTick(1),
-      createAngleUnits(wrapYaw(target.xAngleUnits + 100_000)),
-      createPitchUnits(target.yAngleUnits),
+      createAngleUnits(before.xAngleUnits),
+      createPitchUnits(before.yAngleUnits),
       prng,
     );
-    expect(adapter.getMissBreakdown().left).toBe(1);
+
+    // Still exactly one target, and the shot contributed nothing.
+    expect(adapter.getRenderTargets().length).toBe(1);
+    expect(adapter.computeMetrics(1).totalTicks).toBe(0);
   });
 
   it("resets metrics on re-initialization", () => {
     const adapter = createStrafeModeAdapter();
-    const prng = createPrngV1([1, 2, 3, 4]);
-    adapter.initialize(prng);
-    adapter.onShot(
-      createTick(1),
-      createAngleUnits(0),
-      createPitchUnits(1_000_000),
-      prng,
-    );
-    adapter.initialize(createPrngV1([5, 6, 7, 8]));
-    expect(adapter.computeMetrics(1).shots).toBe(0);
+    adapter.initialize(createPrngV1([1, 2, 3, 4]));
+
+    for (let tick = 1; tick <= 50; tick++) {
+      adapter.onSimulationTick(
+        createTick(tick),
+        createAngleUnits(0),
+        createPitchUnits(0),
+      );
+    }
+    expect(adapter.computeMetrics(50).totalTicks).toBe(50);
+
+    adapter.initialize(createPrngV1([9, 9, 9, 9]));
+    expect(adapter.computeMetrics(1).totalTicks).toBe(0);
   });
 });

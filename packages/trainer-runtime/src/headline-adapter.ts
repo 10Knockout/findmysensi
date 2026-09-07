@@ -36,10 +36,12 @@ class HeadlineModeAdapter
   );
   private metricsTracker: FlickMetricsTracker = createFlickMetricsTracker();
   private missBreakdown: Record<MissDirection, number> = emptyMissBreakdown();
+  private prng: PrngV1 | null = null;
 
   public initialize(prng: PrngV1): void {
     this.metricsTracker = createFlickMetricsTracker();
     this.missBreakdown = emptyMissBreakdown();
+    this.prng = prng;
     const initialTargets = this.engine.initialize(prng);
     for (const target of initialTargets) {
       this.metricsTracker.recordTargetSpawn(target.id, 0);
@@ -51,11 +53,18 @@ class HeadlineModeAdapter
   }
 
   public onSimulationTick(
-    _tick: Tick,
+    tick: Tick,
     _playerYaw: AngleUnits,
     _playerPitch: PitchUnits,
   ): void {
-    // Headline is click-discrete; nothing changes without a shot.
+    if (!this.prng) return;
+
+    // Headshot Lane targets strafe continuously and killed ones return on a
+    // short delay, so the lane advances every tick.
+    const { spawned } = this.engine.tick(tick, this.prng);
+    for (const target of spawned) {
+      this.metricsTracker.recordTargetSpawn(target.id, tick);
+    }
   }
 
   public onShot(
@@ -69,10 +78,9 @@ class HeadlineModeAdapter
 
     if (hitTarget) {
       this.metricsTracker.recordShot(tick, hitTarget.id);
-      const newTarget = this.engine.onTargetHit(hitTarget.id, prng);
-      if (newTarget) {
-        this.metricsTracker.recordTargetSpawn(newTarget.id, tick);
-      }
+      // The replacement is queued, not immediate; onSimulationTick records it
+      // when the respawn delay elapses.
+      this.engine.onTargetHit(hitTarget.id, tick, prng);
     } else {
       this.metricsTracker.recordShot(tick, null);
       const nearest = findNearestTarget(playerYaw, playerPitch, activeTargets);

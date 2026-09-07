@@ -14,36 +14,37 @@ import {
 } from "@findmysensi/analytics";
 import { Tick } from "@findmysensi/protocol";
 import {
-  MULTI_DEV_V0_DEFINITION,
-  MultiScenarioEngine,
+  TURN180_DEV_V0_DEFINITION,
   TargetSpawnSpec,
+  Turn180ScenarioEngine,
 } from "@findmysensi/scenarios";
-import { computeMultiDevScore, ScoreResult } from "@findmysensi/scoring";
+import {
+  computeTurn180DevScore,
+  Turn180ScoreResult,
+} from "@findmysensi/scoring";
 import { MissBreakdownCapable, ModeRuntimeAdapter } from "./adapter.js";
 
 function emptyMissBreakdown(): Record<MissDirection, number> {
   return { left: 0, right: 0, up: 0, down: 0, unclear: 0 };
 }
 
-class MultiModeAdapter
+class Turn180ModeAdapter
   implements ModeRuntimeAdapter<GridMetrics>, MissBreakdownCapable
 {
-  public readonly modeId = "multi";
-  public readonly definition = MULTI_DEV_V0_DEFINITION;
+  public readonly modeId = "turn180";
+  public readonly definition = TURN180_DEV_V0_DEFINITION;
 
-  private readonly engine = new MultiScenarioEngine(MULTI_DEV_V0_DEFINITION);
+  private readonly engine = new Turn180ScenarioEngine(
+    TURN180_DEV_V0_DEFINITION,
+  );
   private metricsTracker: FlickMetricsTracker = createFlickMetricsTracker();
   private missBreakdown: Record<MissDirection, number> = emptyMissBreakdown();
-  private prng: PrngV1 | null = null;
 
   public initialize(prng: PrngV1): void {
     this.metricsTracker = createFlickMetricsTracker();
     this.missBreakdown = emptyMissBreakdown();
-    this.prng = prng;
-    const initialTargets = this.engine.initialize(prng);
-    for (const target of initialTargets) {
-      this.metricsTracker.recordTargetSpawn(target.id, 0);
-    }
+    const target = this.engine.initialize(prng);
+    this.metricsTracker.recordTargetSpawn(target.id, 0);
   }
 
   public getMissBreakdown(): Readonly<Record<MissDirection, number>> {
@@ -51,21 +52,12 @@ class MultiModeAdapter
   }
 
   public onSimulationTick(
-    tick: Tick,
+    _tick: Tick,
     _playerYaw: AngleUnits,
     _playerPitch: PitchUnits,
   ): void {
-    if (!this.prng) return;
-
-    // Multi Burst targets shrink away on a timer, so the arena advances every
-    // tick even when the player never fires.
-    const { expired, spawned } = this.engine.tick(tick, this.prng);
-    for (const _target of expired) {
-      this.metricsTracker.recordExpiration(tick);
-    }
-    for (const target of spawned) {
-      this.metricsTracker.recordTargetSpawn(target.id, tick);
-    }
+    // 180 Flick targets are static and never expire; the player takes as long
+    // as they need to complete the turn.
   }
 
   public onShot(
@@ -79,10 +71,8 @@ class MultiModeAdapter
 
     if (hitTarget) {
       this.metricsTracker.recordShot(tick, hitTarget.id);
-      const newTarget = this.engine.onTargetHit(hitTarget.id, prng);
-      if (newTarget) {
-        this.metricsTracker.recordTargetSpawn(newTarget.id, tick);
-      }
+      const next = this.engine.onTargetHit(hitTarget.id, prng);
+      if (next) this.metricsTracker.recordTargetSpawn(next.id, tick);
     } else {
       this.metricsTracker.recordShot(tick, null);
       const nearest = findNearestTarget(playerYaw, playerPitch, activeTargets);
@@ -105,11 +95,11 @@ class MultiModeAdapter
     return this.metricsTracker.computeMetrics(elapsedTicks);
   }
 
-  public computeScore(metrics: GridMetrics): ScoreResult {
-    return computeMultiDevScore(metrics);
+  public computeScore(metrics: GridMetrics): Turn180ScoreResult {
+    return computeTurn180DevScore(metrics);
   }
 }
 
-export function createMultiModeAdapter(): ModeRuntimeAdapter<GridMetrics> {
-  return new MultiModeAdapter();
+export function createTurn180ModeAdapter(): ModeRuntimeAdapter<GridMetrics> {
+  return new Turn180ModeAdapter();
 }

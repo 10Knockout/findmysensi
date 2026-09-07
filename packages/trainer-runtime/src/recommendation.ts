@@ -10,9 +10,11 @@ const CLICK_MODE_IDS = new Set<PracticeSummaryRecord["modeId"]>([
   "pinpoint",
   "multi",
   "headline",
-  "strafe",
   "microshot",
   "reaction",
+  "anchor-flick",
+  "motion-flick",
+  "turn180",
 ]);
 
 interface ClickAccuracyRecord {

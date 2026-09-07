@@ -1,33 +1,48 @@
-import { FULL_TURN_UNITS, PrngV1, wrapYaw } from "@findmysensi/aim-core";
-import { defaultScenarioRegistry } from "../registry.js";
 import {
-  RankedScenarioDefinition,
-  ScenarioEntry,
-  TargetSpawnSpec,
-} from "../types.js";
+  PrngV1,
+  createAngleUnits,
+  shortestSignedAngleDelta,
+  wrapYaw,
+} from "@findmysensi/aim-core";
+import { defaultScenarioRegistry } from "../registry.js";
+import { RankedScenarioDefinition, ScenarioEntry } from "../types.js";
 
 /**
- * Strafe: Balanced lanes with linear and oscillating moving targets.
- * Targets move horizontally (strafing) at varying speeds, with reversals and stops.
- * Tests tracking ability with unpredictable direction changes.
+ * Strafe Track: one invincible target sliding left and right, reversing at
+ * unpredictable intervals. The player never clicks -- the score is simply how
+ * much of the run they kept the crosshair on the target.
+ *
+ * Clicking is deliberately absent. The thing being measured is mouse control,
+ * and requiring a held button would fold "did you remember to hold fire" into
+ * a number that is supposed to be about tracking alone.
  */
 
-export type StrafeDirection = "left" | "right";
-export type StrafePattern = "linear" | "oscillating";
-
-export interface StrafeTarget extends TargetSpawnSpec {
-  readonly direction: StrafeDirection;
-  readonly pattern: StrafePattern;
-  /** Velocity in angle-units per tick (signed: negative=left, positive=right) */
+export interface StrafeTarget {
+  readonly id: number;
+  readonly xAngleUnits: number;
+  readonly yAngleUnits: number;
+  readonly radiusAngleUnits: number;
+  /** Signed angle units per tick; negative is leftward. */
   readonly velocityUnitsPerTick: number;
-  /** For oscillating: half-period in ticks before reversal */
-  readonly halfPeriodTicks: number;
-  /** Tick when this target was spawned, used for oscillation phase */
-  readonly spawnTick: number;
 }
 
-const STRAFE_SPEEDS = [800, 1200, 1800, 2400]; // units/tick
-const STRAFE_HALF_PERIODS = [64, 96, 128, 192]; // ticks
+export interface StrafeTickSample {
+  readonly target: StrafeTarget;
+  readonly onTarget: boolean;
+  readonly errorUnits: number;
+  /** True on the tick the target changed direction. */
+  readonly reversed: boolean;
+}
+
+/** Spec: 3.0 deg diameter, so a 1.5 deg radius. */
+export const STRAFE_RADIUS_UNITS = 69_905;
+/** Spec: the target patrols -38..+38 deg. */
+export const STRAFE_HALF_WIDTH_UNITS = 1_770_929;
+/** Spec: 20 deg/sec at the 128 Hz simulation rate. */
+export const STRAFE_SPEED_UNITS_PER_TICK = 7_282;
+/** Spec: direction flips somewhere between 0.65 s and 1.8 s. */
+export const STRAFE_MIN_REVERSAL_TICKS = 83;
+export const STRAFE_MAX_REVERSAL_TICKS = 230;
 
 export const STRAFE_DEV_V0_DEFINITION: RankedScenarioDefinition = {
   modeId: "strafe",
@@ -36,11 +51,11 @@ export const STRAFE_DEV_V0_DEFINITION: RankedScenarioDefinition = {
   scoringVersion: 0,
   durationTicks: 128 * 60,
   simulation: {
-    maxActiveTargets: 2,
-    targetRadiusAngleUnits: 30000, // ~0.64 deg — slightly larger to compensate for movement
-    spawnAreaWidthUnits: 1400000,
-    spawnAreaHeightUnits: 600000,
-    minTargetSeparationUnits: 200000,
+    maxActiveTargets: 1,
+    targetRadiusAngleUnits: STRAFE_RADIUS_UNITS,
+    spawnAreaWidthUnits: STRAFE_HALF_WIDTH_UNITS * 2,
+    spawnAreaHeightUnits: 0,
+    minTargetSeparationUnits: 0,
   },
   rankedSettings: {
     rankedEnabled: false,
@@ -52,13 +67,13 @@ export const STRAFE_DEV_V0_DEFINITION: RankedScenarioDefinition = {
 export const STRAFE_DEV_V0_ENTRY: ScenarioEntry = {
   definition: STRAFE_DEV_V0_DEFINITION,
   presentation: {
-    title: "Strafe (Dev v0)",
-    subtitle: "Moving Target Tracking Practice",
+    title: "Strafe Track",
+    subtitle: "Reactive Horizontal Tracking",
     description:
-      "Targets strafe horizontally with linear and oscillating patterns. Tests tracking with unpredictable reversals.",
+      "Keep your crosshair attached to a target as it strafes left and right. React smoothly to unpredictable direction changes. No clicking -- time on target is the score.",
     category: "tracking",
     thumbnailUrl: "/thumbnails/strafe.webp",
-    tags: ["strafe", "tracking", "moving", "practice"],
+    tags: ["strafe", "tracking", "reversal", "moving", "practice"],
   },
 };
 
@@ -66,135 +81,113 @@ defaultScenarioRegistry.register(STRAFE_DEV_V0_ENTRY);
 
 export class StrafeScenarioEngine {
   private readonly radiusUnits: number;
-  private readonly maxActive: number;
-  private readonly areaWidth: number;
-  private readonly areaHeight: number;
-  private activeTargets: StrafeTarget[] = [];
-  private nextTargetId: number = 1;
+  private readonly halfWidth: number;
+  private readonly speed: number;
+  private x = 0;
+  private velocity = 0;
+  private nextReversalTick = 0;
+  private onTargetTicks = 0;
+  private totalTicks = 0;
+  private errorSum = 0;
+  private maxError = 0;
 
   constructor(definition: RankedScenarioDefinition = STRAFE_DEV_V0_DEFINITION) {
     this.radiusUnits = definition.simulation.targetRadiusAngleUnits;
-    this.maxActive = definition.simulation.maxActiveTargets;
-    this.areaWidth = definition.simulation.spawnAreaWidthUnits;
-    this.areaHeight = definition.simulation.spawnAreaHeightUnits;
+    this.halfWidth = Math.floor(definition.simulation.spawnAreaWidthUnits / 2);
+    this.speed = STRAFE_SPEED_UNITS_PER_TICK;
   }
 
-  public initialize(
-    prng: PrngV1,
-    currentTick: number = 0,
-  ): readonly StrafeTarget[] {
-    this.activeTargets = [];
-    this.nextTargetId = 1;
-
-    for (let i = 0; i < this.maxActive; i++) {
-      this.spawnTarget(prng, currentTick);
-    }
-
-    return this.getActiveTargets();
-  }
-
-  public getActiveTargets(): readonly StrafeTarget[] {
-    return Object.freeze([...this.activeTargets]);
+  public initialize(prng: PrngV1): StrafeTarget {
+    this.x = 0;
+    this.velocity = prng.nextRange(0, 2) === 0 ? -this.speed : this.speed;
+    this.onTargetTicks = 0;
+    this.totalTicks = 0;
+    this.errorSum = 0;
+    this.maxError = 0;
+    this.scheduleReversal(0, prng);
+    return this.getTarget();
   }
 
   /**
-   * Advance all targets by one tick. Oscillating targets reverse direction
-   * at their half-period boundaries. Linear targets bounce off area edges.
+   * Moves the target one tick and measures how far the crosshair sits from
+   * its centre. Movement stays continuous: reversals flip the velocity, they
+   * never teleport the target.
    */
-  public tick(currentTick: number): void {
-    const halfW = Math.floor(this.areaWidth / 2);
-
-    for (let i = 0; i < this.activeTargets.length; i++) {
-      const t = this.activeTargets[i]!;
-      let newX =
-        t.xAngleUnits > FULL_TURN_UNITS / 2
-          ? t.xAngleUnits - FULL_TURN_UNITS
-          : t.xAngleUnits;
-      let velocity = t.velocityUnitsPerTick;
-
-      if (t.pattern === "oscillating") {
-        const elapsed = currentTick - t.spawnTick;
-        const phase = Math.floor(elapsed / t.halfPeriodTicks);
-        // Reverse direction on odd phases
-        velocity = phase % 2 === 0 ? Math.abs(velocity) : -Math.abs(velocity);
-        if (t.direction === "left") velocity = -velocity;
-      }
-
-      newX += velocity;
-
-      // Bounce off boundaries
-      if (newX > halfW) {
-        newX = halfW - (newX - halfW);
-        velocity = -velocity;
-      } else if (newX < -halfW) {
-        newX = -halfW + (-halfW - newX);
-        velocity = -velocity;
-      }
-
-      this.activeTargets[i] = {
-        ...t,
-        xAngleUnits: wrapYaw(newX),
-        velocityUnitsPerTick: velocity,
-      };
-    }
-  }
-
-  /**
-   * Returns the current position of targets for hit-testing.
-   * Note: collision must use the current xAngleUnits after tick().
-   */
-  public getPositionsForHitTest(): readonly TargetSpawnSpec[] {
-    return this.activeTargets.map((t) => ({
-      id: t.id,
-      xAngleUnits: t.xAngleUnits,
-      yAngleUnits: t.yAngleUnits,
-      radiusAngleUnits: t.radiusAngleUnits,
-    }));
-  }
-
-  public onTargetHit(
-    targetId: number,
-    prng: PrngV1,
+  public tick(
     currentTick: number,
-  ): StrafeTarget | null {
-    const hitIdx = this.activeTargets.findIndex((t) => t.id === targetId);
-    if (hitIdx === -1) return null;
+    playerYaw: number,
+    playerPitch: number,
+    prng: PrngV1,
+  ): StrafeTickSample {
+    let reversed = false;
 
-    this.activeTargets.splice(hitIdx, 1);
-    return this.spawnTarget(prng, currentTick);
+    if (currentTick >= this.nextReversalTick) {
+      this.velocity = -this.velocity;
+      this.scheduleReversal(currentTick, prng);
+      reversed = true;
+    }
+
+    this.x += this.velocity;
+    if (this.x > this.halfWidth) {
+      this.x = this.halfWidth - (this.x - this.halfWidth);
+      this.velocity = -this.velocity;
+      reversed = true;
+    } else if (this.x < -this.halfWidth) {
+      this.x = -this.halfWidth + (-this.halfWidth - this.x);
+      this.velocity = -this.velocity;
+      reversed = true;
+    }
+
+    const target = this.getTarget();
+    const dx = shortestSignedAngleDelta(
+      createAngleUnits(target.xAngleUnits),
+      wrapYaw(playerYaw),
+    );
+    const dy = playerPitch - target.yAngleUnits;
+    const errorUnits = Math.sqrt(dx * dx + dy * dy);
+    const onTarget = errorUnits <= this.radiusUnits;
+
+    this.totalTicks++;
+    if (onTarget) this.onTargetTicks++;
+    this.errorSum += errorUnits;
+    if (errorUnits > this.maxError) this.maxError = errorUnits;
+
+    return { target, onTarget, errorUnits, reversed };
   }
 
-  private spawnTarget(prng: PrngV1, currentTick: number): StrafeTarget {
-    const halfW = Math.floor(this.areaWidth / 2);
-    const halfH = Math.floor(this.areaHeight / 2);
-
-    const x = wrapYaw(prng.nextRange(-halfW, halfW + 1));
-    const y = prng.nextRange(-halfH, halfH + 1);
-
-    const direction: StrafeDirection =
-      prng.nextRange(0, 2) === 0 ? "left" : "right";
-    const pattern: StrafePattern =
-      prng.nextRange(0, 2) === 0 ? "linear" : "oscillating";
-    const speedIdx = prng.nextRange(0, STRAFE_SPEEDS.length);
-    const speed = STRAFE_SPEEDS[speedIdx]!;
-    const periodIdx = prng.nextRange(0, STRAFE_HALF_PERIODS.length);
-    const halfPeriod = STRAFE_HALF_PERIODS[periodIdx]!;
-
-    const velocity = direction === "right" ? speed : -speed;
-
-    const newTarget: StrafeTarget = {
-      id: this.nextTargetId++,
-      xAngleUnits: x,
-      yAngleUnits: y,
+  public getTarget(): StrafeTarget {
+    return {
+      id: 1,
+      xAngleUnits: wrapYaw(this.x),
+      yAngleUnits: 0,
       radiusAngleUnits: this.radiusUnits,
-      direction,
-      pattern,
-      velocityUnitsPerTick: velocity,
-      halfPeriodTicks: halfPeriod,
-      spawnTick: currentTick,
+      velocityUnitsPerTick: this.velocity,
     };
+  }
 
-    this.activeTargets.push(newTarget);
-    return newTarget;
+  public getTrackingMetrics(): {
+    onTargetTicks: number;
+    totalTicks: number;
+    onTargetPercentage: number;
+    averageErrorUnits: number;
+    maxErrorUnits: number;
+  } {
+    return {
+      onTargetTicks: this.onTargetTicks,
+      totalTicks: this.totalTicks,
+      onTargetPercentage:
+        this.totalTicks > 0
+          ? Math.round((this.onTargetTicks / this.totalTicks) * 10000) / 100
+          : 0,
+      averageErrorUnits:
+        this.totalTicks > 0 ? Math.round(this.errorSum / this.totalTicks) : 0,
+      maxErrorUnits: Math.round(this.maxError),
+    };
+  }
+
+  private scheduleReversal(currentTick: number, prng: PrngV1): void {
+    this.nextReversalTick =
+      currentTick +
+      prng.nextRange(STRAFE_MIN_REVERSAL_TICKS, STRAFE_MAX_REVERSAL_TICKS + 1);
   }
 }

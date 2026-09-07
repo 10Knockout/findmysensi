@@ -35,9 +35,11 @@ const CLICK_MODE_IDS = new Set<PracticeSummaryRecord["modeId"]>([
   "pinpoint",
   "multi",
   "headline",
-  "strafe",
   "microshot",
   "reaction",
+  "anchor-flick",
+  "motion-flick",
+  "turn180",
 ]);
 
 export const ALL_MODE_IDS: readonly PracticeSummaryRecord["modeId"][] = [
@@ -48,6 +50,9 @@ export const ALL_MODE_IDS: readonly PracticeSummaryRecord["modeId"][] = [
   "strafe",
   "microshot",
   "reaction",
+  "anchor-flick",
+  "motion-flick",
+  "turn180",
   "smooth-track",
   "switch-track",
 ];
@@ -91,7 +96,7 @@ function sessionsInMode(
 
 function bestOnTargetPercentage(
   history: readonly PracticeSummaryRecord[],
-  modeId: "smooth-track" | "switch-track",
+  modeId: "smooth-track" | "switch-track" | "strafe",
 ): number {
   return history
     .filter(
@@ -206,7 +211,7 @@ export const ACHIEVEMENT_DEFINITIONS: readonly AchievementDefinition[] = [
   {
     id: "coverage-click-family",
     name: "Well Rounded",
-    description: "Play all 7 click-based exercises at least once.",
+    description: "Play all 9 click-based exercises at least once.",
     category: "coverage",
     isUnlocked: (h) => {
       const played = distinctModesPlayed(h);
@@ -219,7 +224,7 @@ export const ACHIEVEMENT_DEFINITIONS: readonly AchievementDefinition[] = [
   {
     id: "coverage-all-modes",
     name: "Completionist",
-    description: "Play all 9 exercises at least once.",
+    description: "Play all 12 exercises at least once.",
     category: "coverage",
     isUnlocked: (h) => distinctModesPlayed(h).size >= ALL_MODE_IDS.length,
   },
@@ -233,7 +238,7 @@ export const ACHIEVEMENT_DEFINITIONS: readonly AchievementDefinition[] = [
   {
     id: "strafe-veteran",
     name: "Strafe Veteran",
-    description: "Complete 25 Strafe sessions.",
+    description: "Complete 25 Strafe Track sessions.",
     category: "coverage",
     isUnlocked: (h) => sessionsInMode(h, "strafe") >= 25,
   },
@@ -258,6 +263,13 @@ export const ACHIEVEMENT_DEFINITIONS: readonly AchievementDefinition[] = [
     description: "Hold 75%+ on-target time in a Switch Track run.",
     category: "tracking",
     isUnlocked: (h) => bestOnTargetPercentage(h, "switch-track") >= 75,
+  },
+  {
+    id: "strafe-track-75",
+    name: "Glued Sideways",
+    description: "Hold 75%+ on-target time in a Strafe Track run.",
+    category: "tracking",
+    isUnlocked: (h) => bestOnTargetPercentage(h, "strafe") >= 75,
   },
   // Rank
   {

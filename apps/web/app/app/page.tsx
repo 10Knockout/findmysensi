@@ -15,23 +15,54 @@ import { localPracticeHistory } from "../../src/features/training/local-history.
 import { QuickSetupModal } from "../../src/features/onboarding/QuickSetupModal.js";
 
 const TRAINING_MODES = [
-  ["grid", "Gridshot", "Three targets for fast flicks and rapid acquisition."],
+  ["grid", "Grid Rush", "Three targets for fast flicks and rapid acquisition."],
   [
     "pinpoint",
-    "Pinpoint",
-    "Tiny targets for deliberate precision and planning.",
+    "Precision Six",
+    "Six tiny targets for deliberate precision and route planning.",
   ],
-  ["multi", "Multi", "Six targets for route planning and target transitions."],
+  [
+    "multi",
+    "Multi Burst",
+    "Targets grow and shrink away. Prioritise under pressure.",
+  ],
   [
     "headline",
-    "Headline",
-    "Horizontal targets for disciplined head-level aim.",
+    "Headshot Lane",
+    "Head-level targets strafing at three different depths.",
   ],
-  ["strafe", "Strafe", "Moving targets with reversals and changing speeds."],
-  ["smooth-track", "Smooth Track", "Continuous tracking along a smooth path."],
-  ["microshot", "Microshot", "Tiny targets for fast, controlled corrections."],
-  ["reaction", "Reaction", "Tick-timed visual reaction and acquisition."],
-  ["switch-track", "Switch Track", "Acquire, hold, switch, and reacquire."],
+  [
+    "strafe",
+    "Strafe Track",
+    "Stay glued to a target through unpredictable reversals. No clicking.",
+  ],
+  [
+    "smooth-track",
+    "Sphere Track",
+    "Track a target moving all the way around you. No clicking.",
+  ],
+  [
+    "microshot",
+    "Micro Flick",
+    "Tiny targets for fast, controlled corrections.",
+  ],
+  ["reaction", "Reflex Rush", "React to a target before it disappears."],
+  [
+    "switch-track",
+    "Switch Track",
+    "Four moving targets. Kill one, snap to the next.",
+  ],
+  [
+    "anchor-flick",
+    "Anchor Flick",
+    "Return to the centre after every wide flick.",
+  ],
+  [
+    "motion-flick",
+    "Motion Flick",
+    "Flick out and intercept a moving target with one shot.",
+  ],
+  ["turn180", "180 Flick", "Turn roughly all the way around and reacquire."],
 ] as const;
 
 export default function AppDashboardPage() {

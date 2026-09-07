@@ -17,7 +17,7 @@ describe("createGridModeAdapter", () => {
 
     const targets = adapter.getRenderTargets();
     expect(targets.length).toBe(3);
-    expect(targets.every((t) => t.radiusAngleUnits === 68_000)).toBe(true);
+    expect(targets.every((t) => t.radiusAngleUnits === 93_207)).toBe(true);
   });
 
   it("records a hit via onShot and reflects it in computeMetrics", () => {

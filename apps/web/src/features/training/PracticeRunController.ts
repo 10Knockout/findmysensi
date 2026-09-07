@@ -499,11 +499,14 @@ export class PracticeRunController {
         ...finalMetrics,
       };
     } else if (isTrackingMetrics(finalMetrics)) {
+      // Several modes share the tracking metric family, so the id has to come
+      // from the adapter. Hardcoding one here silently filed every no-click
+      // run under that single mode.
       summary = {
         ...summaryBase,
-        modeId: "smooth-track",
+        modeId: this.adapter.modeId as TrackingModeId,
         ...finalMetrics,
-      };
+      } as PracticeSummaryRecord;
     } else {
       throw new Error(
         `Unrecognized metrics shape for mode "${this.adapter.modeId}".`,
@@ -523,9 +526,11 @@ export class PracticeRunController {
   }
 }
 
+type TrackingModeId = "smooth-track" | "strafe";
+
 type ClickModeId = Exclude<
   PracticeSummaryRecord["modeId"],
-  "smooth-track" | "switch-track"
+  TrackingModeId | "switch-track"
 >;
 
 function isClickMetrics(

@@ -13,6 +13,9 @@ describe("Trainer mode manifest", () => {
       "microshot",
       "reaction",
       "switch-track",
+      "anchor-flick",
+      "motion-flick",
+      "turn180",
     ];
     for (const id of ids) {
       expect(trainerModeManifest.has(id)).toBe(true);
@@ -29,6 +32,9 @@ describe("Trainer mode manifest", () => {
     expect(isTrainerModeEnabled("microshot")).toBe(true);
     expect(isTrainerModeEnabled("reaction")).toBe(true);
     expect(isTrainerModeEnabled("switch-track")).toBe(true);
+    expect(isTrainerModeEnabled("anchor-flick")).toBe(true);
+    expect(isTrainerModeEnabled("motion-flick")).toBe(true);
+    expect(isTrainerModeEnabled("turn180")).toBe(true);
   });
 
   it("returns false for an unknown mode id rather than throwing", () => {
@@ -45,6 +51,9 @@ describe("Trainer mode manifest", () => {
     "microshot",
     "reaction",
     "switch-track",
+    "anchor-flick",
+    "motion-flick",
+    "turn180",
   ])("%s carries an adapter factory", (modeId) => {
     expect(typeof trainerModeManifest.get(modeId)?.createAdapter).toBe(
       "function",

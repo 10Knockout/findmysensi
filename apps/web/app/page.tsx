@@ -4,15 +4,18 @@ import { LandingMotion } from "../src/features/landing/LandingMotion.js";
 import { LiveLeaderboard } from "../src/features/landing/LiveLeaderboard.js";
 
 const MODES = [
-  "Gridshot",
-  "Pinpoint",
-  "Multi",
-  "Headline",
-  "Strafe",
-  "Smooth Track",
-  "Microshot",
-  "Reaction",
+  "Grid Rush",
+  "Multi Burst",
+  "Precision Six",
+  "Anchor Flick",
+  "Micro Flick",
+  "Motion Flick",
+  "Reflex Rush",
+  "Strafe Track",
+  "Sphere Track",
   "Switch Track",
+  "Headshot Lane",
+  "180 Flick",
 ] as const;
 
 export default function HomePage() {

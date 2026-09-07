@@ -27,12 +27,21 @@ export const GRID_DEV_V0_DEFINITION: RankedScenarioDefinition = {
   engineVersion: 1,
   scoringVersion: 0,
   durationTicks: 128 * 60,
+  // Angle units: 2^24 per full turn, so 1 deg == 46_603 units.
+  // Grid Rush spec: 4.0 deg diameter targets on a 5x5 grid spanning roughly
+  // -34..+34 deg horizontally and -22..+22 deg vertically, putting slots about
+  // 17 deg apart in X and 11 deg apart in Y.
+  //
+  // The extents are rounded so that both half-width and the slot step stay
+  // whole multiples of a small gain, which keeps slot centres exactly
+  // addressable from integer mouse input in the deterministic tests. The cost
+  // is 0.02 deg versus the raw spec figure -- far below anything perceivable.
   simulation: {
     maxActiveTargets: 3,
-    targetRadiusAngleUnits: 68_000,
-    spawnAreaWidthUnits: 1_200_000,
-    spawnAreaHeightUnits: 720_000,
-    minTargetSeparationUnits: 150_000,
+    targetRadiusAngleUnits: 93_207,
+    spawnAreaWidthUnits: 3_170_000,
+    spawnAreaHeightUnits: 2_050_000,
+    minTargetSeparationUnits: 792_500,
     gridRows: 5,
     gridCols: 5,
   },
@@ -46,10 +55,10 @@ export const GRID_DEV_V0_DEFINITION: RankedScenarioDefinition = {
 export const GRID_DEV_V0_ENTRY: ScenarioEntry = {
   definition: GRID_DEV_V0_DEFINITION,
   presentation: {
-    title: "Gridshot",
-    subtitle: "3-Target Static Flick Training",
+    title: "Grid Rush",
+    subtitle: "Three-Target Static Flicks",
     description:
-      "Click three medium static circular targets. Each successful hit immediately spawns one deterministic replacement.",
+      "Three targets. Destroy one and another appears instantly. Build speed while maintaining accuracy and planning your next flick.",
     category: "flick",
     thumbnailUrl: "/thumbnails/grid.webp",
     tags: ["grid", "flick", "speed", "training"],

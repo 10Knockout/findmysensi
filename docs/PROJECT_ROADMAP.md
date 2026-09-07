@@ -1,6 +1,6 @@
 # FindMySensi — Project Roadmap & Status
 
-**Last updated:** 2026-09-05
+**Last updated:** 2026-09-07
 **Public repo HEAD:** `015c3a1` (M0-M12 complete and pushed)
 **Secure repo HEAD:** `fdd7fb4` (M14 deploy adapter/config pushed)
 
@@ -15,7 +15,7 @@ instead of re-deriving context from scratch.
 A free, open-source, ultra-light browser FPS aim trainer built around one
 differentiator: **sensitivity correctness**. Not "KovaaK's with 25,000
 scenarios" — instead, a small number of carefully engineered exercises
-(target: 10) plus deep analytics, benchmarks, and a real sensitivity-finding
+(12, all shipped) plus deep analytics, benchmarks, and a real sensitivity-finding
 system ("Find My Sensi"), all running fast enough to sit beside Valorant on a
 weak laptop.
 
@@ -76,14 +76,33 @@ M0 through M12 are complete and pushed to `origin main`. For the exact commit
 list, run `git log --oneline` in the public repo. Highlights beyond the
 original M4 checkpoint:
 
-- **All 10 exercise modes** (Grid, Pinpoint, Multi, Headline, Strafe, Smooth
-  Track, Tempo, Microshot, Reaction, Switch Track) have real
-  `ModeRuntimeAdapter` implementations, individually tested, wired into
-  `trainerModeManifest`, playable end-to-end.
+- **All 12 exercise modes** have real `ModeRuntimeAdapter` implementations,
+  individually tested, wired into `trainerModeManifest`, playable end-to-end.
+  Mode ids are stable and deliberately unchanged from their dev-era names;
+  only the display titles follow the current spec:
+
+  | Display name  | `modeId`       | Family    |
+  | ------------- | -------------- | --------- |
+  | Grid Rush     | `grid`         | click     |
+  | Multi Burst   | `multi`        | click     |
+  | Precision Six | `pinpoint`     | click     |
+  | Anchor Flick  | `anchor-flick` | click     |
+  | Micro Flick   | `microshot`    | click     |
+  | Motion Flick  | `motion-flick` | click     |
+  | Reflex Rush   | `reaction`     | click     |
+  | Headshot Lane | `headline`     | click     |
+  | 180 Flick     | `turn180`      | click     |
+  | Strafe Track  | `strafe`       | tracking  |
+  | Sphere Track  | `smooth-track` | tracking  |
+  | Switch Track  | `switch-track` | switching |
+
+  Tempo was removed outright. Strafe Track moved from the click family to
+  no-click tracking, so it no longer reports `accuracyPercentage`.
+
 - **Miss-direction classification** (`classifyMiss` in `@findmysensi/analytics`)
   wired into every click-discrete mode via the optional `MissBreakdownCapable`
-  capability — feature-detected, not forced onto tracking/tempo modes that
-  have no spatial-miss concept.
+  capability — feature-detected, not forced onto the tracking and switching
+  modes that have no spatial-miss concept.
 - **Analytics** (M7): `recommendNextExercise` — averages real
   `accuracyPercentage` per click-family mode, returns `null` below 2 distinct
   modes of history rather than fabricating a suggestion.
@@ -97,8 +116,14 @@ original M4 checkpoint:
 - **Find My Sensi** (M10): `find-my-sensi.ts` — 5-candidate generation
   symmetric around a base sensitivity, deterministic counterbalanced test
   order, LOW/MODERATE/HIGH confidence recommendation from real measured
-  accuracy only. `/app/calibrate` now runs five real, blinded 15-second
-  Gridshot blocks and can save the resulting recommendation.
+  accuracy only. `/app/calibrate` now runs 25 blinded 12-second blocks — five
+  sensitivities across Grid Rush, Multi Burst, Strafe Track, Sphere Track and
+  Reflex Rush — normalises each mode's scores against its own scale, and
+  combines them as a weighted mean. The two tracking modes are weighted 0.5:
+  most players track moving targets poorly at every sensitivity, so those
+  blocks say more about raw skill than about fit. The candidate spread is
+  ±10%, not ±25%, because one lucky block at a wide extreme could otherwise
+  recommend a sensitivity far from the player's real one.
 - **Sensi Battle** (M11): `sensi-battle.ts` — counterbalanced A/B block order,
   objective decision rule, explicit `COULD_NOT_TELL` outcome for sub-3-point
   accuracy gaps rather than fabricating a winner. `/app/sensi-battle` now runs
@@ -167,9 +192,21 @@ the documented health, registration, and email-delivery smoke checks.
 
 ## 5. Frozen facts — do not relitigate without new evidence
 
-- **Gridshot:** 3 targets, 68,000 fixed-angle-unit radius, 128 Hz simulation,
-  exactly 7,680 ticks (60s) per run, 5×5 grid slots, canonical wrapped yaw,
-  inverted pitch from browser `movementY`.
+- **Grid Rush (`grid`):** 3 targets, 93,207 fixed-angle-unit radius (4.0 deg
+  across), 128 Hz simulation, exactly 7,680 ticks (60s) per run, 5×5 grid
+  slots spanning ±34° × ±22°, canonical wrapped yaw, inverted pitch from
+  browser `movementY`. The spawn extents are rounded so both the half-width
+  and the slot step stay whole multiples of a small gain — that is what keeps
+  slot centres exactly addressable from integer mouse input in the
+  deterministic tests, at a cost of 0.02° versus the raw spec figure.
+- **Angle units:** 2^24 per full turn, so 1° = 46,603 units. Every scenario
+  is authored in angular terms; there is no Z axis anywhere. "Depth" in
+  Headshot Lane and Sphere Track is expressed purely as angular size and
+  angular speed.
+- **Unrestricted yaw** is unlocked by declaring `spawnAreaWidthUnits =
+FULL_TURN_UNITS`, because `resolveCameraBounds` derives the yaw clamp from
+  the spawn area. Sphere Track and 180 Flick rely on this; no engine change
+  was needed for either.
 - **Sensitivity golden vector:** Valorant `0.125` @ 2400 DPI = FMS/Aimlabs
   Default `0.175` @ 2400 DPI (`0.125 × 0.07 / 0.05 = 0.175`), `cmPer360 ≈
 43.54`, eDPI `420`. A reported mismatch was traced to comparing FMS
@@ -188,13 +225,23 @@ the documented health, registration, and email-delivery smoke checks.
   every tick, click-discrete modes no-op it), `onShot(tick, yaw, pitch, prng)`
   (fires per discrete shot), `getRenderTargets()`, `computeMetrics
 (elapsedTicks)`, `computeScore(metrics)`. `ClickMetrics = GridMetrics` is
-  the shared shape for Grid/Pinpoint/Multi/Headline/Strafe; Smooth Track,
-  Tempo, and Switch Track each have their own metrics family.
+  the shared shape for the nine click modes; Strafe Track and Sphere Track
+  share `TrackingMetrics`, and Switch Track has its own family. Because two
+  modes now share the tracking family, `PracticeRunController` takes the mode
+  id from the adapter rather than hardcoding one — hardcoding it previously
+  filed every no-click run under a single mode.
 - **`MissBreakdownCapable`** — optional, feature-detected capability
   (`getMissBreakdown(): Record<MissDirection, number>`), not part of the base
   adapter interface. Implemented by every click-discrete adapter; deliberately
-  absent from Smooth Track/Tempo/Switch Track, which have no spatial-miss
-  concept.
+  absent from Strafe Track/Sphere Track/Switch Track, which have no
+  spatial-miss concept.
+- **Switch Track firing:** the spec calls for damage only while the left
+  button is held. The deterministic input pipeline carries discrete
+  `MOVE`/`SHOT`/`INVALIDATE` events with no held-button state (`mouseup` is
+  bound only to suppress browser gestures), so damage currently accrues from
+  crosshair overlap alone. Gating it on a real fire-state needs a new event
+  kind plumbed through the ring buffer, reducer, adapter interface and run
+  controller — and may be a protocol change. Not yet done.
 
 ---
 

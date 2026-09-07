@@ -1,7 +1,9 @@
 import { defaultScenarioRegistry, ScenarioEntry } from "@findmysensi/scenarios";
 import {
+  createAnchorFlickModeAdapter,
   createGridModeAdapter,
   createHeadlineModeAdapter,
+  createMotionFlickModeAdapter,
   createMultiModeAdapter,
   createMicroshotModeAdapter,
   createPinpointModeAdapter,
@@ -9,6 +11,7 @@ import {
   createSmoothTrackModeAdapter,
   createStrafeModeAdapter,
   createSwitchTrackModeAdapter,
+  createTurn180ModeAdapter,
   ModeRuntimeAdapter,
 } from "@findmysensi/trainer-runtime";
 
@@ -57,6 +60,15 @@ export const trainerModeManifest: ReadonlyMap<
     "switch-track",
     buildEntry("switch-track", true, createSwitchTrackModeAdapter),
   ],
+  [
+    "anchor-flick",
+    buildEntry("anchor-flick", true, createAnchorFlickModeAdapter),
+  ],
+  [
+    "motion-flick",
+    buildEntry("motion-flick", true, createMotionFlickModeAdapter),
+  ],
+  ["turn180", buildEntry("turn180", true, createTurn180ModeAdapter)],
 ]);
 
 export function isTrainerModeEnabled(modeId: string): boolean {

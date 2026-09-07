@@ -12,9 +12,17 @@ const CLICK_MODE_IDS = new Set<PracticeSummaryRecord["modeId"]>([
   "pinpoint",
   "multi",
   "headline",
-  "strafe",
   "microshot",
   "reaction",
+  "anchor-flick",
+  "motion-flick",
+  "turn180",
+]);
+
+/** No-click modes scored on time-on-target rather than hits and shots. */
+const TRACKING_MODE_IDS = new Set<PracticeSummaryRecord["modeId"]>([
+  "smooth-track",
+  "strafe",
 ]);
 
 const ZERO_LIFETIME_STATS: LifetimeStats = {
@@ -64,7 +72,7 @@ function isPracticeSummaryRecord(
       isFiniteNumber(record.killsPerSecond)
     );
   }
-  if (record.modeId === "smooth-track") {
+  if (TRACKING_MODE_IDS.has(record.modeId as PracticeSummaryRecord["modeId"])) {
     return (
       isFiniteNumber(record.onTargetTicks) &&
       isFiniteNumber(record.totalTicks) &&

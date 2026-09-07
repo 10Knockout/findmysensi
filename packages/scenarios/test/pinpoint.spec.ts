@@ -23,7 +23,7 @@ describe("Pinpoint Scenario (dev-v0)", () => {
 
     // All have small radius
     for (const t of targets) {
-      expect(t.radiusAngleUnits).toBe(12000);
+      expect(t.radiusAngleUnits).toBe(29127);
     }
   });
 

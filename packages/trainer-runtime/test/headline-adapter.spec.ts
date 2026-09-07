@@ -5,25 +5,38 @@ import {
   wrapYaw,
 } from "@findmysensi/aim-core";
 import { createTick } from "@findmysensi/protocol";
+import {
+  HEADLINE_ACTIVE_TARGETS,
+  HEADLINE_DEPTH_RADIUS_UNITS,
+  HEADLINE_MAX_PITCH_UNITS,
+  HEADLINE_MAX_RESPAWN_TICKS,
+  HEADLINE_MIN_PITCH_UNITS,
+} from "@findmysensi/scenarios";
 import { describe, expect, it } from "vitest";
 import { createHeadlineModeAdapter } from "../src/headline-adapter.js";
 
-describe("createHeadlineModeAdapter", () => {
-  it("initializes one small target inside the head-height corridor", () => {
-    const adapter = createHeadlineModeAdapter();
-    const prng = createPrngV1([101, 202, 303, 404]);
+/** Pitch well outside the head-height band, so a shot there always misses. */
+const OFF_BAND_PITCH = 900_000;
 
-    adapter.initialize(prng);
+describe("createHeadlineModeAdapter", () => {
+  it("initializes four targets inside the head-height corridor", () => {
+    const adapter = createHeadlineModeAdapter();
+    adapter.initialize(createPrngV1([101, 202, 303, 404]));
 
     const targets = adapter.getRenderTargets();
-    expect(targets).toHaveLength(1);
-    expect(targets[0]?.radiusAngleUnits).toBe(20_000);
-    expect(Math.abs(targets[0]?.yAngleUnits ?? Infinity)).toBeLessThanOrEqual(
-      90_000,
-    );
+    expect(targets).toHaveLength(HEADLINE_ACTIVE_TARGETS);
+
+    const validRadii = new Set(Object.values(HEADLINE_DEPTH_RADIUS_UNITS));
+    for (const target of targets) {
+      expect(validRadii.has(target.radiusAngleUnits)).toBe(true);
+      expect(target.yAngleUnits).toBeGreaterThanOrEqual(
+        HEADLINE_MIN_PITCH_UNITS,
+      );
+      expect(target.yAngleUnits).toBeLessThanOrEqual(HEADLINE_MAX_PITCH_UNITS);
+    }
   });
 
-  it("records a hit and replaces the target", () => {
+  it("records a hit and brings the lane back to four after the respawn delay", () => {
     const adapter = createHeadlineModeAdapter();
     const prng = createPrngV1([1, 2, 3, 4]);
     adapter.initialize(prng);
@@ -41,8 +54,20 @@ describe("createHeadlineModeAdapter", () => {
       shots: 1,
       misses: 0,
     });
-    expect(adapter.getRenderTargets()).toHaveLength(1);
-    expect(adapter.getRenderTargets()[0]?.id).not.toBe(target.id);
+    // The replacement is queued, not instant.
+    expect(adapter.getRenderTargets()).toHaveLength(
+      HEADLINE_ACTIVE_TARGETS - 1,
+    );
+
+    for (let tick = 6; tick <= 6 + HEADLINE_MAX_RESPAWN_TICKS; tick++) {
+      adapter.onSimulationTick(
+        createTick(tick),
+        createAngleUnits(0),
+        createPitchUnits(0),
+      );
+    }
+
+    expect(adapter.getRenderTargets()).toHaveLength(HEADLINE_ACTIVE_TARGETS);
   });
 
   it("records a miss when no target is at the aim point", () => {
@@ -53,7 +78,7 @@ describe("createHeadlineModeAdapter", () => {
     adapter.onShot(
       createTick(1),
       createAngleUnits(0),
-      createPitchUnits(500_000),
+      createPitchUnits(OFF_BAND_PITCH),
       prng,
     );
 
@@ -80,17 +105,24 @@ describe("createHeadlineModeAdapter", () => {
     expect(adapter.computeScore(adapter.computeMetrics(2)).score).toBe(1_200);
   });
 
-  it("keeps simulation ticks as safe no-ops", () => {
+  it("advances the lane on simulation ticks without throwing", () => {
     const adapter = createHeadlineModeAdapter();
     adapter.initialize(createPrngV1([1, 2, 3, 4]));
 
-    expect(() =>
-      adapter.onSimulationTick(
-        createTick(0),
-        createAngleUnits(0),
-        createPitchUnits(0),
-      ),
-    ).not.toThrow();
+    const before = adapter.getRenderTargets().map((t) => t.xAngleUnits);
+    for (let tick = 1; tick <= 20; tick++) {
+      expect(() =>
+        adapter.onSimulationTick(
+          createTick(tick),
+          createAngleUnits(0),
+          createPitchUnits(0),
+        ),
+      ).not.toThrow();
+    }
+    const after = adapter.getRenderTargets().map((t) => t.xAngleUnits);
+
+    expect(after).not.toEqual(before);
+    expect(adapter.getRenderTargets()).toHaveLength(HEADLINE_ACTIVE_TARGETS);
   });
 
   it("classifies a miss's direction via getMissBreakdown", () => {
@@ -100,7 +132,7 @@ describe("createHeadlineModeAdapter", () => {
     const target = adapter.getRenderTargets()[0]!;
     adapter.onShot(
       createTick(1),
-      createAngleUnits(wrapYaw(target.xAngleUnits + 100_000)),
+      createAngleUnits(wrapYaw(target.xAngleUnits + 150_000)),
       createPitchUnits(target.yAngleUnits),
       prng,
     );
@@ -114,13 +146,13 @@ describe("createHeadlineModeAdapter", () => {
     adapter.onShot(
       createTick(1),
       createAngleUnits(0),
-      createPitchUnits(500_000),
+      createPitchUnits(OFF_BAND_PITCH),
       prngA,
     );
     expect(adapter.computeMetrics(2).shots).toBe(1);
 
     adapter.initialize(createPrngV1([5, 6, 7, 8]));
     expect(adapter.computeMetrics(1).shots).toBe(0);
-    expect(adapter.getRenderTargets()).toHaveLength(1);
+    expect(adapter.getRenderTargets()).toHaveLength(HEADLINE_ACTIVE_TARGETS);
   });
 });

@@ -14,6 +14,9 @@ describe("trainer dashboard catalog", () => {
       "microshot",
       "reaction",
       "switch-track",
+      "anchor-flick",
+      "motion-flick",
+      "turn180",
     ]) {
       expect(source).toContain(`"${modeId}",`);
     }

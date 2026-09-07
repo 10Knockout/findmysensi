@@ -88,21 +88,38 @@ describe("Headline Scoring", () => {
   });
 });
 
-describe("Strafe Scoring", () => {
-  it("scores 1200 per hit minus 250 per miss", () => {
-    const metrics = makeFlickMetrics({ hits: 10, misses: 2 });
-    const result = computeStrafeDevScore(metrics);
-    expect(result.score).toBe(10 * 1200 - 2 * 250);
+describe("Strafe Track Scoring", () => {
+  it("scores on time-on-target percentage", () => {
+    const result = computeStrafeDevScore({
+      onTargetTicks: 400,
+      totalTicks: 1000,
+      onTargetPercentage: 40,
+      averageErrorUnits: 60_000,
+      maxErrorUnits: 120_000,
+    });
+    expect(result.score).toBe(40_000);
   });
 
-  it("applies 1.3x accuracy bonus at ≥95%", () => {
-    const metrics = makeFlickMetrics({
-      hits: 20,
-      misses: 0,
-      accuracyPercentage: 100,
+  it("applies the 1.2x precision bonus for a low average error", () => {
+    const result = computeStrafeDevScore({
+      onTargetTicks: 700,
+      totalTicks: 1000,
+      onTargetPercentage: 70,
+      averageErrorUnits: 15_000,
+      maxErrorUnits: 100_000,
     });
-    const result = computeStrafeDevScore(metrics);
-    expect(result.score).toBe(Math.floor(20 * 1200 * 1.3));
+    expect(result.score).toBe(Math.floor(70_000 * 1.2));
+  });
+
+  it("penalises a run that lost the target completely at some point", () => {
+    const result = computeStrafeDevScore({
+      onTargetTicks: 800,
+      totalTicks: 1000,
+      onTargetPercentage: 80,
+      averageErrorUnits: 60_000,
+      maxErrorUnits: 300_000,
+    });
+    expect(result.score).toBe(Math.floor(80_000 * 0.9));
   });
 });
 

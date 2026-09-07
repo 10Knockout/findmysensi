@@ -69,7 +69,7 @@ export function PracticeResults({ mode = "grid" }: { mode?: string }) {
 
 function getResultStats(record: PracticeSummaryRecord): [string, string][] {
   const score: [string, string] = ["Score", record.score.toLocaleString()];
-  if (record.modeId === "smooth-track") {
+  if (record.modeId === "smooth-track" || record.modeId === "strafe") {
     return [
       score,
       ["On Target", `${record.onTargetPercentage}%`],

@@ -43,9 +43,11 @@ describe("Reaction adapter", () => {
       tick++;
     }
     const target = adapter.getRenderTargets()[0]!;
+    // Reflex Rush targets now vary 1.7-2.8 deg across, so the shot has to
+    // land well outside the largest possible radius to still be a miss.
     adapter.onShot(
       createTick(tick + 10),
-      target.xAngleUnits + 50_000,
+      target.xAngleUnits + 200_000,
       target.yAngleUnits,
       prng,
     );

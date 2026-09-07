@@ -14,24 +14,29 @@ import {
 } from "@findmysensi/analytics";
 import { Tick } from "@findmysensi/protocol";
 import {
-  MULTI_DEV_V0_DEFINITION,
-  MultiScenarioEngine,
+  MOTION_FLICK_DEV_V0_DEFINITION,
+  MotionFlickScenarioEngine,
   TargetSpawnSpec,
 } from "@findmysensi/scenarios";
-import { computeMultiDevScore, ScoreResult } from "@findmysensi/scoring";
+import {
+  computeMotionFlickDevScore,
+  MotionFlickScoreResult,
+} from "@findmysensi/scoring";
 import { MissBreakdownCapable, ModeRuntimeAdapter } from "./adapter.js";
 
 function emptyMissBreakdown(): Record<MissDirection, number> {
   return { left: 0, right: 0, up: 0, down: 0, unclear: 0 };
 }
 
-class MultiModeAdapter
+class MotionFlickModeAdapter
   implements ModeRuntimeAdapter<GridMetrics>, MissBreakdownCapable
 {
-  public readonly modeId = "multi";
-  public readonly definition = MULTI_DEV_V0_DEFINITION;
+  public readonly modeId = "motion-flick";
+  public readonly definition = MOTION_FLICK_DEV_V0_DEFINITION;
 
-  private readonly engine = new MultiScenarioEngine(MULTI_DEV_V0_DEFINITION);
+  private readonly engine = new MotionFlickScenarioEngine(
+    MOTION_FLICK_DEV_V0_DEFINITION,
+  );
   private metricsTracker: FlickMetricsTracker = createFlickMetricsTracker();
   private missBreakdown: Record<MissDirection, number> = emptyMissBreakdown();
   private prng: PrngV1 | null = null;
@@ -40,10 +45,8 @@ class MultiModeAdapter
     this.metricsTracker = createFlickMetricsTracker();
     this.missBreakdown = emptyMissBreakdown();
     this.prng = prng;
-    const initialTargets = this.engine.initialize(prng);
-    for (const target of initialTargets) {
-      this.metricsTracker.recordTargetSpawn(target.id, 0);
-    }
+    const target = this.engine.initialize(prng);
+    this.metricsTracker.recordTargetSpawn(target.id, 0);
   }
 
   public getMissBreakdown(): Readonly<Record<MissDirection, number>> {
@@ -57,15 +60,11 @@ class MultiModeAdapter
   ): void {
     if (!this.prng) return;
 
-    // Multi Burst targets shrink away on a timer, so the arena advances every
-    // tick even when the player never fires.
+    // The moving target drifts every tick and escapes if it is never
+    // intercepted, which counts as a miss.
     const { expired, spawned } = this.engine.tick(tick, this.prng);
-    for (const _target of expired) {
-      this.metricsTracker.recordExpiration(tick);
-    }
-    for (const target of spawned) {
-      this.metricsTracker.recordTargetSpawn(target.id, tick);
-    }
+    if (expired) this.metricsTracker.recordExpiration(tick);
+    if (spawned) this.metricsTracker.recordTargetSpawn(spawned.id, tick);
   }
 
   public onShot(
@@ -79,10 +78,8 @@ class MultiModeAdapter
 
     if (hitTarget) {
       this.metricsTracker.recordShot(tick, hitTarget.id);
-      const newTarget = this.engine.onTargetHit(hitTarget.id, prng);
-      if (newTarget) {
-        this.metricsTracker.recordTargetSpawn(newTarget.id, tick);
-      }
+      const next = this.engine.onTargetHit(hitTarget.id, tick, prng);
+      if (next) this.metricsTracker.recordTargetSpawn(next.id, tick);
     } else {
       this.metricsTracker.recordShot(tick, null);
       const nearest = findNearestTarget(playerYaw, playerPitch, activeTargets);
@@ -105,11 +102,11 @@ class MultiModeAdapter
     return this.metricsTracker.computeMetrics(elapsedTicks);
   }
 
-  public computeScore(metrics: GridMetrics): ScoreResult {
-    return computeMultiDevScore(metrics);
+  public computeScore(metrics: GridMetrics): MotionFlickScoreResult {
+    return computeMotionFlickDevScore(metrics);
   }
 }
 
-export function createMultiModeAdapter(): ModeRuntimeAdapter<GridMetrics> {
-  return new MultiModeAdapter();
+export function createMotionFlickModeAdapter(): ModeRuntimeAdapter<GridMetrics> {
+  return new MotionFlickModeAdapter();
 }

@@ -10,3 +10,6 @@ export * from "./smooth-track/dev-v0.js";
 export * from "./microshot/dev-v0.js";
 export * from "./reaction/dev-v0.js";
 export * from "./switch-track/dev-v0.js";
+export * from "./anchor-flick/dev-v0.js";
+export * from "./motion-flick/dev-v0.js";
+export * from "./turn180/dev-v0.js";

@@ -5,21 +5,25 @@ import {
   wrapYaw,
 } from "@findmysensi/aim-core";
 import { createTick } from "@findmysensi/protocol";
+import {
+  MULTI_LIFETIME_TICKS,
+  MULTI_MAX_ACTIVE_TARGETS,
+  MULTI_MIN_ACTIVE_TARGETS,
+  MULTI_SPAWN_RADIUS_UNITS,
+} from "@findmysensi/scenarios";
 import { describe, expect, it } from "vitest";
 import { createMultiModeAdapter } from "../src/multi-adapter.js";
 
 describe("createMultiModeAdapter", () => {
-  it("initializes exactly 5 targets drawn from the mixed size quota", () => {
+  it("opens with the minimum population at spawn size", () => {
     const adapter = createMultiModeAdapter();
-    const prng = createPrngV1([101, 202, 303, 404]);
-
-    adapter.initialize(prng);
+    adapter.initialize(createPrngV1([101, 202, 303, 404]));
 
     const targets = adapter.getRenderTargets();
-    expect(targets.length).toBe(5);
-    // Sizes vary; every radius must be one of the three defined sizes.
-    const validRadii = new Set([40_000, 25_000, 15_000]);
-    expect(targets.every((t) => validRadii.has(t.radiusAngleUnits))).toBe(true);
+    expect(targets.length).toBe(MULTI_MIN_ACTIVE_TARGETS);
+    expect(
+      targets.every((t) => t.radiusAngleUnits === MULTI_SPAWN_RADIUS_UNITS),
+    ).toBe(true);
   });
 
   it("records a hit via onShot and reflects it in computeMetrics", () => {
@@ -39,7 +43,8 @@ describe("createMultiModeAdapter", () => {
     expect(metrics.hits).toBe(1);
     expect(metrics.shots).toBe(1);
     expect(metrics.misses).toBe(0);
-    expect(adapter.getRenderTargets().length).toBe(5);
+    // A kill drops the arena below its floor, so a replacement arrives.
+    expect(adapter.getRenderTargets().length).toBe(MULTI_MIN_ACTIVE_TARGETS);
   });
 
   it("records a miss via onShot when no target is at the aim point", () => {
@@ -74,37 +79,45 @@ describe("createMultiModeAdapter", () => {
     );
 
     const metrics = adapter.computeMetrics(2);
-    const result = adapter.computeScore(metrics);
     // 1 hit, 0 misses: 1*800 - 0*150 = 800. killsPerSecond at this tiny
     // elapsed duration is far above the >=6 threshold, so the 1.3x speed
     // bonus applies: floor(800 * 1.3) = 1040.
-    expect(result.score).toBe(1040);
+    expect(adapter.computeScore(metrics).score).toBe(1040);
   });
 
-  it("stops spawning once the 60-target quota is exhausted, without crashing", () => {
+  it("counts an undestroyed target as a miss once it expires, without inflating shots", () => {
     const adapter = createMultiModeAdapter();
-    const prng = createPrngV1([1, 2, 3, 4]);
-    adapter.initialize(prng);
+    adapter.initialize(createPrngV1([1, 2, 3, 4]));
 
-    // The quota (60) covers the 5 initial spawns too, so exactly 60 hits
-    // exhausts it. Hit more than that to prove exhaustion doesn't crash.
-    let tick = 1;
-    for (let i = 0; i < 80; i++) {
-      const active = adapter.getRenderTargets();
-      if (active.length === 0) break;
-      const target = active[0]!;
-      adapter.onShot(
+    // Let a full target lifetime elapse without ever firing.
+    for (let tick = 1; tick <= MULTI_LIFETIME_TICKS + 2; tick++) {
+      adapter.onSimulationTick(
         createTick(tick),
-        createAngleUnits(target.xAngleUnits),
-        createPitchUnits(target.yAngleUnits),
-        prng,
+        createAngleUnits(0),
+        createPitchUnits(0),
       );
-      tick++;
     }
 
-    const metrics = adapter.computeMetrics(tick);
-    expect(metrics.hits).toBe(60);
-    expect(adapter.getRenderTargets().length).toBe(0);
+    const metrics = adapter.computeMetrics(MULTI_LIFETIME_TICKS + 2);
+    expect(metrics.misses).toBeGreaterThan(0);
+    expect(metrics.shots).toBe(0);
+    expect(metrics.hits).toBe(0);
+  });
+
+  it("never exceeds the maximum population while ticking", () => {
+    const adapter = createMultiModeAdapter();
+    adapter.initialize(createPrngV1([4, 4, 4, 4]));
+
+    for (let tick = 1; tick <= 600; tick++) {
+      adapter.onSimulationTick(
+        createTick(tick),
+        createAngleUnits(0),
+        createPitchUnits(0),
+      );
+      expect(adapter.getRenderTargets().length).toBeLessThanOrEqual(
+        MULTI_MAX_ACTIVE_TARGETS,
+      );
+    }
   });
 
   it("classifies a miss's direction via getMissBreakdown", () => {
@@ -114,7 +127,7 @@ describe("createMultiModeAdapter", () => {
     const target = adapter.getRenderTargets()[0]!;
     adapter.onShot(
       createTick(1),
-      createAngleUnits(wrapYaw(target.xAngleUnits + 100_000)),
+      createAngleUnits(wrapYaw(target.xAngleUnits + 200_000)),
       createPitchUnits(target.yAngleUnits),
       prng,
     );
@@ -133,9 +146,8 @@ describe("createMultiModeAdapter", () => {
     );
     expect(adapter.computeMetrics(2).shots).toBe(1);
 
-    const prngB = createPrngV1([5, 6, 7, 8]);
-    adapter.initialize(prngB);
+    adapter.initialize(createPrngV1([5, 6, 7, 8]));
     expect(adapter.computeMetrics(1).shots).toBe(0);
-    expect(adapter.getRenderTargets().length).toBe(5);
+    expect(adapter.getRenderTargets().length).toBe(MULTI_MIN_ACTIVE_TARGETS);
   });
 });

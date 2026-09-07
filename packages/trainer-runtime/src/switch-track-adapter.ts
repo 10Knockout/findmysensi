@@ -43,7 +43,9 @@ class SwitchTrackModeAdapter implements ModeRuntimeAdapter<SwitchTrackMetrics> {
     if (sample.acquisitionTicks !== null) {
       this.tracker.recordAcquisition(sample.acquisitionTicks);
     }
-    if (sample.switched) this.tracker.recordSwitch();
+    // A kill is what completes a switch: the player must now find another
+    // target and settle onto it.
+    if (sample.killed) this.tracker.recordSwitch();
   }
 
   public onShot(
@@ -54,7 +56,7 @@ class SwitchTrackModeAdapter implements ModeRuntimeAdapter<SwitchTrackMetrics> {
   ): void {}
 
   public getRenderTargets(): readonly TargetSpawnSpec[] {
-    return [this.engine.getTarget()];
+    return this.engine.getActiveTargets();
   }
 
   public computeMetrics(_elapsedTicks: number): SwitchTrackMetrics {

@@ -35,18 +35,20 @@ const FIND_MODES = [
 ] as const;
 type FindModeId = (typeof FIND_MODES)[number];
 const FIND_MODE_LABELS: Record<FindModeId, string> = {
-  grid: "Gridshot",
-  multi: "Multishot",
-  strafe: "Strafe",
-  "smooth-track": "Tracking",
-  reaction: "Reaction",
+  grid: "Grid Rush",
+  multi: "Multi Burst",
+  strafe: "Strafe Track",
+  "smooth-track": "Sphere Track",
+  reaction: "Reflex Rush",
 };
 
 // Most players track moving targets poorly at every sensitivity, so a
-// Tracking block says more about raw skill than about fit. It still counts,
-// at half weight, so it can break a tie without dominating the result.
+// tracking block says more about raw skill than about fit. Both no-click
+// tracking modes still count, at half weight, so they can break a tie
+// without dominating the result.
 const FIND_MODE_WEIGHTS: Partial<Record<FindModeId, number>> = {
   "smooth-track": 0.5,
+  strafe: 0.5,
 };
 
 interface CalibrationBlock {
@@ -377,7 +379,7 @@ export function CalibrationFlow({ kind }: { kind: "find" | "battle" }) {
         <h1 className="app-heading">{title}</h1>
         <p className="app-subtext">
           {kind === "find"
-            ? "Run 25 blinded 12-second blocks: five sensitivities across Gridshot, Multishot, Strafe, Tracking, and Reaction. Each mode is scored on its own scale, then combined. Tracking counts half -- most players track moving targets poorly at any sensitivity."
+            ? "Run 25 blinded 12-second blocks: five sensitivities across Grid Rush, Multi Burst, Strafe Track, Sphere Track, and Reflex Rush. Each mode is scored on its own scale, then combined. The two tracking modes count half -- most players track moving targets poorly at any sensitivity."
             : "Run two counterbalanced 15-second Gridshot blocks. Gaps under 3 points return no winner."}
         </p>
         {kind === "battle" ? (

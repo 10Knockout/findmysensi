@@ -7,13 +7,63 @@ import {
 } from "../types.js";
 
 /**
- * Headline: Controlled head-height corridor with meaningful vertical variation.
- * Targets spawn along a horizontal band simulating head-height crosshair placement.
- * Tests horizontal flick accuracy and the ability to maintain consistent crosshair height.
+ * Headshot Lane: four head-height targets strafing horizontally at three
+ * different distances. Nearer targets look bigger and cross the view faster;
+ * far ones are small and slow. One click kills.
+ *
+ * Depth is expressed purely as angular size and angular speed. The renderer
+ * has no Z axis, and inventing one to imitate a 3D room would add a whole
+ * projection pipeline for no gameplay gain -- a target 18 units away simply
+ * *is* a 1.02 deg circle drifting slowly.
  */
 
-/** Vertical band half-height — targets cluster near the horizontal centerline */
-const HEADLINE_VERTICAL_BAND = 180000; // ~3.9 deg total vertical spread
+export type HeadlineDepth = "near" | "medium" | "far";
+
+export interface HeadlineTarget extends TargetSpawnSpec {
+  readonly depth: HeadlineDepth;
+  /** Signed angle units per tick; negative is leftward. */
+  readonly velocityUnitsPerTick: number;
+}
+
+/**
+ * Angular radius for a 0.16-unit target at each spec distance:
+ * atan(0.16 / d), doubled for diameter.
+ *   near   8 units -> 2.29 deg across
+ *   medium 12      -> 1.53 deg
+ *   far    18      -> 1.02 deg
+ */
+export const HEADLINE_DEPTH_RADIUS_UNITS: Record<HeadlineDepth, number> = {
+  near: 53_410,
+  medium: 35_605,
+  far: 23_737,
+};
+
+/** Angular speed bands, in units/tick: nearer targets sweep faster. */
+const HEADLINE_DEPTH_SPEED_UNITS_PER_TICK: Record<
+  HeadlineDepth,
+  readonly [number, number]
+> = {
+  near: [4_733, 5_825],
+  medium: [3_641, 4_733],
+  far: [2_913, 3_641],
+};
+
+const HEADLINE_DEPTHS: readonly HeadlineDepth[] = ["near", "medium", "far"];
+
+/** Spec: targets reflect at +/-42 deg. */
+export const HEADLINE_HALF_WIDTH_UNITS = 1_957_342;
+/** Spec: head-height band runs -3 deg to +5 deg. */
+export const HEADLINE_MIN_PITCH_UNITS = -139_810;
+export const HEADLINE_MAX_PITCH_UNITS = 233_017;
+/** Spec: a killed target is replaced after 100-250 ms. */
+export const HEADLINE_MIN_RESPAWN_TICKS = 13;
+export const HEADLINE_MAX_RESPAWN_TICKS = 32;
+
+export const HEADLINE_ACTIVE_TARGETS = 4;
+
+export interface HeadlineTickResult {
+  readonly spawned: readonly HeadlineTarget[];
+}
 
 export const HEADLINE_DEV_V0_DEFINITION: RankedScenarioDefinition = {
   modeId: "headline",
@@ -21,12 +71,13 @@ export const HEADLINE_DEV_V0_DEFINITION: RankedScenarioDefinition = {
   engineVersion: 1,
   scoringVersion: 0,
   durationTicks: 128 * 60,
+  // Nominal radius is the mid depth tier; each target carries its own.
   simulation: {
-    maxActiveTargets: 1,
-    targetRadiusAngleUnits: 20000, // ~0.43 deg
-    spawnAreaWidthUnits: 1800000, // ~38.6 deg — wide horizontal spread
-    spawnAreaHeightUnits: HEADLINE_VERTICAL_BAND,
-    minTargetSeparationUnits: 200000, // force wide horizontal flicks
+    maxActiveTargets: HEADLINE_ACTIVE_TARGETS,
+    targetRadiusAngleUnits: HEADLINE_DEPTH_RADIUS_UNITS.medium,
+    spawnAreaWidthUnits: HEADLINE_HALF_WIDTH_UNITS * 2,
+    spawnAreaHeightUnits: HEADLINE_MAX_PITCH_UNITS - HEADLINE_MIN_PITCH_UNITS,
+    minTargetSeparationUnits: 200_000,
   },
   rankedSettings: {
     rankedEnabled: false,
@@ -38,91 +89,133 @@ export const HEADLINE_DEV_V0_DEFINITION: RankedScenarioDefinition = {
 export const HEADLINE_DEV_V0_ENTRY: ScenarioEntry = {
   definition: HEADLINE_DEV_V0_DEFINITION,
   presentation: {
-    title: "Headline (Dev v0)",
-    subtitle: "Horizontal Flick Corridor",
+    title: "Headshot Lane",
+    subtitle: "Moving Head-Height Precision",
     description:
-      "Targets spawn along a head-height corridor. Tests horizontal crosshair placement and flick timing.",
+      "Hit small head-level targets as they strafe horizontally at different depths. Trains first-shot accuracy against moving enemies.",
     category: "flick",
     thumbnailUrl: "/thumbnails/headline.webp",
-    tags: ["headline", "flick", "horizontal", "crosshair", "practice"],
+    tags: ["headline", "flick", "moving", "depth", "headshot", "practice"],
   },
 };
 
 defaultScenarioRegistry.register(HEADLINE_DEV_V0_ENTRY);
 
+interface LiveTarget {
+  readonly id: number;
+  x: number;
+  readonly y: number;
+  readonly depth: HeadlineDepth;
+  velocity: number;
+}
+
 export class HeadlineScenarioEngine {
-  private readonly radiusUnits: number;
-  private readonly areaWidth: number;
-  private readonly areaHeight: number;
-  private readonly minSep: number;
-  private activeTargets: TargetSpawnSpec[] = [];
-  private nextTargetId: number = 1;
-  private lastX: number | null = null;
+  private readonly halfWidth: number;
+  private live: LiveTarget[] = [];
+  private pendingRespawnTicks: number[] = [];
+  private nextTargetId = 1;
 
   constructor(
     definition: RankedScenarioDefinition = HEADLINE_DEV_V0_DEFINITION,
   ) {
-    this.radiusUnits = definition.simulation.targetRadiusAngleUnits;
-    this.areaWidth = definition.simulation.spawnAreaWidthUnits;
-    this.areaHeight = definition.simulation.spawnAreaHeightUnits;
-    this.minSep = definition.simulation.minTargetSeparationUnits;
+    this.halfWidth = Math.floor(definition.simulation.spawnAreaWidthUnits / 2);
   }
 
-  public initialize(prng: PrngV1): readonly TargetSpawnSpec[] {
-    this.activeTargets = [];
+  public initialize(prng: PrngV1): readonly HeadlineTarget[] {
+    this.live = [];
+    this.pendingRespawnTicks = [];
     this.nextTargetId = 1;
-    this.lastX = null;
-
-    this.spawnTarget(prng);
+    for (let i = 0; i < HEADLINE_ACTIVE_TARGETS; i++) {
+      this.spawnTarget(prng);
+    }
     return this.getActiveTargets();
   }
 
-  public getActiveTargets(): readonly TargetSpawnSpec[] {
-    return Object.freeze([...this.activeTargets]);
+  /** Slides every target one step and releases any due replacements. */
+  public tick(currentTick: number, prng: PrngV1): HeadlineTickResult {
+    for (const target of this.live) {
+      target.x += target.velocity;
+      if (target.x > this.halfWidth) {
+        target.x = this.halfWidth - (target.x - this.halfWidth);
+        target.velocity = -target.velocity;
+      } else if (target.x < -this.halfWidth) {
+        target.x = -this.halfWidth + (-this.halfWidth - target.x);
+        target.velocity = -target.velocity;
+      }
+    }
+
+    const spawned: HeadlineTarget[] = [];
+    const stillPending: number[] = [];
+    for (const readyTick of this.pendingRespawnTicks) {
+      if (currentTick >= readyTick) {
+        spawned.push(this.spawnTarget(prng));
+      } else {
+        stillPending.push(readyTick);
+      }
+    }
+    this.pendingRespawnTicks = stillPending;
+
+    return { spawned };
   }
 
-  public onTargetHit(targetId: number, prng: PrngV1): TargetSpawnSpec | null {
-    const hitIdx = this.activeTargets.findIndex((t) => t.id === targetId);
-    if (hitIdx === -1) return null;
-
-    const hitTarget = this.activeTargets[hitIdx]!;
-    this.lastX = hitTarget.xAngleUnits;
-    this.activeTargets.splice(hitIdx, 1);
-
-    return this.spawnTarget(prng);
+  public getActiveTargets(): readonly HeadlineTarget[] {
+    return Object.freeze(this.live.map((t) => this.toSpec(t)));
   }
 
-  private spawnTarget(prng: PrngV1): TargetSpawnSpec {
-    const halfW = Math.floor(this.areaWidth / 2);
-    const halfH = Math.floor(this.areaHeight / 2);
+  /**
+   * Removes a killed target and queues its replacement. The replacement is
+   * deliberately delayed rather than instant, so the player gets a beat to
+   * reacquire instead of a new target materialising under the crosshair.
+   */
+  public onTargetHit(
+    targetId: number,
+    currentTick: number,
+    prng: PrngV1,
+  ): boolean {
+    const idx = this.live.findIndex((t) => t.id === targetId);
+    if (idx === -1) return false;
 
-    let x: number;
-    let attempts = 0;
-    do {
-      // Wrap immediately: collision testing requires every stored target's
-      // xAngleUnits to already be in [0, FULL_TURN_UNITS), matching Grid's
-      // slot generation. Wrapping here keeps this separation check
-      // consistent with lastX, which is itself derived from a stored,
-      // already-wrapped target.
-      x = wrapYaw(prng.nextRange(-halfW, halfW + 1));
-      attempts++;
-    } while (
-      attempts < 100 &&
-      this.lastX !== null &&
-      Math.abs(x - this.lastX) < this.minSep
+    this.live.splice(idx, 1);
+    this.pendingRespawnTicks.push(
+      currentTick +
+        prng.nextRange(
+          HEADLINE_MIN_RESPAWN_TICKS,
+          HEADLINE_MAX_RESPAWN_TICKS + 1,
+        ),
     );
+    return true;
+  }
 
-    // Vertical variation — constrained to the head-height band
-    const y = prng.nextRange(-halfH, halfH + 1);
+  public getActiveCount(): number {
+    return this.live.length;
+  }
 
-    const newTarget: TargetSpawnSpec = {
+  private toSpec(target: LiveTarget): HeadlineTarget {
+    return {
+      id: target.id,
+      xAngleUnits: wrapYaw(target.x),
+      yAngleUnits: target.y,
+      radiusAngleUnits: HEADLINE_DEPTH_RADIUS_UNITS[target.depth],
+      depth: target.depth,
+      velocityUnitsPerTick: target.velocity,
+    };
+  }
+
+  private spawnTarget(prng: PrngV1): HeadlineTarget {
+    const depth = HEADLINE_DEPTHS[prng.nextRange(0, HEADLINE_DEPTHS.length)]!;
+    const [minSpeed, maxSpeed] = HEADLINE_DEPTH_SPEED_UNITS_PER_TICK[depth];
+    const speed = prng.nextRange(minSpeed, maxSpeed + 1);
+    const goingRight = prng.nextRange(0, 2) === 0;
+
+    const target: LiveTarget = {
       id: this.nextTargetId++,
-      xAngleUnits: x,
-      yAngleUnits: y,
-      radiusAngleUnits: this.radiusUnits,
+      x: prng.nextRange(-this.halfWidth, this.halfWidth + 1),
+      y: prng.nextRange(HEADLINE_MIN_PITCH_UNITS, HEADLINE_MAX_PITCH_UNITS + 1),
+      depth,
+      velocity: goingRight ? speed : -speed,
     };
 
-    this.activeTargets.push(newTarget);
-    return newTarget;
+    this.live.push(target);
+    return this.toSpec(target);
   }
 }

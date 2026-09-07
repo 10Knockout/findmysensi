@@ -19,12 +19,16 @@ export const PINPOINT_DEV_V0_DEFINITION: RankedScenarioDefinition = {
   engineVersion: 1,
   scoringVersion: 0,
   durationTicks: 128 * 60, // 60 seconds at 128 Hz
+  // Precision Six spec: six 1.25 deg diameter targets living anywhere in the
+  // full -42..+42 x -27..+27 deg region, at least 4 deg apart centre-to-centre.
+  // Unlike Grid Rush these are continuous positions, not 25 fixed slots, so
+  // the layout cannot be memorised.
   simulation: {
     maxActiveTargets: 6,
-    targetRadiusAngleUnits: 12000, // ~0.26 deg — much smaller than Grid's 25000
-    spawnAreaWidthUnits: 1600000, // ~34.3 deg horizontal
-    spawnAreaHeightUnits: 900000, // ~19.3 deg vertical
-    minTargetSeparationUnits: 80000,
+    targetRadiusAngleUnits: 29_127,
+    spawnAreaWidthUnits: 3_914_684,
+    spawnAreaHeightUnits: 2_516_582,
+    minTargetSeparationUnits: 186_414,
   },
   rankedSettings: {
     rankedEnabled: false,
@@ -36,8 +40,8 @@ export const PINPOINT_DEV_V0_DEFINITION: RankedScenarioDefinition = {
 export const PINPOINT_DEV_V0_ENTRY: ScenarioEntry = {
   definition: PINPOINT_DEV_V0_DEFINITION,
   presentation: {
-    title: "Pinpoint (Dev v0)",
-    subtitle: "6-Target Precision Practice",
+    title: "Precision Six",
+    subtitle: "Six-Target Precision",
     description:
       "Tiny stationary targets that test precision clicking and planning. Targets expire if not hit in time.",
     category: "precision",
