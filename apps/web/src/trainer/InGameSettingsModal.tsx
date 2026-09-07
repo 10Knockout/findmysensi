@@ -293,9 +293,9 @@ export function InGameSettingsModal({
                     textAlign: "center",
                   }}
                 >
-                  Use same numeric value as Aimlabs Default. Confirm physical
-                  parity with repeated 180° or 360° sweeps before changing the
-                  value by feel.
+                  In Aimlabs, use this same number only with the Aimlabs Default
+                  profile. Its Valorant profile expects your original Valorant
+                  sensitivity instead.
                 </p>
               </div>
 

@@ -18,6 +18,14 @@ export interface EventSourceCapability {
 
 export interface InputListenerOptions {
   readonly shouldCaptureGameplayInput?: () => boolean;
+  /** Called for each DOM movement sample before integer buffering. */
+  readonly onMovementObserved?: (sample: {
+    readonly dx: number;
+    readonly dy: number;
+    readonly timeStamp: number;
+    readonly source: InputSource;
+  }) => void;
+  /** Called with the integer movement accepted by the ring buffer. */
   readonly onMovementAccepted?: (sample: {
     readonly dx: number;
     readonly dy: number;
@@ -72,6 +80,7 @@ export function attachInputListener(
   let fractionY = 0;
 
   const pushMovement = (dx: number, dy: number, timeStamp: number) => {
+    options.onMovementObserved?.({ dx, dy, timeStamp, source });
     fractionX += dx;
     fractionY += dy;
     const intX = Math.trunc(fractionX);

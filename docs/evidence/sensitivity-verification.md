@@ -1,6 +1,6 @@
 # Single sensitivity verification
 
-Last reviewed: 2026-09-06
+Last reviewed: 2026-09-07
 
 ## Canonical model
 
@@ -99,6 +99,20 @@ Valorant eDPI = 300
 Aimlabs Default / FMS eDPI = 420
 ```
 
+The Aimlabs profile name is part of that vector. These pairs are mechanically
+equivalent at the same DPI:
+
+```text
+Aimlabs VALORANT 0.125 = Aimlabs Default 0.175 = FMS 0.175
+Aimlabs VALORANT 0.175 = Aimlabs Default 0.245 = FMS 0.245
+```
+
+On 2026-09-07, a reported physical match near FMS `0.275` was traced to an
+Aimlabs comparison performed while its saved game profile was `VALORANT`.
+Aimlabs' displayed `0.175` in that profile is `0.245` on the Default/FMS scale
+(`0.175 × 0.07 / 0.05`). The remaining difference between `0.245` and the rough
+hand estimate is not evidence for a browser-wide multiplier.
+
 ## PUBG hold
 
 No official current formula or sufficiently complete agreeing set of observable
@@ -129,6 +143,10 @@ Before native device-level 1:1 parity is claimed, perform and record this test:
    event loss, DPI, fixed-point error, or projection before changing the
    canonical `0.05` coefficient.
 
-Status: raw input is requested with an ordinary Pointer Lock fallback. Physical
-comparison on the product owner's 2400-DPI setup remains pending, so
-device-level parity must not be claimed until that evidence is recorded.
+Status: raw input is requested with an ordinary Pointer Lock fallback. The
+2026-09-07 physical comparison used Aimlabs' `VALORANT` profile and therefore
+did not test the canonical Default/FMS identity. The product owner declined
+further physical testing, so device-level parity remains unclaimed. Runtime
+accounting now exposes DOM, ring-buffered, display-consumed, and
+simulation-consumed movement independently so any future mismatch can be
+localized before coefficients are changed.

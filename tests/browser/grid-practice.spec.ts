@@ -285,6 +285,15 @@ describe("Grid Practice Run Flow & Lifecycle", () => {
     controller.abort();
     controller.start([5, 6, 7, 8]);
     expect(controller.getSensitivityInputVerificationSnapshot()).toEqual({
+      degreesPerInputUnit: 0.00875,
+      domInputUnitsX: 0,
+      domInputUnitsY: 0,
+      bufferedInputUnitsX: 0,
+      bufferedInputUnitsY: 0,
+      displayInputUnitsX: 0,
+      displayInputUnitsY: 0,
+      simulationInputUnitsX: 0,
+      simulationInputUnitsY: 0,
       totalInputUnitsX: 0,
       totalInputUnitsY: 0,
       movementEventCount: 0,

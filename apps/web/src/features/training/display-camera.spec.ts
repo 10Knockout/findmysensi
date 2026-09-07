@@ -29,6 +29,33 @@ function makeController(renderer?: AimRenderer) {
 }
 
 describe("display camera (recordDisplayMovement)", () => {
+  it("accounts for DOM, buffer, display, and simulation movement independently", () => {
+    const controller = makeController();
+    const ring = controller.getRingBuffer();
+
+    controller.recordDomMovement(240, -20);
+    ring.pushMove(240, -20, 0);
+    controller.recordBufferedMovement(240, -20);
+    controller.recordDisplayMovement(240, -20);
+
+    let snapshot = controller.getSensitivityInputVerificationSnapshot();
+    expect(snapshot.domInputUnitsX).toBe(240);
+    expect(snapshot.bufferedInputUnitsX).toBe(240);
+    expect(snapshot.displayInputUnitsX).toBe(240);
+    expect(snapshot.simulationInputUnitsX).toBe(0);
+
+    controller.onAnimationFrame(16);
+    controller.onAnimationFrame(32);
+    snapshot = controller.getSensitivityInputVerificationSnapshot();
+    expect(snapshot.simulationInputUnitsX).toBe(240);
+    expect(snapshot.simulationInputUnitsY).toBe(-20);
+    expect(snapshot.actualEngineYawDegrees).toBeCloseTo(
+      snapshot.expectedYawDegrees,
+      4,
+    );
+    expect(snapshot.viewYawDegrees).toBeCloseTo(snapshot.expectedYawDegrees, 4);
+  });
+
   it("moves the rendered camera immediately, with no tick boundary to wait for", () => {
     const renderedYaws: number[] = [];
     const controller = makeController({

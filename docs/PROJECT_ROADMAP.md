@@ -172,8 +172,9 @@ the documented health, registration, and email-delivery smoke checks.
   inverted pitch from browser `movementY`.
 - **Sensitivity golden vector:** Valorant `0.125` @ 2400 DPI = FMS/Aimlabs
   Default `0.175` @ 2400 DPI (`0.125 × 0.07 / 0.05 = 0.175`), `cmPer360 ≈
-43.54`, eDPI `420`. **This exact vector is what §2b's manual test is now
-  questioning — investigate, don't assume it's still right.**
+43.54`, eDPI `420`. A reported mismatch was traced to comparing FMS
+  `0.175` against Aimlabs' **Valorant-profile** `0.175`, which is Aimlabs
+  Default/FMS `0.245`. Do not add a browser multiplier for that profile error.
 - **Verified game profiles:** Valorant `0.07`, CS2 `0.022`, Apex `0.022`,
   Aimlabs Default `0.05`. Everything else (PUBG, OW2, Fortnite, R6, Quake,
   Unreal) stays explicitly research-required, never exposed as exact.
@@ -225,6 +226,8 @@ proof automated tests alone miss real hardware/browser behavior.
 
 ## 7. What needs a decision from you, not a guess
 
-1. **§2b re-test** — feel out FMS `0.175` vs. Aimlabs `0.175` @ 2400 DPI on
-   the current (2a-fixed) build before any `0.05`/`0.07` constant gets
-   touched. Your call once you've felt it.
+No sensitivity decision is currently required. Device-level parity remains an
+explicitly unclaimed gate because the available physical comparison used the
+wrong Aimlabs profile and the owner declined another test. The verified
+`0.05`/`0.07` constants stay frozen unless new controlled evidence contradicts
+them.

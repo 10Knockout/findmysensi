@@ -242,59 +242,32 @@ done differently):**
    regressions here. **Verify by actually running the dev server and clicking
    through it in a real Chrome window**, not just by running the test suite.
 
-### Bug 2: Sensitivity feels wrong vs. Valorant at nominally-equivalent values
+### Bug 2: Sensitivity comparison used the wrong Aimlabs profile
 
-**Reported symptom:** At FMS sensitivity `0.125`, movement feels _slower_
-than Valorant's own `0.125` at the same DPI — expected and correct, since FMS
-uses the Aimlabs numeric scale (0.05°/count) which is lower than Valorant's
-(0.07°/count); equal numbers are never equal feel across scales by design.
-But at FMS `0.175` — the exact value our own "golden vector" claims is
-physically equal to Valorant `0.125` — it feels close to what real
-Aimlabs-at-0.175 should feel like, but **noticeably faster than it should
-be**. The reporter's own estimate: the correct FMS value for their setup is
-closer to `0.16`-`0.165`, i.e. our effective gain is roughly **5-8% too
-high**.
+**Reported symptom:** Aimlabs `0.175` felt close to FMS `0.265`-`0.285`, while
+Valorant `0.125` felt close to FMS `0.175`.
 
-**Status: not yet investigated.** This is not diagnosed — only reported and
-triaged. Do not assume the fix; audit first.
+**Diagnosis (2026-09-07):** Aimlabs' persisted active game profile was
+`VALORANT`, not `Aimlabs Default`. The number shown by Aimlabs is interpreted
+on the active profile's scale. Therefore Aimlabs Valorant-profile `0.175` is
+Aimlabs Default/FMS `0.245` (`0.175 × 0.07 / 0.05`), not FMS `0.175`. The rough
+hand match around `0.275` is consistent with comparing against the wrong base
+number plus measurement error; it does not establish a browser calibration
+factor.
 
-**Where to look:**
+The controlled equivalences at equal DPI are:
 
-- `packages/sensitivity/src/browser-gain.ts` — the Q20 fixed-point scaler
-  that turns `fmsSensitivity` into an integer gain applied per raw input
-  unit. Check for rounding/truncation direction, off-by-a-bit errors in the
-  fixed-point shift, or an incorrect base constant.
-- `packages/sensitivity/src/converter.ts` and `packages/sensitivity/src/games.ts`
-  — the cross-game conversion formulas and the verified profile constants
-  (Valorant `0.07`, Aimlabs Default `0.05`).
-- `docs/evidence/sensitivity-verification.md` — has uncommitted changes right
-  now; read the diff, it may already reflect an in-progress recalibration
-  attempt worth understanding before you start your own.
-- The existing test suite (`packages/sensitivity/test/*.spec.ts`) proves
-  internal self-consistency of the math (round-trips, golden vector
-  assertions) but **cannot** prove the numbers match real Aimlabs/Valorant
-  physical behavior — that can only be confirmed by a human doing a real
-  side-by-side mouse test, which is exactly what surfaced this bug. A ~6%
-  systemic error is small enough to plausibly be one specific rounding step
-  or one wrong constant, not necessarily the whole architecture.
+- Valorant `0.125` = Aimlabs Valorant-profile `0.125`
+- Aimlabs Valorant-profile `0.125` = Aimlabs Default `0.175` = FMS `0.175`
+- Aimlabs Valorant-profile `0.175` = Aimlabs Default `0.245` = FMS `0.245`
 
-**The product owner's explicit instruction:** _"You can replace the
-sensitivity system and make it the same as the Aimlabs one, as I think it's
-easier to make."_ Do not take this as unconditional license to rip out the
-existing arbitrary-precision Decimal engine without first understanding
-exactly what's wrong — diff your derived formula against Aimlabs' real,
-public one, find the actual discrepancy, and _then_ decide whether a targeted
-fix or a genuine replacement is the smaller, safer change. This is the
-project's P0 system; a rewrite done in a hurry is a worse outcome than a
-correct, understood, targeted fix. If you determine a full replacement really
-is simpler and safer than patching, that's fine — but be able to explain
-exactly why the old system was wrong, not just that it's easier to start
-over.
-
-**Verification requirement before calling this done:** the product owner
-needs to physically test FMS `0.175` @ 2400 DPI against real Aimlabs Default
-`0.175` @ 2400 DPI side by side and confirm parity. Do not mark this fixed
-from code/test review alone.
+**Resolution:** Keep the verified Valorant `0.07` and Aimlabs Default `0.05`
+constants. Do not introduce the proposed global `~1.57` browser multiplier.
+The UI now states which Aimlabs profile must be used, and the development
+overlay accounts separately for DOM, ring-buffered, display-consumed, and
+simulation-consumed movement. Device-level parity remains unclaimed because
+the available physical test used the wrong profile and the owner declined
+further tests.
 
 ---
 

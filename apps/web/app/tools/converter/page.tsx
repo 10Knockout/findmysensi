@@ -129,8 +129,9 @@ export default function SensitivityConverterPage() {
             </div>
             <p className="mt-4 text-sm leading-6 text-zinc-300">
               Enter this number once in FindMySensi. Every training game uses
-              it. No source-game profile remains active during training. For
-              Aimlabs comparison, use its Default profile.
+              it. No source-game profile remains active during training. In
+              Aimlabs, use that number only with its Default profile; its
+              Valorant profile expects the original Valorant number.
             </p>
             <div className="mt-6 rounded-xl border border-zinc-800 bg-black/30 p-4">
               <div className="text-xs text-zinc-500">Required example</div>

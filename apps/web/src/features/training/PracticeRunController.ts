@@ -62,6 +62,15 @@ export interface PracticeRunOptions {
 }
 
 export interface SensitivityInputVerificationSnapshot {
+  readonly degreesPerInputUnit: number;
+  readonly domInputUnitsX: number;
+  readonly domInputUnitsY: number;
+  readonly bufferedInputUnitsX: number;
+  readonly bufferedInputUnitsY: number;
+  readonly displayInputUnitsX: number;
+  readonly displayInputUnitsY: number;
+  readonly simulationInputUnitsX: number;
+  readonly simulationInputUnitsY: number;
   readonly totalInputUnitsX: number;
   readonly totalInputUnitsY: number;
   readonly movementEventCount: number;
@@ -104,6 +113,14 @@ export class PracticeRunController {
   // back into the simulation.
   private displayYawUnits: number = 0;
   private displayPitchUnits: number = 0;
+  private domInputUnitsX: number = 0;
+  private domInputUnitsY: number = 0;
+  private bufferedInputUnitsX: number = 0;
+  private bufferedInputUnitsY: number = 0;
+  private displayInputUnitsX: number = 0;
+  private displayInputUnitsY: number = 0;
+  private simulationInputUnitsX: number = 0;
+  private simulationInputUnitsY: number = 0;
   private totalInputUnitsX: number = 0;
   private totalInputUnitsY: number = 0;
   private movementEventCount: number = 0;
@@ -157,23 +174,50 @@ export class PracticeRunController {
     this.inputScaler = createBrowserInputScaler(newGain);
   }
 
-  public recordBrowserInputEvent(dx: number, dy: number): void {
-    if (!Number.isSafeInteger(dx) || !Number.isSafeInteger(dy)) {
-      throw new RangeError("Diagnostic browser input must use safe integers.");
+  public recordDomMovement(dx: number, dy: number): void {
+    if (!Number.isFinite(dx) || !Number.isFinite(dy)) {
+      throw new RangeError("Diagnostic DOM movement must be finite.");
     }
+    this.domInputUnitsX += dx;
+    this.domInputUnitsY += dy;
     this.totalInputUnitsX += dx;
     this.totalInputUnitsY += dy;
     this.movementEventCount++;
+  }
+
+  public recordBufferedMovement(dx: number, dy: number): void {
+    if (!Number.isSafeInteger(dx) || !Number.isSafeInteger(dy)) {
+      throw new RangeError(
+        "Diagnostic buffered movement must use safe integers.",
+      );
+    }
+    this.bufferedInputUnitsX += dx;
+    this.bufferedInputUnitsY += dy;
+  }
+
+  /** Records both stages for callers that already hold an accepted integer sample. */
+  public recordBrowserInputEvent(dx: number, dy: number): void {
+    this.recordDomMovement(dx, dy);
+    this.recordBufferedMovement(dx, dy);
   }
 
   public getSensitivityInputVerificationSnapshot(): SensitivityInputVerificationSnapshot {
     const gain = this.inputScaler.getGain();
     const residuals = this.inputScaler.getResiduals();
     const signedViewYaw =
-      this.playerYaw > FULL_TURN_UNITS / 2
-        ? this.playerYaw - FULL_TURN_UNITS
-        : this.playerYaw;
+      this.displayYawUnits > FULL_TURN_UNITS / 2
+        ? this.displayYawUnits - FULL_TURN_UNITS
+        : this.displayYawUnits;
     return Object.freeze({
+      degreesPerInputUnit: gain.degreesPerInputUnit,
+      domInputUnitsX: this.domInputUnitsX,
+      domInputUnitsY: this.domInputUnitsY,
+      bufferedInputUnitsX: this.bufferedInputUnitsX,
+      bufferedInputUnitsY: this.bufferedInputUnitsY,
+      displayInputUnitsX: this.displayInputUnitsX,
+      displayInputUnitsY: this.displayInputUnitsY,
+      simulationInputUnitsX: this.simulationInputUnitsX,
+      simulationInputUnitsY: this.simulationInputUnitsY,
       totalInputUnitsX: this.totalInputUnitsX,
       totalInputUnitsY: this.totalInputUnitsY,
       movementEventCount: this.movementEventCount,
@@ -187,7 +231,7 @@ export class PracticeRunController {
       actualEnginePitchDegrees:
         (this.cumulativeEnginePitchAngleUnits / FULL_TURN_UNITS) * 360,
       viewYawDegrees: (signedViewYaw / FULL_TURN_UNITS) * 360,
-      viewPitchDegrees: (this.playerPitch / FULL_TURN_UNITS) * 360,
+      viewPitchDegrees: (this.displayPitchUnits / FULL_TURN_UNITS) * 360,
       yawResidualFixedPointUnits: residuals.yaw,
       pitchResidualFixedPointUnits: residuals.pitch,
     });
@@ -202,6 +246,14 @@ export class PracticeRunController {
     this.playerPitch = createPitchUnits(0);
     this.displayYawUnits = 0;
     this.displayPitchUnits = 0;
+    this.domInputUnitsX = 0;
+    this.domInputUnitsY = 0;
+    this.bufferedInputUnitsX = 0;
+    this.bufferedInputUnitsY = 0;
+    this.displayInputUnitsX = 0;
+    this.displayInputUnitsY = 0;
+    this.simulationInputUnitsX = 0;
+    this.simulationInputUnitsY = 0;
     this.inputScaler.reset();
     this.totalInputUnitsX = 0;
     this.totalInputUnitsY = 0;
@@ -304,6 +356,8 @@ export class PracticeRunController {
       for (const segment of segments) {
         for (const event of segment.events) {
           if (event.kind === "move") {
+            this.simulationInputUnitsX += event.dx;
+            this.simulationInputUnitsY += event.dy;
             const yawDelta = this.inputScaler.scaleYaw(event.dx);
             const pitchDelta = this.inputScaler.scalePitch(event.dy);
             // Pointer Lock supplies unbounded relative motion. Keep yaw free
@@ -362,6 +416,9 @@ export class PracticeRunController {
     const gain = this.inputScaler.getGain();
     const angleUnitsPerCount =
       gain.fixedPointAngleUnitsPerInputUnit / gain.fixedPointScale;
+
+    this.displayInputUnitsX += dx;
+    this.displayInputUnitsY += dy;
 
     const nextYaw = this.displayYawUnits + dx * angleUnitsPerCount;
     this.displayYawUnits =

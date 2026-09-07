@@ -49,6 +49,7 @@ describe("Event-Source Capability Detection and Adapter Selection", () => {
     const targetBatch = createRawInputBatchTarget(32);
 
     const listeners: Record<string, (ev: unknown) => void> = {};
+    const observed: Array<{ dx: number; dy: number; source: string }> = [];
     const accepted: Array<{ dx: number; dy: number; source: string }> = [];
     const mockTarget = {
       addEventListener: (type: string, listener: (ev: unknown) => void) => {
@@ -64,6 +65,9 @@ describe("Event-Source Capability Detection and Adapter Selection", () => {
       ring,
       "pointermove",
       {
+        onMovementObserved: ({ dx, dy, source }) => {
+          observed.push({ dx, dy, source });
+        },
         onMovementAccepted: ({ dx, dy, source }) => {
           accepted.push({ dx, dy, source });
         },
@@ -96,6 +100,7 @@ describe("Event-Source Capability Detection and Adapter Selection", () => {
       { dx: 12, dy: 6, source: "pointermove" },
       { dx: 8, dy: 4, source: "pointermove" },
     ]);
+    expect(observed).toEqual(accepted);
 
     cleanup();
     expect(Object.keys(listeners).length).toBe(0);

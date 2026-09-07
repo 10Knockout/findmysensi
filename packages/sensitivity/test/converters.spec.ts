@@ -221,6 +221,11 @@ describe("physical metrics and identity", () => {
     expect(fmsToGameSensitivity("aimlab-default", "0.175")).toEqual(0.175);
   });
 
+  it("interprets an Aimlabs Valorant-profile value on the Valorant scale", () => {
+    expect(gameSensitivityToFms("valorant", 0.175)).toBe("0.245");
+    expect(fmsToGameSensitivity("valorant", "0.245")).toEqual(0.175);
+  });
+
   it("keeps eDPI game-local rather than forcing cross-game equality", () => {
     const result = convertSensitivity({
       sourceGame: "valorant",

@@ -100,6 +100,15 @@ const EMPTY_INPUT_HEALTH: InputHealthTelemetry = {
 };
 
 const EMPTY_VERIFICATION_SNAPSHOT: SensitivityInputVerificationSnapshot = {
+  degreesPerInputUnit: 0,
+  domInputUnitsX: 0,
+  domInputUnitsY: 0,
+  bufferedInputUnitsX: 0,
+  bufferedInputUnitsY: 0,
+  displayInputUnitsX: 0,
+  displayInputUnitsY: 0,
+  simulationInputUnitsX: 0,
+  simulationInputUnitsY: 0,
   totalInputUnitsX: 0,
   totalInputUnitsY: 0,
   movementEventCount: 0,
@@ -505,6 +514,13 @@ export function TrainerBootstrap({
         shouldCaptureGameplayInput: () =>
           controller.getState() === "playing" &&
           document.pointerLockElement === canvas,
+        ...(diagnosticsEnabled
+          ? {
+              onMovementObserved: ({ dx, dy }: { dx: number; dy: number }) => {
+                controller.recordDomMovement(dx, dy);
+              },
+            }
+          : {}),
         // Always on, not just under diagnostics: this is what makes the
         // camera track the mouse every rendered frame instead of only every
         // 1/128s simulation tick (see recordDisplayMovement's doc comment).
@@ -512,7 +528,7 @@ export function TrainerBootstrap({
           controller.recordDisplayMovement(dx, dy);
           if (!diagnosticsEnabled) return;
 
-          controller.recordBrowserInputEvent(dx, dy);
+          controller.recordBufferedMovement(dx, dy);
           // Wall-clock arrival time, not event.timeStamp: a browser that
           // stops delivering events still backdates them on resume, so
           // only real elapsed time exposes a delivery stall.
@@ -1159,11 +1175,24 @@ function InputVerificationOverlay({
 }) {
   const rows: readonly (readonly [string, string])[] = [
     ["FMS / Aimlabs Default", sensitivity],
+    ["Degrees / input unit", snapshot.degreesPerInputUnit.toFixed(8)],
     ["Input source", `${inputSource} (Pointer Lock contract)`],
     ["Movement events", snapshot.movementEventCount.toLocaleString()],
     [
-      "Input units X / Y",
-      `${snapshot.totalInputUnitsX} / ${snapshot.totalInputUnitsY}`,
+      "DOM movement X / Y",
+      `${snapshot.domInputUnitsX} / ${snapshot.domInputUnitsY}`,
+    ],
+    [
+      "Ring buffered X / Y",
+      `${snapshot.bufferedInputUnitsX} / ${snapshot.bufferedInputUnitsY}`,
+    ],
+    [
+      "Display consumed X / Y",
+      `${snapshot.displayInputUnitsX} / ${snapshot.displayInputUnitsY}`,
+    ],
+    [
+      "Simulation consumed X / Y",
+      `${snapshot.simulationInputUnitsX} / ${snapshot.simulationInputUnitsY}`,
     ],
     ["Expected yaw", `${snapshot.expectedYawDegrees.toFixed(6)}°`],
     ["Engine yaw", `${snapshot.actualEngineYawDegrees.toFixed(6)}°`],
@@ -1242,8 +1271,9 @@ function InputVerificationOverlay({
       ) : null}
       <p className="mt-2 text-zinc-500">
         Raw support is recorded only after the Pointer Lock promise accepts the
-        unadjustedMovement request. Compare the same physical sweep in Aimlabs
-        before claiming device-level 1:1 parity.
+        unadjustedMovement request. Compare this number only with Aimlabs
+        Default; an Aimlabs game profile expects that game&apos;s original
+        sensitivity.
       </p>
     </aside>
   );

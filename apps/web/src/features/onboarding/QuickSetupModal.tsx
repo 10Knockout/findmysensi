@@ -311,8 +311,9 @@ export function QuickSetupModal({
           </div>
           <p className="app-help" style={{ marginTop: 10 }}>
             Example: Valorant 0.125 becomes FindMySensi 0.175 at the same DPI.
-            Compare 0.175 against Aimlabs Default profile, not its Valorant
-            profile.
+            In Aimlabs, compare that 0.175 only in the Aimlabs Default profile.
+            If Aimlabs is using its Valorant profile, enter the original 0.125
+            instead.
           </p>
         </div>
 
