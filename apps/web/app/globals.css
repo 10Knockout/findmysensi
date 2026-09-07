@@ -1282,6 +1282,40 @@ html {
   text-decoration: underline;
 }
 
+.app-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 20px;
+  color: rgba(255, 255, 255, 0.58);
+  font-family: var(--font-turret-road), sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition:
+    color 120ms ease,
+    transform 120ms ease;
+}
+
+.app-back-link svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+  stroke-width: 1.5;
+}
+
+.app-back-link:hover {
+  color: var(--fms-acid);
+  transform: translateX(-2px);
+}
+
+.app-back-link:focus-visible {
+  outline: 2px solid var(--fms-acid);
+  outline-offset: 4px;
+}
+
 .app-toast {
   position: fixed;
   top: 24px;

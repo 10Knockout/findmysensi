@@ -1,4 +1,8 @@
 import { PrngV1, wrapYaw } from "@findmysensi/aim-core";
+import {
+  MEDIUM_SPAWN_HEIGHT_UNITS,
+  MEDIUM_SPAWN_WIDTH_UNITS,
+} from "../front-facing-area.js";
 import { defaultScenarioRegistry } from "../registry.js";
 import {
   RankedScenarioDefinition,
@@ -28,19 +32,14 @@ export const GRID_DEV_V0_DEFINITION: RankedScenarioDefinition = {
   scoringVersion: 0,
   durationTicks: 128 * 60,
   // Angle units: 2^24 per full turn, so 1 deg == 46_603 units.
-  // Grid Rush spec: 4.0 deg diameter targets on a 5x5 grid spanning roughly
-  // -34..+34 deg horizontally and -22..+22 deg vertically, putting slots about
-  // 17 deg apart in X and 11 deg apart in Y.
-  //
-  // The extents are rounded so that both half-width and the slot step stay
-  // whole multiples of a small gain, which keeps slot centres exactly
-  // addressable from integer mouse input in the deterministic tests. The cost
-  // is 0.02 deg versus the raw spec figure -- far below anything perceivable.
+  // Grid Rush uses the shared medium front-facing envelope. Its 5x5 lattice
+  // remains deterministic while every opposite-edge target stays visible at
+  // the canonical 103 degree FOV.
   simulation: {
     maxActiveTargets: 3,
     targetRadiusAngleUnits: 93_207,
-    spawnAreaWidthUnits: 3_170_000,
-    spawnAreaHeightUnits: 2_050_000,
+    spawnAreaWidthUnits: MEDIUM_SPAWN_WIDTH_UNITS,
+    spawnAreaHeightUnits: MEDIUM_SPAWN_HEIGHT_UNITS,
     minTargetSeparationUnits: 792_500,
     gridRows: 5,
     gridCols: 5,
@@ -167,7 +166,7 @@ export class GridScenarioEngine {
 
     if (candidates.length === 0) {
       throw new Error(
-        "No candidate slots available for Gridshot target spawn.",
+        "No candidate slots available for Grid Rush target spawn.",
       );
     }
 

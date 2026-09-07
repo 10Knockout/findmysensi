@@ -1,5 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
 
+// The `grid` mode ships as "Grid Rush" (see the scenario catalog). The heading,
+// the start button and the canvas aria-label are all derived from that title,
+// so they move together whenever the catalog is renamed.
+const GRID_MODE_TITLE = "Grid Rush";
+const GRID_MODE_START_LABEL = `START ${GRID_MODE_TITLE.toUpperCase()}`;
+const GRID_MODE_CANVAS_LABEL = `FindMySensi ${GRID_MODE_TITLE} simulation`;
+
 function captureBrowserErrors(page: Page): string[] {
   const errors: string[] = [];
 
@@ -126,7 +133,7 @@ test("login continuation route renders safely", async ({ page }) => {
   await expect(heading).toBeVisible();
 });
 
-test("authenticated Gridshot shell initializes the real trainer canvas", async ({
+test("authenticated Grid Rush shell initializes the real trainer canvas", async ({
   page,
 }, testInfo) => {
   const browserErrors = captureBrowserErrors(page);
@@ -180,15 +187,15 @@ test("authenticated Gridshot shell initializes the real trainer canvas", async (
   const response = await page.goto("/app/train/grid?inputDebug=1");
 
   expect(response?.ok()).toBe(true);
-  await expect(page.getByRole("heading", { name: "Gridshot" })).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "START GRIDSHOT" }),
+    page.getByRole("heading", { name: GRID_MODE_TITLE }),
   ).toBeVisible();
   await expect(
-    page.getByLabel("FindMySensi Gridshot simulation"),
+    page.getByRole("button", { name: GRID_MODE_START_LABEL }),
   ).toBeVisible();
+  await expect(page.getByLabel(GRID_MODE_CANVAS_LABEL)).toBeVisible();
 
-  const startButton = page.getByRole("button", { name: "START GRIDSHOT" });
+  const startButton = page.getByRole("button", { name: GRID_MODE_START_LABEL });
   const startButtonBox = await startButton.boundingBox();
   expect(startButtonBox).not.toBeNull();
   await startButton.click();
@@ -196,13 +203,15 @@ test("authenticated Gridshot shell initializes the real trainer canvas", async (
     timeout: 6_000,
   });
   await expect(page.getByText("SCORE", { exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Gridshot" })).toBeHidden();
+  await expect(
+    page.getByRole("heading", { name: GRID_MODE_TITLE }),
+  ).toBeHidden();
   expect(
     await page.evaluate(() => document.pointerLockElement?.id ?? null),
   ).toBe("simulation-canvas");
   await page.screenshot({ path: testInfo.outputPath("gridshot-arena.png") });
 
-  const canvas = page.getByLabel("FindMySensi Gridshot simulation");
+  const canvas = page.getByLabel(GRID_MODE_CANVAS_LABEL);
   const targetPoint = await canvas.evaluate((element) => {
     const canvasElement = element as HTMLCanvasElement;
     const context = canvasElement.getContext("2d");
@@ -252,7 +261,7 @@ test("authenticated Gridshot shell initializes the real trainer canvas", async (
   expect(targetPoint).not.toBeNull();
   if (!targetPoint || !startButtonBox) {
     throw new Error(
-      "Gridshot target or Start button geometry was unavailable.",
+      `${GRID_MODE_TITLE} target or Start button geometry was unavailable.`,
     );
   }
 
@@ -308,7 +317,9 @@ test("authenticated Gridshot shell initializes the real trainer canvas", async (
     const overlayText =
       (await page.getByTestId("input-verification-overlay").textContent()) ??
       "";
-    const match = overlayText.match(/Movement events\s+([\d,]+)/);
+    // textContent concatenates the label cell and the value cell with no
+    // separator ("Movement events0"), so this must not require whitespace.
+    const match = overlayText.match(/Movement events\s*([\d,]+)/);
     return Number((match?.[1] ?? "0").replaceAll(",", ""));
   };
   const beforeStress = await movementCount();

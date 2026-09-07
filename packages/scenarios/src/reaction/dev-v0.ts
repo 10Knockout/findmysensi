@@ -1,4 +1,8 @@
 import { type PrngV1, wrapYaw } from "@findmysensi/aim-core";
+import {
+  MEDIUM_SPAWN_HEIGHT_UNITS,
+  MEDIUM_SPAWN_WIDTH_UNITS,
+} from "../front-facing-area.js";
 import { defaultScenarioRegistry } from "../registry.js";
 import type {
   RankedScenarioDefinition,
@@ -34,8 +38,8 @@ export const REACTION_DEV_V0_DEFINITION: RankedScenarioDefinition = {
   simulation: {
     maxActiveTargets: 1,
     targetRadiusAngleUnits: 52_429,
-    spawnAreaWidthUnits: 3_914_684,
-    spawnAreaHeightUnits: 2_516_582,
+    spawnAreaWidthUnits: MEDIUM_SPAWN_WIDTH_UNITS,
+    spawnAreaHeightUnits: MEDIUM_SPAWN_HEIGHT_UNITS,
     minTargetSeparationUnits: REACTION_MIN_SEPARATION_UNITS,
   },
   rankedSettings: {

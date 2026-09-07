@@ -27,6 +27,7 @@ import type {
   RuntimeMetrics,
   RuntimeScoreResult,
 } from "@findmysensi/trainer-runtime";
+import { BackLink } from "../components/BackLink.js";
 import {
   PracticeRunController,
   PracticeRunState,
@@ -75,6 +76,18 @@ export interface InputHealthTelemetry {
  */
 const INPUT_STALL_THRESHOLD_MS = 40;
 const MAX_RECORDED_STALLS = 24;
+
+/**
+ * Whether the `?inputDebug=1` overlay and its stall logging can be turned on at
+ * all. Development always qualifies. A production build only qualifies when it
+ * is compiled with NEXT_PUBLIC_ENABLE_INPUT_DIAGNOSTICS=1, which the browser
+ * E2E job sets so it can read real movement counters out of a production
+ * bundle. Deployments leave it unset, so the overlay and its console output
+ * stay out of anything a player receives.
+ */
+const INPUT_DIAGNOSTICS_AVAILABLE =
+  process.env.NODE_ENV === "development" ||
+  process.env.NEXT_PUBLIC_ENABLE_INPUT_DIAGNOSTICS === "1";
 
 /**
  * One observed freeze, captured at the moment input resumed. `source` says
@@ -231,7 +244,7 @@ export function TrainerBootstrap({
   }, []);
 
   useEffect(() => {
-    if (process.env.NODE_ENV !== "development") return;
+    if (!INPUT_DIAGNOSTICS_AVAILABLE) return;
     setBrowserDetails({
       platform: navigator.platform || "unknown",
       userAgent: navigator.userAgent || "unknown",
@@ -568,7 +581,7 @@ export function TrainerBootstrap({
     };
 
     const diagnosticsEnabled =
-      process.env.NODE_ENV === "development" &&
+      INPUT_DIAGNOSTICS_AVAILABLE &&
       new URLSearchParams(window.location.search).get("inputDebug") === "1";
     const detachInput = attachInputListener(
       window,
@@ -740,6 +753,9 @@ export function TrainerBootstrap({
             >
               Settings
             </button>
+          </div>
+          <div style={{ marginTop: 18, textAlign: "center" }}>
+            <BackLink href="/app" label="Back to trainer home" />
           </div>
         </div>
       </main>
@@ -966,6 +982,7 @@ export function TrainerBootstrap({
               Esc releases mouse capture and pauses the run. Raw input is used
               when supported; ordinary Pointer Lock remains available.
             </p>
+            <BackLink href="/app" label="Back to trainer home" />
           </div>
         </div>
       ) : null}
@@ -1338,7 +1355,7 @@ function InputVerificationOverlay({
     >
       <div className="mb-2 flex items-center justify-between gap-4">
         <strong className="text-xs uppercase tracking-wider text-cyan-300">
-          Sensitivity verification · development
+          Sensitivity verification · diagnostics
         </strong>
         <span className="text-zinc-500">?inputDebug=1</span>
       </div>

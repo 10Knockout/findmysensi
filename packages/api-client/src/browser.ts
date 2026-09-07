@@ -24,6 +24,7 @@ export interface ApiResult<T> {
   ok: boolean;
   data?: T;
   error?: string;
+  status?: number;
 }
 
 export const SESSION_CACHE_STORAGE_KEY = "fms_session_cache_v1";
@@ -64,20 +65,8 @@ export function getStoredSession(
   ) {
     return memoryCachedSession.session;
   }
-  if (typeof window !== "undefined" && window.localStorage) {
-    try {
-      const raw = window.localStorage.getItem(SESSION_CACHE_STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as CachedSessionData;
-        if (isValidCachedSession(parsed, now, ttlMs)) {
-          memoryCachedSession = parsed;
-          return parsed.session;
-        }
-      }
-    } catch {
-      // ignore storage / json parse errors
-    }
-  }
+  memoryCachedSession = null;
+  purgeLegacyPersistedSession();
   return null;
 }
 
@@ -91,26 +80,21 @@ export function storeSession(session: SessionResponse | null): void {
     cachedAt: Date.now(),
   };
   memoryCachedSession = data;
-  if (typeof window !== "undefined" && window.localStorage) {
-    try {
-      window.localStorage.setItem(
-        SESSION_CACHE_STORAGE_KEY,
-        JSON.stringify(data),
-      );
-    } catch {
-      // ignore storage errors
-    }
-  }
+  purgeLegacyPersistedSession();
 }
 
 export function clearStoredSession(): void {
   memoryCachedSession = null;
-  if (typeof window !== "undefined" && window.localStorage) {
-    try {
-      window.localStorage.removeItem(SESSION_CACHE_STORAGE_KEY);
-    } catch {
-      // ignore
-    }
+  purgeLegacyPersistedSession();
+}
+
+function purgeLegacyPersistedSession(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage?.removeItem(SESSION_CACHE_STORAGE_KEY);
+  } catch {
+    // Storage can be blocked by browser privacy settings. Auth remains
+    // cookie-backed and the in-memory cache still works for this page load.
   }
 }
 
@@ -146,6 +130,7 @@ export class BrowserApiClient {
         } | null;
         return {
           ok: false,
+          status: res.status,
           error:
             body?.message ?? body?.error ?? `Request failed (${res.status}).`,
         };
@@ -189,9 +174,14 @@ export class BrowserApiClient {
           }
         }
 
-        // On network error or server error (e.g. 429 rate limit or 500):
-        // Fall back to any unexpired cached session from localStorage rather than logging the user out.
-        const fallback = getStoredSession(0);
+        if (result.status === 401 || result.status === 403) {
+          clearStoredSession();
+          return null;
+        }
+
+        // A short in-memory fallback smooths over transient 429/5xx/network
+        // failures without persisting an authentication credential to disk.
+        const fallback = getStoredSession(ttlMs);
         if (fallback) {
           return fallback;
         }
@@ -206,27 +196,18 @@ export class BrowserApiClient {
   }
 
   async login(data: LoginRequest): Promise<{ ok: boolean; error?: string }> {
-    const result = await this.requestJson<{
-      token?: string;
-      user?: SessionUser;
-    }>("/api/auth/sign-in/email", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
+    const result = await this.requestJson<{ user?: SessionUser }>(
+      "/api/auth/sign-in/email",
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      },
+    );
 
     if (result.ok && result.data?.user) {
-      const token = result.data.token ?? "";
       const sessionPayload: SessionResponse = {
         user: result.data.user,
-        session: token
-          ? {
-              id: token,
-              userId: result.data.user.id,
-              expiresAt: new Date(
-                Date.now() + 7 * 24 * 60 * 60 * 1000,
-              ).toISOString(),
-            }
-          : null,
+        session: null,
       };
       storeSession(sessionPayload);
     }

@@ -35,20 +35,37 @@ describe("BrowserApiClient Session Caching", () => {
   afterEach(() => {
     clearStoredSession();
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
-  it("stores and retrieves session from memory and localStorage", () => {
+  it("stores and retrieves a session only from memory", () => {
     storeSession(mockSession);
 
     const retrieved = getStoredSession();
     expect(retrieved).toEqual(mockSession);
 
-    if (typeof window !== "undefined" && window.localStorage) {
-      const storedRaw = window.localStorage.getItem(SESSION_CACHE_STORAGE_KEY);
-      expect(storedRaw).toBeTruthy();
-      const parsed = JSON.parse(storedRaw!);
-      expect(parsed.session).toEqual(mockSession);
-    }
+    if (typeof window !== "undefined" && window.localStorage)
+      expect(window.localStorage.getItem(SESSION_CACHE_STORAGE_KEY)).toBeNull();
+  });
+
+  it("purges a legacy localStorage session instead of restoring it", () => {
+    const values = new Map<string, string>([
+      [SESSION_CACHE_STORAGE_KEY, JSON.stringify({ session: mockSession })],
+    ]);
+    const localStorage = {
+      getItem: vi.fn((key: string) => values.get(key) ?? null),
+      setItem: vi.fn((key: string, value: string) => values.set(key, value)),
+      removeItem: vi.fn((key: string) => values.delete(key)),
+      clear: vi.fn(() => values.clear()),
+    };
+    vi.stubGlobal("window", { localStorage });
+
+    clearStoredSession();
+
+    expect(localStorage.removeItem).toHaveBeenCalledWith(
+      SESSION_CACHE_STORAGE_KEY,
+    );
+    expect(values.has(SESSION_CACHE_STORAGE_KEY)).toBe(false);
   });
 
   it("clears stored session on clearStoredSession", () => {
@@ -185,7 +202,7 @@ describe("BrowserApiClient Session Caching", () => {
     expect(getStoredSession()).toBeNull();
   });
 
-  it("login populates session cache on successful authentication", async () => {
+  it("login caches only public user data and never copies the token", async () => {
     const loginResponse = {
       redirect: false,
       token: "new-token-456",
@@ -208,7 +225,25 @@ describe("BrowserApiClient Session Caching", () => {
     expect(result.ok).toBe(true);
     const cached = getStoredSession();
     expect(cached?.user?.email).toBe("gamer@example.com");
-    expect(cached?.session?.id).toBe("new-token-456");
+    expect(cached?.session).toBeNull();
+    expect(JSON.stringify(cached)).not.toContain("new-token-456");
+  });
+
+  it("clears a cached session when the server returns 401", async () => {
+    storeSession(mockSession);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify({ message: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    const session = await new BrowserApiClient().getSession({
+      forceRefresh: true,
+    });
+
+    expect(session).toBeNull();
+    expect(getStoredSession()).toBeNull();
   });
 
   it("logout clears the session cache", async () => {

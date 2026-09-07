@@ -124,15 +124,14 @@ original M4 checkpoint:
   blocks say more about raw skill than about fit. The candidate spread is
   ±10%, not ±25%, because one lucky block at a wide extreme could otherwise
   recommend a sensitivity far from the player's real one.
-- **Sensi Battle** (M11): `sensi-battle.ts` — counterbalanced A/B block order,
-  objective decision rule, explicit `COULD_NOT_TELL` outcome for sub-3-point
-  accuracy gaps rather than fabricating a winner. `/app/sensi-battle` now runs
-  the two real blinded blocks and can save a clear winner.
 - **Mouse Swap** (M11): consolidated onto one game-agnostic
   `calculateMouseSwap(sensitivity, oldMouse, newMouse)` — pure DPI-ratio math,
   no saved profiles, no mouse hardware database (explicitly out of scope).
   Replaced a dead `Math.random()`-based legacy preference-calibration
   scaffold that had zero UI callers.
+- **Sensi Battle removed:** its route, runtime kernel, dashboard link, and tests
+  were intentionally removed. Find My Sensi is the sole sensitivity-testing
+  workflow.
 
 Secure repo now includes the account/product-shell APIs, synced profile
 cosmetic IDs, Turso/Resend production guards, and a real Vercel Fetch-function
@@ -163,8 +162,8 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started
 - ✅ **M9** — Workouts / playlists (fixed 4-workout catalog, no UGC)
 - ✅ **M10** — Find My Sensi calibration kernel and live five-block flow (real
   performance-based, blinded, counterbalanced, confidence-scored)
-- ✅ **M11** — Sensi Battle kernel + simple Mouse Swap (DPI-only, no saved
-  profiles), with a live blinded two-block Battle flow
+- ✅ **M11** — simple Mouse Swap (DPI-only, no saved profiles); Sensi Battle
+  was later removed from the product
 - ✅ **M12** — Profile cosmetics: avatars (12 free presets), frames + titles
   (derived from `RANK_TIERS`), 25 real deterministic achievements. New
   `/app/profile` route.

@@ -6,7 +6,10 @@ import {
 } from "@findmysensi/aim-core";
 import { createTick } from "@findmysensi/protocol";
 import { describe, expect, it, vi } from "vitest";
-import { createAimRenderer } from "../src/renderer.js";
+import {
+  createAimRenderer,
+  createLightweightViewModelGeometry,
+} from "../src/renderer.js";
 import { createViewportTransform } from "../src/viewport-transform.js";
 
 function createMockContext() {
@@ -31,6 +34,20 @@ function createMockContext() {
 }
 
 describe("Canvas2D Potato Aim Renderer", () => {
+  it("builds a bounded lower-left pistol and glove from a small flat polygon set", () => {
+    const geometry = createLightweightViewModelGeometry(
+      { x: 0, y: 0, width: 1920, height: 1080 },
+      0,
+    );
+    const points = geometry.flatMap((shape) => shape.points);
+
+    expect(geometry.length).toBeLessThanOrEqual(13);
+    expect(geometry.map((shape) => shape.color)).toContain("#bdff2d");
+    expect(Math.min(...points.map(([x]) => x))).toBeGreaterThanOrEqual(0);
+    expect(Math.max(...points.map(([x]) => x))).toBeLessThan(1920 / 2);
+    expect(Math.max(...points.map(([, y]) => y))).toBeLessThanOrEqual(1080);
+  });
+
   it("renders targets and center crosshair via Canvas2D context without mutating state", () => {
     const renderer = createAimRenderer();
     const mockCtx = createMockContext();

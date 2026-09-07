@@ -16,7 +16,6 @@
     { "path": "./packages/api-client" },
     { "path": "./packages/sensitivity" },
     { "path": "./packages/crosshair" },
-    { "path": "./packages/trainer-runtime" },
-    { "path": "./apps/mock-api" }
+    { "path": "./packages/trainer-runtime" }
   ]
 }

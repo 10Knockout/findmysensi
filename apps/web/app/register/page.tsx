@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BrowserApiClient } from "@findmysensi/api-client";
 import { RegisterRequestSchema } from "@findmysensi/protocol";
+import { BackLink } from "../../src/components/BackLink.js";
 
 const USERNAME_HELP =
   "3-24 characters. Use letters, numbers, underscores, or hyphens only.";
@@ -157,6 +158,7 @@ export default function RegisterPage() {
   return (
     <main className="app-shell">
       <div className="app-card">
+        <BackLink href="/" label="Back to home" />
         <div className="app-card-header">
           <Link
             href="/"

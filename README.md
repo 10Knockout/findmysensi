@@ -62,9 +62,9 @@ FindMySensi uses a two-repository architecture:
 - **Private repository**: Authentication, database, ranked verification,
   encryption, risk/anti-cheat, admin, and privacy logic.
 
-The browser calls same-origin `/api/v1/*` URLs. In development, a mock API
-on port 4100 provides conformant responses. In production, Cloudflare
-routes requests to the private origin.
+The browser calls same-origin `/api/*` URLs. Next.js rewrites those requests to
+the private service configured by `API_URL`; local development defaults to the
+secure API on port 4000. Production builds fail when that origin is missing.
 
 See [GOVERNANCE.md](./GOVERNANCE.md) for decision-making processes and
 [CONTRIBUTING.md](./CONTRIBUTING.md) for contribution guidelines.

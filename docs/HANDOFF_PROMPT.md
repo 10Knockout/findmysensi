@@ -420,11 +420,12 @@ finalists -> counterbalanced confirmation -> recommendation with an honest
 LOW/MODERATE/HIGH confidence label. Never fabricate decimal precision the
 evidence doesn't support.
 
-### M11 — Sensi Battle + simple Mouse Swap
+### M11 — simple Mouse Swap
 
-Sensi Battle: objective A/B sensitivity comparison using counterbalanced
-blocks. Mouse Swap: simple DPI-ratio calculator only -- explicitly no saved
-mouse profiles, no mouse hardware database (out of scope, decided already).
+Mouse Swap is a simple DPI-ratio calculator only -- explicitly no saved mouse
+profiles and no mouse hardware database. Sensi Battle was intentionally
+removed; do not restore its route, runtime, or dashboard entry without a new
+owner decision.
 
 ### M12 — profile cosmetics
 

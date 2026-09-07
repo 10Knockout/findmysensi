@@ -1,4 +1,8 @@
 import { PrngV1, wrapYaw } from "@findmysensi/aim-core";
+import {
+  MEDIUM_SPAWN_HEIGHT_UNITS,
+  MEDIUM_SPAWN_WIDTH_UNITS,
+} from "../front-facing-area.js";
 import { defaultScenarioRegistry } from "../registry.js";
 import {
   RankedScenarioDefinition,
@@ -19,15 +23,15 @@ export const PINPOINT_DEV_V0_DEFINITION: RankedScenarioDefinition = {
   engineVersion: 1,
   scoringVersion: 0,
   durationTicks: 128 * 60, // 60 seconds at 128 Hz
-  // Precision Six spec: six 1.25 deg diameter targets living anywhere in the
-  // full -42..+42 x -27..+27 deg region, at least 4 deg apart centre-to-centre.
+  // Six tiny targets live inside the shared medium front-facing envelope, at
+  // least 4 degrees apart centre-to-centre.
   // Unlike Grid Rush these are continuous positions, not 25 fixed slots, so
   // the layout cannot be memorised.
   simulation: {
     maxActiveTargets: 6,
     targetRadiusAngleUnits: 29_127,
-    spawnAreaWidthUnits: 3_914_684,
-    spawnAreaHeightUnits: 2_516_582,
+    spawnAreaWidthUnits: MEDIUM_SPAWN_WIDTH_UNITS,
+    spawnAreaHeightUnits: MEDIUM_SPAWN_HEIGHT_UNITS,
     minTargetSeparationUnits: 186_414,
   },
   rankedSettings: {

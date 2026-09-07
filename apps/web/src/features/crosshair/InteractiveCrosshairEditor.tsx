@@ -66,7 +66,7 @@ export function InteractiveCrosshairEditor({
       {/* Live Preview Box */}
       <div className="flex flex-col items-center gap-3">
         <div className="relative flex aspect-square w-full max-w-[260px] items-center justify-center overflow-hidden rounded-xl border border-zinc-700 bg-zinc-950/90 shadow-inner">
-          {/* Subtle aimlab-style target background mockup */}
+          {/* Subtle target preview background */}
           <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#38bdf8_1px,transparent_1px)] [background-size:16px_16px]" />
           <div className="absolute h-16 w-16 rounded-full border border-zinc-800/60 bg-zinc-900/40" />
 

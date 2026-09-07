@@ -4,6 +4,7 @@ import {
   shortestSignedAngleDelta,
   wrapYaw,
 } from "@findmysensi/aim-core";
+import { MEDIUM_SPAWN_HALF_WIDTH_UNITS } from "../front-facing-area.js";
 import { defaultScenarioRegistry } from "../registry.js";
 import { RankedScenarioDefinition, ScenarioEntry } from "../types.js";
 
@@ -36,8 +37,8 @@ export interface StrafeTickSample {
 
 /** Spec: 3.0 deg diameter, so a 1.5 deg radius. */
 export const STRAFE_RADIUS_UNITS = 69_905;
-/** Spec: the target patrols -38..+38 deg. */
-export const STRAFE_HALF_WIDTH_UNITS = 1_770_929;
+/** The target patrols inside the shared medium front-facing width. */
+export const STRAFE_HALF_WIDTH_UNITS = MEDIUM_SPAWN_HALF_WIDTH_UNITS;
 /** Spec: 20 deg/sec at the 128 Hz simulation rate. */
 export const STRAFE_SPEED_UNITS_PER_TICK = 7_282;
 /** Spec: direction flips somewhere between 0.65 s and 1.8 s. */

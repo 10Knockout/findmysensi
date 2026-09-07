@@ -14,7 +14,7 @@ If private anti-cheat heuristics, production signing keys, database connection s
 
 1. **Repository Topology**:
    - The root workspace `F:\Dev\findmysensi` is **not a Git repository**.
-   - The public repository `findmysensi` (MPL-2.0) contains the Next.js frontend, UI, deterministic gameplay engine (`@findmysensi/aim-core`), browser input adapter (`@findmysensi/input-browser`), Canvas2D/Potato renderer, scenario definitions, sensitivity math, public protocol schemas (`@findmysensi/protocol`), documentation, and mock API.
+   - The public repository `findmysensi` (MPL-2.0) contains the Next.js frontend, UI, deterministic gameplay engine (`@findmysensi/aim-core`), browser input adapter (`@findmysensi/input-browser`), Canvas2D/Potato renderer, scenario definitions, sensitivity math, public protocol schemas (`@findmysensi/protocol`), and documentation.
    - The private repository `findmysensi-secure` (private) contains authentication (Better Auth), database/migrations (Turso/Drizzle), email integrations (Brevo), ranked session issuance (Ed25519 signing), proof replay verification, encrypted ProofStore, private anti-cheat risk scoring, moderation tooling, and production secrets.
 
 2. **Boundary Invariants**:

@@ -13,6 +13,12 @@ jobs:
   verify:
     name: Verify Public Codebase
     runs-on: ubuntu-latest
+    env:
+      # next.config.mjs refuses to build or serve without an HTTPS API origin,
+      # so no deployment can silently proxy to localhost. CI only verifies that
+      # the app compiles, so it declares a placeholder origin that is never
+      # resolved: `.invalid` is reserved by RFC 2606 and cannot be registered.
+      API_URL: https://api.invalid
     steps:
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -45,6 +51,16 @@ jobs:
     name: Chromium Browser E2E
     needs: verify
     runs-on: ubuntu-latest
+    env:
+      # Set at job level, not on the build step: Playwright's webServer runs
+      # `next start`, which loads next.config.mjs again and applies the same
+      # guard. The smoke specs stub every /api/* route, so the browser never
+      # resolves this origin.
+      API_URL: https://api.invalid
+      # Compiles the ?inputDebug=1 verification overlay into this production
+      # bundle so the smoke run can read real movement counters. Deployments
+      # leave this unset, which strips the overlay from the shipped bundle.
+      NEXT_PUBLIC_ENABLE_INPUT_DIAGNOSTICS: "1"
     steps:
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2

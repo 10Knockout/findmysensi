@@ -19,20 +19,12 @@ Set these in the Vercel project's **Settings → Environment Variables**
 (Production environment at minimum; mirror into Preview if you want preview
 deploys to hit a real backend):
 
-| Variable       | Required in production  | Value                                                                                                                                           |
-| -------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `API_URL`      | **Yes**                 | The deployed `findmysensi-secure` API's origin, e.g. `https://findmysensi-secure.vercel.app` (no trailing slash, no path).                      |
-| `USE_MOCK_API` | Must be **unset/false** | The build itself throws if this is truthy in production (`next.config.mjs`) -- it's a local-dev-only escape hatch and structurally cannot ship. |
+| Variable  | Required in production | Value                                                                                                                        |
+| --------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `API_URL` | **Yes**                | The deployed `findmysensi-secure` API origin, e.g. `https://findmysensi-secure.vercel.app` (no credentials, path, or query). |
 
-**If `API_URL` is missing:** the build still succeeds (this is deliberate --
-see the comment in `next.config.mjs` for why a hard build-time throw isn't
-used here), but every single `/api/*` request from the deployed site will
-fail immediately (the rewrite falls back to `http://localhost:4000`, which
-doesn't exist on Vercel). This fails loudly and totally, not silently --
-but confirm `API_URL` is set before considering a deploy done. There is no
-`.env.example` to copy in this repo since `API_URL` is the only
-deployment-specific variable and its value is deploy-target-specific (not a
-safe default to template).
+Production builds fail fast when `API_URL` is missing, malformed, or not
+HTTPS. Local development uses `http://localhost:4000` when it is omitted.
 
 ## 3. Deploy
 
@@ -50,7 +42,7 @@ from `package.json`.
 
 ## Local verification (no live backend needed)
 
-`npm run build` at the repo root builds this app the same way Vercel does,
-without requiring `API_URL` -- this is how local/CI verification stays
-possible without a deployed backend. It does **not** prove the API rewrite
-target is correct; that only happens once you set `API_URL` in Vercel.
+Set a non-secret verification origin when building locally or in CI, for
+example `API_URL=https://api.example.invalid npm run build`. A successful build
+validates configuration shape; only a post-deploy smoke test proves the real
+API origin and cookie flow.

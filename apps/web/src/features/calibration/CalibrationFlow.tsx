@@ -1,26 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BrowserApiClient } from "@findmysensi/api-client";
 import type { TrainerSettings } from "@findmysensi/protocol";
 import { TrainerSettingsSchema } from "@findmysensi/protocol";
 import {
-  buildBattleOrder,
   buildCandidateOrder,
-  decideBattle,
   generateSensitivityCandidates,
   recommendSensitivityAcrossModes,
-  type BattleDecision,
-  type CandidateResult,
   type ModeCandidateScore,
   type MultiModeRecommendation,
   type RuntimeScoreResult,
 } from "@findmysensi/trainer-runtime";
+import { BackLink } from "../../components/BackLink.js";
 import { TrainerBootstrap } from "../../trainer/TrainerBootstrap.js";
 
-const BATTLE_BLOCK_DURATION_TICKS = 15 * 128;
 const FIND_BLOCK_DURATION_TICKS = 12 * 128;
 
 // Five families that stress different parts of aim: flicking, target
@@ -57,23 +53,17 @@ interface CalibrationBlock {
   readonly modeId: string;
 }
 
-export function CalibrationFlow({ kind }: { kind: "find" | "battle" }) {
+export function CalibrationFlow() {
   const router = useRouter();
   const [settings, setSettings] = useState<TrainerSettings | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [blocks, setBlocks] = useState<readonly CalibrationBlock[]>([]);
   const [blockIndex, setBlockIndex] = useState(0);
-  const [results, setResults] = useState<readonly CandidateResult[]>([]);
   const [modeScores, setModeScores] = useState<readonly ModeCandidateScore[]>(
     [],
   );
   const [recommendation, setRecommendation] =
     useState<MultiModeRecommendation | null>(null);
-  const [battleDecision, setBattleDecision] = useState<BattleDecision | null>(
-    null,
-  );
-  const [candidateA, setCandidateA] = useState("0.175");
-  const [candidateB, setCandidateB] = useState("0.2");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -83,11 +73,7 @@ export function CalibrationFlow({ kind }: { kind: "find" | "battle" }) {
       try {
         const session = await client.getSession();
         if (!session?.user) {
-          router.replace(
-            `/login?next=${encodeURIComponent(
-              kind === "find" ? "/app/calibrate" : "/app/sensi-battle",
-            )}`,
-          );
+          router.replace(`/login?next=${encodeURIComponent("/app/calibrate")}`);
           return;
         }
         const response = await client.getTrainerSettings();
@@ -101,80 +87,55 @@ export function CalibrationFlow({ kind }: { kind: "find" | "battle" }) {
           return;
         }
         setSettings(parsed.data);
-        if (parsed.data.fmsSensitivity) {
-          setCandidateA(parsed.data.fmsSensitivity);
-          setCandidateB(
-            Math.min(Number(parsed.data.fmsSensitivity) * 1.1, 100).toFixed(4),
-          );
-        }
       } catch {
         setError("Could not connect to the account service.");
       }
     })();
-  }, [kind, router]);
+  }, [router]);
 
   const currentBlock = blocks[blockIndex] ?? null;
-  const title = kind === "find" ? "Find My Sensi" : "Sensi Battle";
+  const title = "Find My Sensi";
 
   const start = () => {
     if (!settings) return;
     const seed = makeSeed();
-    if (kind === "find") {
-      const base = Number(settings.fmsSensitivity ?? "1");
-      const candidates = generateSensitivityCandidates(base);
-      if (
-        candidates.some(
-          (candidate) => parseSensitivity(String(candidate)) === null,
-        )
-      ) {
-        setError(
-          "Saved sensitivity cannot be tested in the supported 0-100 range.",
-        );
-        return;
-      }
-      const built: CalibrationBlock[] = [];
-      FIND_MODES.forEach((modeId, modeIndex) => {
-        // Shuffle each mode's five candidates independently so block order is
-        // counterbalanced within every mode, not just once overall.
-        const modeSeed: readonly [number, number, number, number] = [
-          (seed[0] ^ (modeIndex * 0x9e3779b1)) >>> 0,
-          (seed[1] + modeIndex * 0x85ebca6b) >>> 0,
-          (seed[2] ^ ((modeIndex + 1) * 0xc2b2ae35)) >>> 0,
-          (seed[3] + modeIndex + 1) >>> 0,
-        ];
-        buildCandidateOrder(candidates.length, modeSeed).forEach(
-          (candidateIndex, blockIndex) => {
-            built.push({
-              id: `${modeId}-${blockIndex + 1}`,
-              sensitivity: candidates[candidateIndex]!,
-              modeId,
-            });
-          },
-        );
-      });
-      setBlocks(built);
-    } else {
-      const a = parseSensitivity(candidateA);
-      const b = parseSensitivity(candidateB);
-      if (a === null || b === null || a === b) {
-        setError("Enter two different positive sensitivities.");
-        return;
-      }
-      const values = { A: a, B: b } as const;
-      setBlocks(
-        buildBattleOrder(seed).map((id) => ({
-          id,
-          sensitivity: values[id],
-          modeId: "grid",
-        })),
+    const base = Number(settings.fmsSensitivity ?? "1");
+    const candidates = generateSensitivityCandidates(base);
+    if (
+      candidates.some(
+        (candidate) => parseSensitivity(String(candidate)) === null,
+      )
+    ) {
+      setError(
+        "Saved sensitivity cannot be tested in the supported 0-100 range.",
       );
+      return;
     }
+    const built: CalibrationBlock[] = [];
+    FIND_MODES.forEach((modeId, modeIndex) => {
+      // Shuffle each mode's five candidates independently so block order is
+      // counterbalanced within every mode, not just once overall.
+      const modeSeed: readonly [number, number, number, number] = [
+        (seed[0] ^ (modeIndex * 0x9e3779b1)) >>> 0,
+        (seed[1] + modeIndex * 0x85ebca6b) >>> 0,
+        (seed[2] ^ ((modeIndex + 1) * 0xc2b2ae35)) >>> 0,
+        (seed[3] + modeIndex + 1) >>> 0,
+      ];
+      buildCandidateOrder(candidates.length, modeSeed).forEach(
+        (candidateIndex, candidateBlockIndex) => {
+          built.push({
+            id: `${modeId}-${candidateBlockIndex + 1}`,
+            sensitivity: candidates[candidateIndex]!,
+            modeId,
+          });
+        },
+      );
+    });
+    setBlocks(built);
     setError(null);
     setBlockIndex(0);
-    setResults([]);
     setModeScores([]);
     setRecommendation(null);
-    setBattleDecision(null);
     setSaved(false);
   };
 
@@ -182,64 +143,32 @@ export function CalibrationFlow({ kind }: { kind: "find" | "battle" }) {
     (score: RuntimeScoreResult) => {
       if (!currentBlock) return;
 
-      if (kind === "find") {
-        // score.score is the one number every mode adapter reports; raw
-        // ranges differ per mode and are normalized later.
-        const nextScores = [
-          ...modeScores,
-          {
-            modeId: currentBlock.modeId,
-            sensitivity: currentBlock.sensitivity,
-            score: score.score,
-          },
-        ];
-        setModeScores(nextScores);
-        if (blockIndex + 1 < blocks.length) {
-          setBlockIndex(blockIndex + 1);
-          return;
-        }
-        setRecommendation(
-          recommendSensitivityAcrossModes(nextScores, {
-            startingSensitivity: Number(settings?.fmsSensitivity ?? "1"),
-            weights: FIND_MODE_WEIGHTS,
-          }),
-        );
-        return;
-      }
-
-      if (!("accuracyPercentage" in score.metrics)) return;
-      const nextResults = [
-        ...results,
+      // score.score is the one number every mode adapter reports; raw ranges
+      // differ per mode and are normalized later.
+      const nextScores = [
+        ...modeScores,
         {
+          modeId: currentBlock.modeId,
           sensitivity: currentBlock.sensitivity,
-          accuracyPercentage: score.metrics.accuracyPercentage,
+          score: score.score,
         },
       ];
-      setResults(nextResults);
+      setModeScores(nextScores);
       if (blockIndex + 1 < blocks.length) {
         setBlockIndex(blockIndex + 1);
         return;
       }
-      const byId = new Map(
-        blocks.map((block, index) => [block.id, nextResults[index]!] as const),
-      );
-      setBattleDecision(
-        decideBattle(
-          { id: "A", accuracyPercentage: byId.get("A")!.accuracyPercentage },
-          { id: "B", accuracyPercentage: byId.get("B")!.accuracyPercentage },
-        ),
+      setRecommendation(
+        recommendSensitivityAcrossModes(nextScores, {
+          startingSensitivity: Number(settings?.fmsSensitivity ?? "1"),
+          weights: FIND_MODE_WEIGHTS,
+        }),
       );
     },
-    [blockIndex, blocks, currentBlock, kind, modeScores, results, settings],
+    [blockIndex, blocks.length, currentBlock, modeScores, settings],
   );
 
-  const selectedSensitivity = useMemo(() => {
-    if (recommendation) return recommendation.sensitivity;
-    if (!battleDecision || battleDecision.winner === "COULD_NOT_TELL")
-      return null;
-    const winner = blocks.find((block) => block.id === battleDecision.winner);
-    return winner?.sensitivity ?? null;
-  }, [battleDecision, blocks, recommendation]);
+  const selectedSensitivity = recommendation?.sensitivity ?? null;
 
   const saveSelected = async () => {
     if (!settings || selectedSensitivity === null) return;
@@ -263,10 +192,8 @@ export function CalibrationFlow({ kind }: { kind: "find" | "battle" }) {
   const reset = () => {
     setBlocks([]);
     setBlockIndex(0);
-    setResults([]);
     setModeScores([]);
     setRecommendation(null);
-    setBattleDecision(null);
     setError(null);
     setSaved(false);
   };
@@ -274,45 +201,35 @@ export function CalibrationFlow({ kind }: { kind: "find" | "battle" }) {
   if (error && !settings) return <Status message={error} />;
   if (!settings) return <Status message="Loading trainer settings…" />;
 
-  if (currentBlock && !recommendation && !battleDecision) {
+  if (currentBlock && !recommendation) {
     return (
       <TrainerBootstrap
         mode={currentBlock.modeId}
-        durationTicks={
-          kind === "find"
-            ? FIND_BLOCK_DURATION_TICKS
-            : BATTLE_BLOCK_DURATION_TICKS
-        }
+        durationTicks={FIND_BLOCK_DURATION_TICKS}
         sensitivityOverride={formatSensitivity(currentBlock.sensitivity)}
         settingsOverride={settings}
-        runLabel={
-          kind === "find"
-            ? `${title}: ${
-                FIND_MODE_LABELS[currentBlock.modeId as FindModeId] ??
-                currentBlock.modeId
-              }, block ${blockIndex + 1} of ${blocks.length}`
-            : `${title}: block ${blockIndex + 1} of ${blocks.length}`
-        }
+        runLabel={`${title}: ${
+          FIND_MODE_LABELS[currentBlock.modeId as FindModeId] ??
+          currentBlock.modeId
+        }, block ${blockIndex + 1} of ${blocks.length}`}
         onRunComplete={completeBlock}
         lockedConfiguration
       />
     );
   }
 
-  if (recommendation || battleDecision) {
-    const summary = recommendation ?? battleDecision!;
+  if (recommendation) {
     return (
       <main className="app-shell">
         <section className="app-card app-card-wide">
+          <BackLink href="/app" label="Back to trainer home" />
           <p className="app-kicker" style={{ marginBottom: 8 }}>
             {title} complete
           </p>
           <h1 className="app-heading">
-            {selectedSensitivity === null
-              ? "Too close to call"
-              : `Recommended: ${formatSensitivity(selectedSensitivity)}`}
+            Recommended: {formatSensitivity(recommendation.sensitivity)}
           </h1>
-          <p className="app-subtext">{summary.reason}</p>
+          <p className="app-subtext">{recommendation.reason}</p>
           <p
             style={{
               marginTop: 8,
@@ -321,7 +238,7 @@ export function CalibrationFlow({ kind }: { kind: "find" | "battle" }) {
               color: "rgba(255,255,255,0.5)",
             }}
           >
-            Confidence: {summary.confidence}
+            Confidence: {recommendation.confidence}
           </p>
           {error ? (
             <p className="app-alert" style={{ marginTop: 16 }}>
@@ -373,36 +290,17 @@ export function CalibrationFlow({ kind }: { kind: "find" | "battle" }) {
   return (
     <main className="app-shell">
       <section className="app-card app-card-wide">
+        <BackLink href="/app" label="Back to trainer home" />
         <p className="app-kicker" style={{ marginBottom: 8 }}>
           Performance test
         </p>
         <h1 className="app-heading">{title}</h1>
         <p className="app-subtext">
-          {kind === "find"
-            ? "Run 25 blinded 12-second blocks: five sensitivities across Grid Rush, Multi Burst, Strafe Track, Sphere Track, and Reflex Rush. Each mode is scored on its own scale, then combined. The two tracking modes count half -- most players track moving targets poorly at any sensitivity."
-            : "Run two counterbalanced 15-second Gridshot blocks. Gaps under 3 points return no winner."}
+          Run 25 blinded 12-second blocks: five sensitivities across Grid Rush,
+          Multi Burst, Strafe Track, Sphere Track, and Reflex Rush. Each mode is
+          scored on its own scale, then combined. The two tracking modes count
+          half -- most players track moving targets poorly at any sensitivity.
         </p>
-        {kind === "battle" ? (
-          <div
-            style={{
-              marginTop: 20,
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 12,
-            }}
-          >
-            <SensitivityField
-              label="Candidate A"
-              value={candidateA}
-              onChange={setCandidateA}
-            />
-            <SensitivityField
-              label="Candidate B"
-              value={candidateB}
-              onChange={setCandidateB}
-            />
-          </div>
-        ) : null}
         {error ? (
           <p className="app-alert" style={{ marginTop: 16 }}>
             {error}
@@ -417,30 +315,6 @@ export function CalibrationFlow({ kind }: { kind: "find" | "battle" }) {
         </button>
       </section>
     </main>
-  );
-}
-
-function SensitivityField({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <label className="app-field" style={{ marginBottom: 0 }}>
-      <span className="app-label" style={{ display: "block" }}>
-        {label}
-      </span>
-      <input
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        inputMode="decimal"
-        className="app-input"
-      />
-    </label>
   );
 }
 

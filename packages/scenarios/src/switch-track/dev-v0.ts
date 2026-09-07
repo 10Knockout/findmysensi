@@ -4,6 +4,10 @@ import {
   type PrngV1,
   wrapYaw,
 } from "@findmysensi/aim-core";
+import {
+  MEDIUM_SPAWN_HALF_HEIGHT_UNITS,
+  MEDIUM_SPAWN_HALF_WIDTH_UNITS,
+} from "../front-facing-area.js";
 import { defaultScenarioRegistry } from "../registry.js";
 import type {
   RankedScenarioDefinition,
@@ -33,9 +37,9 @@ export const SWITCH_TRACK_ACTIVE_TARGETS = 4;
 
 /** Spec: 2.6 deg diameter, so a 1.3 deg radius. */
 export const SWITCH_TRACK_RADIUS_UNITS = 60_584;
-/** Spec: targets roam +/-40 deg horizontally and +/-24 deg vertically. */
-export const SWITCH_TRACK_HALF_WIDTH_UNITS = 1_864_135;
-export const SWITCH_TRACK_HALF_HEIGHT_UNITS = 1_118_481;
+/** Targets roam inside the shared medium front-facing envelope. */
+export const SWITCH_TRACK_HALF_WIDTH_UNITS = MEDIUM_SPAWN_HALF_WIDTH_UNITS;
+export const SWITCH_TRACK_HALF_HEIGHT_UNITS = MEDIUM_SPAWN_HALF_HEIGHT_UNITS;
 
 /** Spec: 8-18 deg/sec per target. */
 const SWITCH_TRACK_MIN_SPEED = 2_913;

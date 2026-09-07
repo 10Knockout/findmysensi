@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BrowserApiClient } from "@findmysensi/api-client";
 import { resolveSafeLoginDestination } from "../../src/features/auth/login-next.js";
+import { BackLink } from "../../src/components/BackLink.js";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -32,6 +33,7 @@ export default function LoginPage() {
   return (
     <main className="app-shell">
       <div className="app-card">
+        <BackLink href="/" label="Back to home" />
         <div className="app-card-header">
           <Link
             href="/"

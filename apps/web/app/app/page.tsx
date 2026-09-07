@@ -176,9 +176,6 @@ export default function AppDashboardPage() {
             <Link href="/app/calibrate" className="app-chip app-chip-acid">
               Find My Sensi
             </Link>
-            <Link href="/app/sensi-battle" className="app-chip">
-              Sensi Battle
-            </Link>
             <Link href="/tools/mouse-swap" className="app-chip">
               Mouse Swap
             </Link>
@@ -241,8 +238,8 @@ export default function AppDashboardPage() {
           <p className="app-section-label">Training</p>
           <h2 className="app-section-title">Aim Training</h2>
           <p className="app-section-copy">
-            Ten focused exercises. Results stay local until verified scoring is
-            enabled.
+            Twelve focused exercises. Results stay local until verified scoring
+            is enabled.
           </p>
           <div className="app-mode-grid">
             {TRAINING_MODES.map(([modeId, title, description]) => (

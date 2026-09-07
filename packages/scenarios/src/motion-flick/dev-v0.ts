@@ -1,4 +1,8 @@
 import { PrngV1, clampPitch, wrapYaw } from "@findmysensi/aim-core";
+import {
+  MEDIUM_SPAWN_HALF_HEIGHT_UNITS,
+  MEDIUM_SPAWN_HALF_WIDTH_UNITS,
+} from "../front-facing-area.js";
 import { defaultScenarioRegistry } from "../registry.js";
 import type {
   RankedScenarioDefinition,
@@ -20,18 +24,18 @@ import type {
 
 /** Spec: 2.2 deg diameter, so a 1.1 deg radius. */
 export const MOTION_FLICK_RADIUS_UNITS = 51_264;
-/** Spec: the moving target starts 12-36 deg out from centre. */
+/** The moving target starts 12-23 deg out from centre. */
 export const MOTION_FLICK_MIN_OFFSET_UNITS = 559_241;
-export const MOTION_FLICK_MAX_OFFSET_UNITS = 1_677_722;
+export const MOTION_FLICK_MAX_OFFSET_UNITS = 1_071_848;
 /** Spec: it drifts at 14-24 deg/sec, here in units per 128 Hz tick. */
 export const MOTION_FLICK_MIN_SPEED_UNITS_PER_TICK = 5_097;
 export const MOTION_FLICK_MAX_SPEED_UNITS_PER_TICK = 8_738;
 /** Spec: the moving target lives 3.0 s before it gets away. */
 export const MOTION_FLICK_LIFETIME_TICKS = 384;
 
-/** The shared front-facing play area: +/-42 deg by +/-27 deg. */
-export const MOTION_FLICK_HALF_WIDTH_UNITS = 1_957_342;
-export const MOTION_FLICK_HALF_HEIGHT_UNITS = 1_258_291;
+/** The shared medium front-facing play area. */
+export const MOTION_FLICK_HALF_WIDTH_UNITS = MEDIUM_SPAWN_HALF_WIDTH_UNITS;
+export const MOTION_FLICK_HALF_HEIGHT_UNITS = MEDIUM_SPAWN_HALF_HEIGHT_UNITS;
 
 export const MOTION_FLICK_DEV_V0_DEFINITION: RankedScenarioDefinition = {
   modeId: "motion-flick",

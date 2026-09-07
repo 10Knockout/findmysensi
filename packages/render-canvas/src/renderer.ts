@@ -338,9 +338,8 @@ export class Canvas2DPotatoRenderer implements AimRenderer {
     playerPitch: number,
   ): void {
     const { x, y, width, height } = vp.displayRect;
-    const right = x + width;
     const bottom = y + height;
-    const scale = Math.max(0.55, Math.min(1.5, height / 1080));
+    const scale = Math.max(0.42, Math.min(1.5, height / 1080, width / 1280));
     const pitchDegrees = (playerPitch / FULL_TURN_UNITS) * 360;
     const downLook = Math.max(0, Math.min(1, (-pitchDegrees - 42) / 42));
 
@@ -363,26 +362,12 @@ export class Canvas2DPotatoRenderer implements AimRenderer {
       ]);
     }
 
-    const lowered = downLook * 70 * scale;
-    fillPolygon(ctx, "#263141", [
-      [right - 310 * scale, bottom],
-      [right - 255 * scale, bottom - 152 * scale + lowered],
-      [right - 170 * scale, bottom - 126 * scale + lowered],
-      [right - 120 * scale, bottom],
-    ]);
-    fillPolygon(ctx, "#0a0f16", [
-      [right - 220 * scale, bottom - 135 * scale + lowered],
-      [right - 195 * scale, bottom - 245 * scale + lowered],
-      [right - 111 * scale, bottom - 230 * scale + lowered],
-      [right - 76 * scale, bottom - 95 * scale + lowered],
-      [right - 128 * scale, bottom - 70 * scale + lowered],
-    ]);
-    fillPolygon(ctx, "#64748b", [
-      [right - 194 * scale, bottom - 244 * scale + lowered],
-      [right - 92 * scale, bottom - 256 * scale + lowered],
-      [right - 49 * scale, bottom - 233 * scale + lowered],
-      [right - 112 * scale, bottom - 218 * scale + lowered],
-    ]);
+    for (const shape of createLightweightViewModelGeometry(
+      vp.displayRect,
+      playerPitch,
+    )) {
+      fillPolygon(ctx, shape.color, shape.points);
+    }
     ctx.globalAlpha = 1;
   }
 
@@ -508,6 +493,155 @@ export class Canvas2DPotatoRenderer implements AimRenderer {
     this.ctx = null;
     this.viewport = null;
   }
+}
+
+export interface LightweightViewModelPolygon {
+  readonly color: string;
+  readonly points: readonly (readonly [number, number])[];
+}
+
+/**
+ * Flat, texture-free pistol and glove geometry. Keeping this as a small fixed
+ * polygon list makes the viewmodel deterministic and inexpensive on low-end
+ * integrated graphics while still reading clearly at a glance.
+ */
+export function createLightweightViewModelGeometry(
+  displayRect: Readonly<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }>,
+  playerPitch: number,
+): readonly LightweightViewModelPolygon[] {
+  const { x, y, width, height } = displayRect;
+  const bottom = y + height;
+  const scale = Math.max(0.42, Math.min(1.5, height / 1080, width / 1280));
+  const pitchDegrees = (playerPitch / FULL_TURN_UNITS) * 360;
+  const downLook = Math.max(0, Math.min(1, (-pitchDegrees - 42) / 42));
+  const lowered = downLook * 70 * scale;
+  const left = x + Math.max(8, 18 * scale);
+  const point = (px: number, py: number): readonly [number, number] => [
+    left + px * scale,
+    bottom - py * scale + lowered,
+  ];
+
+  return [
+    {
+      color: "#1b2633",
+      points: [point(0, 0), point(58, 142), point(137, 161), point(214, 0)],
+    },
+    {
+      color: "#2b3a4c",
+      points: [point(39, 0), point(75, 126), point(126, 145), point(167, 0)],
+    },
+    {
+      color: "#090d12",
+      points: [
+        point(145, 222),
+        point(194, 230),
+        point(190, 105),
+        point(146, 92),
+      ],
+    },
+    {
+      color: "#151b22",
+      points: [
+        point(126, 235),
+        point(381, 298),
+        point(424, 284),
+        point(402, 249),
+        point(207, 209),
+        point(148, 214),
+      ],
+    },
+    {
+      color: "#596474",
+      points: [
+        point(137, 253),
+        point(390, 315),
+        point(424, 303),
+        point(410, 279),
+        point(155, 224),
+      ],
+    },
+    {
+      color: "#282f39",
+      points: [
+        point(376, 315),
+        point(548, 358),
+        point(568, 346),
+        point(551, 322),
+        point(407, 286),
+      ],
+    },
+    {
+      color: "#7b8798",
+      points: [
+        point(159, 258),
+        point(365, 308),
+        point(389, 301),
+        point(176, 248),
+      ],
+    },
+    {
+      color: "#080c11",
+      points: [
+        point(58, 144),
+        point(82, 190),
+        point(145, 204),
+        point(176, 153),
+        point(137, 128),
+      ],
+    },
+    {
+      color: "#121a23",
+      points: [
+        point(96, 169),
+        point(124, 224),
+        point(176, 231),
+        point(197, 185),
+        point(171, 126),
+        point(124, 126),
+      ],
+    },
+    {
+      color: "#253141",
+      points: [
+        point(116, 198),
+        point(137, 221),
+        point(184, 218),
+        point(177, 197),
+      ],
+    },
+    {
+      color: "#202b38",
+      points: [
+        point(111, 177),
+        point(131, 196),
+        point(181, 194),
+        point(176, 174),
+      ],
+    },
+    {
+      color: "#2d3949",
+      points: [
+        point(150, 221),
+        point(194, 229),
+        point(208, 207),
+        point(169, 188),
+      ],
+    },
+    {
+      color: "#bdff2d",
+      points: [
+        point(399, 316),
+        point(410, 319),
+        point(409, 307),
+        point(401, 305),
+      ],
+    },
+  ];
 }
 
 function fillPolygon(

@@ -1,4 +1,5 @@
 import { PrngV1, wrapYaw } from "@findmysensi/aim-core";
+import { MEDIUM_SPAWN_HALF_WIDTH_UNITS } from "../front-facing-area.js";
 import { defaultScenarioRegistry } from "../registry.js";
 import {
   RankedScenarioDefinition,
@@ -50,8 +51,8 @@ const HEADLINE_DEPTH_SPEED_UNITS_PER_TICK: Record<
 
 const HEADLINE_DEPTHS: readonly HeadlineDepth[] = ["near", "medium", "far"];
 
-/** Spec: targets reflect at +/-42 deg. */
-export const HEADLINE_HALF_WIDTH_UNITS = 1_957_342;
+/** Targets reflect inside the shared medium front-facing width. */
+export const HEADLINE_HALF_WIDTH_UNITS = MEDIUM_SPAWN_HALF_WIDTH_UNITS;
 /** Spec: head-height band runs -3 deg to +5 deg. */
 export const HEADLINE_MIN_PITCH_UNITS = -139_810;
 export const HEADLINE_MAX_PITCH_UNITS = 233_017;

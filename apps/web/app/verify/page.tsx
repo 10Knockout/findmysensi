@@ -9,11 +9,7 @@ export default function VerifyPage() {
           Verification codes are entered during registration. A query-string
           token is never treated as proof of verification.
         </p>
-        <Link
-          href="/register"
-          className="app-button"
-          style={{ marginTop: 22 }}
-        >
+        <Link href="/register" className="app-button" style={{ marginTop: 22 }}>
           Return to registration
         </Link>
       </section>

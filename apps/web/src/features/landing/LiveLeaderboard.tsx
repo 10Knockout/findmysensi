@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { BrowserApiClient } from "@findmysensi/api-client";
 import type { LeaderboardRow } from "@findmysensi/protocol";
 
@@ -10,22 +10,68 @@ export function LiveLeaderboard() {
   const [rows, setRows] = useState<LeaderboardRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    const result = await new BrowserApiClient().getLeaderboard("gridshot");
-    if (!result.ok || !result.data) {
-      setRows(null);
-      setError(result.error ?? "Leaderboard is unavailable.");
-      return;
-    }
-    setRows(result.data.rows);
-    setError(null);
-  }, []);
-
   useEffect(() => {
+    const client = new BrowserApiClient();
+    let disposed = false;
+    let loading = false;
+    let timer: number | undefined;
+
+    const clearTimer = () => {
+      if (timer !== undefined) {
+        window.clearTimeout(timer);
+        timer = undefined;
+      }
+    };
+
+    const schedule = () => {
+      clearTimer();
+      if (!disposed && document.visibilityState === "visible") {
+        timer = window.setTimeout(() => void load(), REFRESH_MS);
+      }
+    };
+
+    const load = async () => {
+      if (disposed || loading || document.visibilityState !== "visible") {
+        return;
+      }
+
+      loading = true;
+      try {
+        const result = await client.getLeaderboard("gridshot");
+        if (disposed) return;
+
+        if (!result.ok || !result.data) {
+          setRows(null);
+          setError(result.error ?? "Leaderboard is unavailable.");
+          return;
+        }
+        setRows(result.data.rows);
+        setError(null);
+      } catch {
+        if (!disposed) {
+          setRows(null);
+          setError("Leaderboard is unavailable.");
+        }
+      } finally {
+        loading = false;
+        schedule();
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      clearTimer();
+      if (document.visibilityState === "visible") void load();
+    };
+
     void load();
-    const interval = window.setInterval(() => void load(), REFRESH_MS);
-    return () => window.clearInterval(interval);
-  }, [load]);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      disposed = true;
+      clearTimer();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
 
   if (error) {
     return (

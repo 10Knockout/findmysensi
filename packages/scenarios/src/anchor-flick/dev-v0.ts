@@ -1,4 +1,8 @@
 import { PrngV1, clampPitch, wrapYaw } from "@findmysensi/aim-core";
+import {
+  MEDIUM_SPAWN_HALF_HEIGHT_UNITS,
+  MEDIUM_SPAWN_HALF_WIDTH_UNITS,
+} from "../front-facing-area.js";
 import { defaultScenarioRegistry } from "../registry.js";
 import type {
   RankedScenarioDefinition,
@@ -22,15 +26,15 @@ import type {
 
 /** Spec: 2.5 deg diameter, so a 1.25 deg radius. */
 export const ANCHOR_FLICK_RADIUS_UNITS = 58_254;
-/** Spec: the peripheral target lands 18-40 deg from centre. */
+/** The peripheral target lands 18-23 deg from centre. */
 export const ANCHOR_FLICK_MIN_OFFSET_UNITS = 838_861;
-export const ANCHOR_FLICK_MAX_OFFSET_UNITS = 1_864_135;
+export const ANCHOR_FLICK_MAX_OFFSET_UNITS = 1_071_848;
 /** Spec: a peripheral target expires after 1.75 s at 128 Hz. */
 export const ANCHOR_FLICK_PERIPHERAL_LIFETIME_TICKS = 224;
 
-/** The shared front-facing play area: +/-42 deg by +/-27 deg. */
-export const ANCHOR_FLICK_HALF_WIDTH_UNITS = 1_957_342;
-export const ANCHOR_FLICK_HALF_HEIGHT_UNITS = 1_258_291;
+/** The shared medium front-facing play area. */
+export const ANCHOR_FLICK_HALF_WIDTH_UNITS = MEDIUM_SPAWN_HALF_WIDTH_UNITS;
+export const ANCHOR_FLICK_HALF_HEIGHT_UNITS = MEDIUM_SPAWN_HALF_HEIGHT_UNITS;
 
 export const ANCHOR_FLICK_DEV_V0_DEFINITION: RankedScenarioDefinition = {
   modeId: "anchor-flick",

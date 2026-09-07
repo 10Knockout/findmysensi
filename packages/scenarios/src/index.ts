@@ -1,6 +1,7 @@
 export * from "./types.js";
 export * from "./registry.js";
 export * from "./presentation.js";
+export * from "./front-facing-area.js";
 export * from "./grid/dev-v0.js";
 export * from "./pinpoint/dev-v0.js";
 export * from "./multi/dev-v0.js";

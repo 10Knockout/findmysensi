@@ -64,7 +64,7 @@ export default function HomePage() {
             <em>sensi.</em>
           </h1>
           <p className="landing-hero-copy">
-            Ten focused drills. Physical sensitivity conversion. Real
+            Twelve focused drills. Physical sensitivity conversion. Real
             performance data—inside your browser.
           </p>
           <div className="landing-hero-actions">
@@ -78,7 +78,7 @@ export default function HomePage() {
           </div>
         </div>
         <div className="landing-hero-meta" aria-label="Product highlights">
-          <span>10 drills</span>
+          <span>12 drills</span>
           <span>128 Hz simulation</span>
           <span>0 installs</span>
         </div>
