@@ -641,6 +641,29 @@ export function InGameSettingsModal({
                     <option value="high">High</option>
                   </select>
                 </div>
+
+                <div>
+                  <label
+                    htmlFor="in-game-weapon-hand"
+                    className="settings-label"
+                  >
+                    Weapon Hand
+                  </label>
+                  <select
+                    id="in-game-weapon-hand"
+                    value={settings.weaponHand}
+                    onChange={(e) =>
+                      updateSetting(
+                        "weaponHand",
+                        e.target.value as TrainerSettings["weaponHand"],
+                      )
+                    }
+                    className="app-input"
+                  >
+                    <option value="right">Right</option>
+                    <option value="left">Left</option>
+                  </select>
+                </div>
               </div>
             </div>
           ) : null}
@@ -656,6 +679,7 @@ export function InGameSettingsModal({
                 targetColor: "#7CFF6B",
                 targetOpacity: 1,
                 targetOutline: false,
+                weaponHand: "right",
                 scalingMode: "fill",
                 resolution: "native",
               });

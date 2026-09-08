@@ -14,6 +14,8 @@ export const GRAPHICS_OPTIONS = [
   "high",
 ] as const;
 
+export const WEAPON_HAND_OPTIONS = ["right", "left"] as const;
+
 export const RESOLUTION_OPTIONS = [
   "native",
   "2560x1440",

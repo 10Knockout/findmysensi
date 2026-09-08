@@ -31,6 +31,7 @@ export const TrainerSettingsSchema = z
     targetOpacity: z.number().min(0.2).max(1).default(1),
     targetOutline: z.boolean().default(false),
     crosshairCode: z.string().max(512).nullable().default(null),
+    weaponHand: z.enum(["right", "left"]).default("right"),
     graphicsPreset: z
       .enum(["automatic", "potato", "low", "balanced", "high"])
       .default("automatic"),

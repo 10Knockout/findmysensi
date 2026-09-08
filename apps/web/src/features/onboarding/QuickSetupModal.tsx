@@ -2,7 +2,10 @@
 
 import React, { useMemo, useState } from "react";
 import { BrowserApiClient } from "@findmysensi/api-client";
-import { TrainerSettings } from "@findmysensi/protocol";
+import {
+  TrainerSettingsSchema,
+  type TrainerSettings,
+} from "@findmysensi/protocol";
 import {
   DEFAULT_BROWSER_INPUT_CALIBRATION_SCALE,
   SENSITIVITY_PROFILES,
@@ -124,7 +127,7 @@ export function QuickSetupModal({
         throw new Error(res.error ?? "Failed to save sensitivity");
       }
 
-      onSaved(res.data ?? updated);
+      onSaved(TrainerSettingsSchema.parse(res.data ?? updated));
       onClose();
     } catch (err: unknown) {
       setError(

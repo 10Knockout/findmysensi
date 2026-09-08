@@ -439,6 +439,7 @@ export function TrainerBootstrap({
         renderer.initialize(canvas, viewport, {
           crosshair: savedCrosshairRef.current,
           graphicsPreset: activeCfg.graphicsPreset,
+          weaponHand: activeCfg.weaponHand,
           target: {
             bodyColor: activeCfg.targetColor,
             opacity: activeCfg.targetOpacity,
@@ -452,6 +453,7 @@ export function TrainerBootstrap({
         renderer.initialize(canvas, viewport, {
           crosshair: savedCrosshairRef.current,
           graphicsPreset: activeCfg.graphicsPreset,
+          weaponHand: activeCfg.weaponHand,
           target: {
             bodyColor: activeCfg.targetColor,
             opacity: activeCfg.targetOpacity,

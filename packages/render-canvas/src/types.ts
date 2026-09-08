@@ -25,6 +25,8 @@ export interface TargetRenderConfig {
 export type RendererGraphicsPreset =
   "automatic" | "potato" | "low" | "balanced" | "high";
 
+export type WeaponHand = "right" | "left";
+
 export interface PlayAreaRenderConfig {
   /** Full width of the scenario spawn area, in angle units. */
   readonly widthUnits: number;
@@ -38,6 +40,7 @@ export interface PlayAreaRenderConfig {
 export interface PotatoRendererOptions {
   readonly backgroundColor?: string | undefined;
   readonly graphicsPreset?: RendererGraphicsPreset | undefined;
+  readonly weaponHand?: WeaponHand | undefined;
   readonly crosshair?: Partial<CrosshairConfig> | undefined;
   readonly target?: Partial<TargetRenderConfig> | undefined;
   /**

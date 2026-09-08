@@ -30,11 +30,18 @@ describe("phase 1 product shell protocol", () => {
     expect(parsed.success).toBe(false);
   });
 
-  it("defaults trainer FOV to 103 and allows unknown DPI", () => {
+  it("defaults trainer FOV and weapon hand while allowing unknown DPI", () => {
     const parsed = TrainerSettingsSchema.parse({});
 
     expect(parsed.fovDegrees).toBe(103);
     expect(parsed.nominalDpi).toBeNull();
+    expect(parsed.weaponHand).toBe("right");
+    expect(TrainerSettingsSchema.parse({ weaponHand: "left" }).weaponHand).toBe(
+      "left",
+    );
+    expect(
+      TrainerSettingsSchema.safeParse({ weaponHand: "center" }).success,
+    ).toBe(false);
   });
 
   it("keeps target geometry, style, movement and score outside mutable settings", () => {

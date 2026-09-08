@@ -25,6 +25,7 @@ import {
   PROFILE_FRAMES,
   RESOLUTION_OPTIONS,
   SCALING_OPTIONS,
+  WEAPON_HAND_OPTIONS,
 } from "./options.js";
 
 export function SettingsClient() {
@@ -140,7 +141,7 @@ export function SettingsClient() {
     }
 
     setProfile(profileResult.data);
-    setTrainer(settingsResult.data);
+    setTrainer(TrainerSettingsSchema.parse(settingsResult.data));
     setStatus("Settings saved.");
     setSaving(false);
   };
@@ -585,6 +586,17 @@ export function SettingsClient() {
                   updateTrainer(
                     "graphicsPreset",
                     value as TrainerSettings["graphicsPreset"],
+                  )
+                }
+              />
+              <SelectField
+                label="Weapon hand"
+                value={trainer.weaponHand}
+                options={WEAPON_HAND_OPTIONS}
+                onChange={(value) =>
+                  updateTrainer(
+                    "weaponHand",
+                    value as TrainerSettings["weaponHand"],
                   )
                 }
               />
