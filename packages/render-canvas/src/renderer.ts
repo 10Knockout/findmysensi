@@ -74,9 +74,12 @@ const HALL_NEAR_PLANE = 0.08;
 // once — so they were solved together against a screen-space acceptance table
 // (muzzle, sights and slide centre as percentages of a 16:9 viewport) taken
 // from the reference composition.
-const WEAPON_POSITION_X = 0.0827;
-const WEAPON_POSITION_Y = -0.0679;
-const WEAPON_POSITION_Z = 0.4703;
+// Scaled out from the fitted solution by a constant factor: multiplying all
+// three by the same number holds X/Z and Y/Z, so the weapon keeps its place in
+// the corner and only its apparent size drops.
+const WEAPON_POSITION_X = 0.1524;
+const WEAPON_POSITION_Y = -0.0951;
+const WEAPON_POSITION_Z = 0.6584;
 const WEAPON_YAW_RADIANS = -0.009;
 // Negative pitch raises the muzzle: model gz maps to world y through
 // `-gz * sin(pitch)`, so a positive angle would make the barrel droop. Muzzle up
@@ -87,6 +90,10 @@ const WEAPON_PITCH_RADIANS = -0.0626;
 // the eye would smear across half the frame. Shooters solve this with a
 // dedicated viewmodel FOV, and this ratio is that knob.
 const VIEWMODEL_FOCAL_RATIO = 0.9;
+// Slims every part across its two cross-section axes without shortening the
+// barrel. Blocks modelled at true pistol width read as fat from behind, because
+// looking down the weapon foreshortens its length but not its girth.
+const WEAPON_GIRTH = 0.66;
 
 /**
  * Scales a hex colour towards white or black. Box faces derive their shade from
@@ -824,12 +831,16 @@ export function createLightweightViewModelGeometry(
   const sinYaw = Math.sin(WEAPON_YAW_RADIANS);
 
   // Model space: gx across the weapon, gy up it, gz towards the muzzle, with
-  // the origin at the rear underside of the slide.
+  // the origin at the rear underside of the slide. Girth scales the two
+  // cross-section axes only, so every part slims down together while the barrel
+  // keeps its length — one knob instead of editing each box.
   const project = (
-    gx: number,
-    gy: number,
+    rawX: number,
+    rawY: number,
     gz: number,
   ): readonly [number, number, number] => {
+    const gx = rawX * WEAPON_GIRTH;
+    const gy = rawY * WEAPON_GIRTH;
     const pitchedY = gy * cosPitch - gz * sinPitch;
     const pitchedZ = gy * sinPitch + gz * cosPitch;
     const worldX = WEAPON_POSITION_X + gx * cosYaw + pitchedZ * sinYaw;
@@ -922,16 +933,16 @@ export function createLightweightViewModelGeometry(
   // short rather than running metres past the frame: this close to the eye the
   // perspective divide magnifies every extra centimetre into thousands of
   // off-screen pixels that still cost rasterisation time.
-  addBox("#151a21", -0.048, 0.034, -0.2, -0.11, -0.1, -0.02);
-  addBox("#1a1f27", -0.042, 0.036, -0.115, -0.024, -0.03, 0.052);
+  addBox("#151a21", -0.032, 0.026, -0.2, -0.11, -0.1, -0.02);
+  addBox("#1a1f27", -0.029, 0.028, -0.115, -0.024, -0.03, 0.052);
   // Finger rows, so the hand reads as fingers wrapped round a grip rather than
   // one black block.
-  addBox("#242b35", -0.028, 0.038, -0.052, -0.024, 0.03, 0.064);
-  addBox("#1f2630", -0.028, 0.038, -0.082, -0.055, 0.028, 0.06);
-  addBox("#1a212a", -0.027, 0.037, -0.11, -0.085, 0.024, 0.054);
+  addBox("#242b35", -0.021, 0.03, -0.052, -0.024, 0.03, 0.064);
+  addBox("#1f2630", -0.021, 0.03, -0.082, -0.055, 0.028, 0.06);
+  addBox("#1a212a", -0.02, 0.029, -0.11, -0.085, 0.024, 0.054);
   // Thumb lying up the right side of the frame, which is the face the player's
   // eye is on and would otherwise show as a bare slab.
-  addBox("#242b35", 0.014, 0.036, -0.03, -0.004, 0.03, 0.1);
+  addBox("#242b35", 0.012, 0.028, -0.03, -0.004, 0.03, 0.1);
 
   // Grip and magazine.
   addBox("#181d23", -0.015, 0.015, -0.115, -0.03, -0.012, 0.046);
