@@ -88,21 +88,17 @@ function getLeaderboardMetrics(
 ): readonly [OverviewMetric, OverviewMetric] {
   const standing = leaderboard?.standing;
   if (!standing) {
-    const rankNote =
-      leaderboard && leaderboard.totalPlayers > 0
-        ? "No verified personal standing"
-        : "Verified submission required";
     return [
       {
         label: "Leaderboard Rank",
         value: "—",
-        note: rankNote,
+        note: "Sync your run to see your rank",
         tone: "muted",
       },
       {
         label: "Percentile",
         value: "—",
-        note: "Population data unavailable",
+        note: "Awaiting sync",
         tone: "muted",
       },
     ];
@@ -112,19 +108,19 @@ function getLeaderboardMetrics(
     {
       label: "Leaderboard Rank",
       value: `#${standing.rank.toLocaleString()}`,
-      note: `Verified PB among ${standing.totalPlayers.toLocaleString()} players`,
+      note: `Best of ${standing.totalPlayers.toLocaleString()} on this board`,
     },
     standing.percentile === null
       ? {
           label: "Percentile",
           value: "—",
-          note: `Available at ${leaderboard.percentileMinimumPlayers.toLocaleString()} verified players`,
+          note: `Shown once ${leaderboard.percentileMinimumPlayers.toLocaleString()} players have a score`,
           tone: "muted",
         }
       : {
           label: "Percentile",
           value: `${formatDecimal(standing.percentile, 1)}%`,
-          note: "Verified-player population",
+          note: `Top of ${leaderboard.totalPlayers.toLocaleString()} ranked players`,
         },
   ];
 }
@@ -273,11 +269,9 @@ function getScoreDeltaNote(
   delta: number | null,
 ): string | undefined {
   if (!previousPersonalBest || delta === null) {
-    return current.leaderboardEligible
-      ? "First eligible result"
-      : "No eligible comparison";
+    return current.leaderboardEligible ? "First run" : "Run not counted";
   }
-  if (!current.leaderboardEligible) return "Run not eligible for PB";
+  if (!current.leaderboardEligible) return "Run not counted for best";
   if (delta > 0 && current.runId === personalBest?.runId) {
     return "New personal best";
   }
