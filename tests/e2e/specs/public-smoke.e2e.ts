@@ -212,74 +212,90 @@ test("authenticated Grid Rush shell initializes the real trainer canvas", async 
   await page.screenshot({ path: testInfo.outputPath("gridshot-arena.png") });
 
   const canvas = page.getByLabel(GRID_MODE_CANVAS_LABEL);
-  const targetPoint = await canvas.evaluate((element) => {
-    const canvasElement = element as HTMLCanvasElement;
-    const context = canvasElement.getContext("2d");
-    if (!context) return null;
-    const { width, height } = canvasElement;
-    const pixels = context.getImageData(0, 0, width, height).data;
-    const candidates: Array<readonly [number, number]> = [];
+  const locateTarget = () =>
+    canvas.evaluate((element) => {
+      const canvasElement = element as HTMLCanvasElement;
+      const context = canvasElement.getContext("2d");
+      if (!context) return null;
+      const { width, height } = canvasElement;
+      const pixels = context.getImageData(0, 0, width, height).data;
+      const candidates: Array<readonly [number, number]> = [];
 
-    // Sample bright target-green pixels. The red-channel threshold excludes
-    // the cyan crosshair while keeping the green target bodies.
-    for (let y = 0; y < height; y += 2) {
-      for (let x = 0; x < width; x += 2) {
-        const offset = (y * width + x) * 4;
-        const red = pixels[offset] ?? 0;
-        const green = pixels[offset + 1] ?? 0;
-        const blue = pixels[offset + 2] ?? 0;
-        if (red > 60 && green > red * 1.3 && green > blue * 1.35) {
-          candidates.push([x, y]);
+      // Sample bright target-green pixels. The red-channel threshold excludes
+      // the cyan crosshair while keeping the green target bodies.
+      for (let y = 0; y < height; y += 2) {
+        for (let x = 0; x < width; x += 2) {
+          const offset = (y * width + x) * 4;
+          const red = pixels[offset] ?? 0;
+          const green = pixels[offset + 1] ?? 0;
+          const blue = pixels[offset + 2] ?? 0;
+          if (red > 60 && green > red * 1.3 && green > blue * 1.35) {
+            candidates.push([x, y]);
+          }
         }
       }
-    }
 
-    let best: readonly [number, number] | null = null;
-    let bestNeighbors = 0;
-    for (const candidate of candidates) {
-      let neighbors = 0;
-      for (const other of candidates) {
-        const dx = candidate[0] - other[0];
-        const dy = candidate[1] - other[1];
-        if (dx * dx + dy * dy <= 18 * 18) neighbors++;
+      let best: readonly [number, number] | null = null;
+      let bestNeighbors = 0;
+      for (const candidate of candidates) {
+        let neighbors = 0;
+        for (const other of candidates) {
+          const dx = candidate[0] - other[0];
+          const dy = candidate[1] - other[1];
+          if (dx * dx + dy * dy <= 18 * 18) neighbors++;
+        }
+        if (neighbors > bestNeighbors) {
+          best = candidate;
+          bestNeighbors = neighbors;
+        }
       }
-      if (neighbors > bestNeighbors) {
-        best = candidate;
-        bestNeighbors = neighbors;
-      }
-    }
-    if (!best || bestNeighbors < 8) return null;
+      if (!best || bestNeighbors < 8) return null;
 
-    const rect = canvasElement.getBoundingClientRect();
-    return {
-      x: (best[0] / width) * rect.width,
-      y: (best[1] / height) * rect.height,
-      width: rect.width,
-      height: rect.height,
-    };
-  });
-  expect(targetPoint).not.toBeNull();
-  if (!targetPoint || !startButtonBox) {
+      const rect = canvasElement.getBoundingClientRect();
+      return {
+        x: (best[0] / width) * rect.width,
+        y: (best[1] / height) * rect.height,
+        width: rect.width,
+        height: rect.height,
+      };
+    });
+  if (!startButtonBox) {
     throw new Error(
-      `${GRID_MODE_TITLE} target or Start button geometry was unavailable.`,
+      `${GRID_MODE_TITLE} Start button geometry was unavailable.`,
     );
   }
 
-  const horizontalFovRadians = (103 / 180) * Math.PI;
-  const focalLength =
-    targetPoint.width / 2 / Math.tan(horizontalFovRadians / 2);
-  const yawDegrees =
-    (Math.atan((targetPoint.x - targetPoint.width / 2) / focalLength) * 180) /
-    Math.PI;
-  const pitchDegrees =
-    (Math.atan((targetPoint.height / 2 - targetPoint.y) / focalLength) * 180) /
-    Math.PI;
   const degreesPerCount = 10 * 0.05;
   let mouseX = startButtonBox.x + startButtonBox.width / 2;
   let mouseY = startButtonBox.y + startButtonBox.height / 2;
-  mouseX += Math.round(yawDegrees / degreesPerCount);
-  mouseY += Math.round(-pitchDegrees / degreesPerCount);
-  await page.mouse.move(mouseX, mouseY);
+
+  // Pointer-lock movement differs slightly between desktop backends. Re-read
+  // rendered target position after each move instead of trusting one open-loop
+  // estimate. This still proves real camera movement and a real scored hit.
+  for (let correction = 0; correction < 3; correction++) {
+    const targetPoint = await locateTarget();
+    expect(targetPoint).not.toBeNull();
+    if (!targetPoint) {
+      throw new Error(`${GRID_MODE_TITLE} target geometry was unavailable.`);
+    }
+
+    const horizontalFovRadians = (103 / 180) * Math.PI;
+    const focalLength =
+      targetPoint.width / 2 / Math.tan(horizontalFovRadians / 2);
+    const yawDegrees =
+      (Math.atan((targetPoint.x - targetPoint.width / 2) / focalLength) * 180) /
+      Math.PI;
+    const pitchDegrees =
+      (Math.atan((targetPoint.height / 2 - targetPoint.y) / focalLength) *
+        180) /
+      Math.PI;
+    const dx = Math.round(yawDegrees / degreesPerCount);
+    const dy = Math.round(-pitchDegrees / degreesPerCount);
+    if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1) break;
+    mouseX += dx;
+    mouseY += dy;
+    await page.mouse.move(mouseX, mouseY);
+  }
   await page.mouse.down();
   await page.mouse.up();
   await expect(page.getByText("1 / 0", { exact: true })).toBeVisible();
