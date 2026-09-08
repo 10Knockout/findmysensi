@@ -7,6 +7,7 @@ import {
   removeBrowserInputCalibration,
   resolveBrowserInputCalibration,
   gameSensitivityToFms,
+  runtimeFmsToGameSensitivity,
 } from "../src/index.js";
 
 describe("Browser input calibration (@findmysensi/sensitivity)", () => {
@@ -25,6 +26,30 @@ describe("Browser input calibration (@findmysensi/sensitivity)", () => {
   it("maps Aimlabs Default 0.175 onto typed 0.245 as well", () => {
     const canonical = Number(gameSensitivityToFms("aimlab-default", "0.175"));
     expect(applyBrowserInputCalibration(canonical)).toBe(0.245);
+  });
+
+  it.each([
+    ["valorant", 0.125],
+    ["cs2", 0.397727272727],
+    ["apex", 0.397727272727],
+    ["aimlab-default", 0.175],
+  ] as const)(
+    "converts browser runtime back into %s without changing calibration math",
+    (gameId, gameSensitivity) => {
+      const outgoing = runtimeFmsToGameSensitivity(gameId, 0.245, 800);
+      expect(outgoing.canonicalFmsSensitivity).toBe(0.175);
+      expect(outgoing.conversion.targetSensitivity).toBeCloseTo(
+        gameSensitivity,
+        6,
+      );
+    },
+  );
+
+  it("does not leak the browser multiplier into a displayed game result", () => {
+    const result = runtimeFmsToGameSensitivity("valorant", 0.245, 2400);
+    expect(result.canonicalFmsSensitivity).toBe(0.175);
+    expect(result.conversion.targetSensitivity).toBe(0.125);
+    expect(result.conversion.cmPer360).toBeCloseTo(43.54, 2);
   });
 
   it("applies the same factor to CS2 and Apex canonical results", () => {

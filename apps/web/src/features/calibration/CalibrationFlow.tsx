@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BrowserApiClient } from "@findmysensi/api-client";
@@ -14,7 +14,13 @@ import {
   type MultiModeRecommendation,
   type RuntimeScoreResult,
 } from "@findmysensi/trainer-runtime";
+import {
+  SENSITIVITY_PROFILES,
+  runtimeFmsToGameSensitivity,
+  type VerifiedSensitivityProfileId,
+} from "@findmysensi/sensitivity";
 import { BackLink } from "../../components/BackLink.js";
+import { SensitivityGamePicker } from "../../components/SensitivityGamePicker.js";
 import { TrainerBootstrap } from "../../trainer/TrainerBootstrap.js";
 
 const FIND_BLOCK_DURATION_TICKS = 12 * 128;
@@ -66,6 +72,8 @@ export function CalibrationFlow() {
     useState<MultiModeRecommendation | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [targetGame, setTargetGame] =
+    useState<VerifiedSensitivityProfileId>("valorant");
 
   useEffect(() => {
     const client = new BrowserApiClient();
@@ -173,6 +181,18 @@ export function CalibrationFlow() {
   );
 
   const selectedSensitivity = recommendation?.sensitivity ?? null;
+  const displayedRecommendation = useMemo(() => {
+    if (selectedSensitivity === null || !settings) return null;
+    try {
+      return runtimeFmsToGameSensitivity(
+        targetGame,
+        selectedSensitivity,
+        settings.nominalDpi ?? 800,
+      );
+    } catch {
+      return null;
+    }
+  }, [selectedSensitivity, settings, targetGame]);
 
   const saveSelected = async () => {
     if (!settings || selectedSensitivity === null) return;
@@ -230,9 +250,29 @@ export function CalibrationFlow() {
           <p className="app-kicker" style={{ marginBottom: 8 }}>
             {title} complete
           </p>
-          <h1 className="app-heading">
-            Recommended: {formatSensitivity(recommendation.sensitivity)}
-          </h1>
+          <h1 className="app-heading">Your recommended sensitivity</h1>
+          <div style={{ marginTop: 18 }}>
+            <p className="settings-label">
+              {SENSITIVITY_PROFILES[targetGame].name}
+            </p>
+            <p
+              data-testid="recommended-game-sensitivity"
+              style={{
+                marginTop: 4,
+                color: "var(--fms-acid)",
+                fontFamily: "monospace",
+                fontSize: "clamp(42px, 9vw, 68px)",
+                fontWeight: 900,
+                lineHeight: 1,
+              }}
+            >
+              {displayedRecommendation
+                ? formatSensitivity(
+                    displayedRecommendation.conversion.targetSensitivity,
+                  )
+                : "--"}
+            </p>
+          </div>
           <p className="app-subtext">{recommendation.reason}</p>
           <p
             style={{
@@ -244,6 +284,45 @@ export function CalibrationFlow() {
           >
             Confidence: {recommendation.confidence}
           </p>
+          {displayedRecommendation ? (
+            <div
+              style={{
+                display: "grid",
+                gap: 8,
+                marginTop: 18,
+                fontFamily: "monospace",
+                fontSize: 13,
+                color: "rgba(255,255,255,0.65)",
+              }}
+            >
+              <span>
+                {displayedRecommendation.conversion.formattedCmPer360} cm / 360°
+              </span>
+              <span>
+                FindMySensi native:{" "}
+                {formatSensitivity(
+                  displayedRecommendation.runtimeFmsSensitivity,
+                )}
+              </span>
+              <span>
+                Canonical Aimlabs Default:{" "}
+                {formatSensitivity(
+                  displayedRecommendation.canonicalFmsSensitivity,
+                )}
+              </span>
+              <span>
+                Adapter v{SENSITIVITY_PROFILES[targetGame].version} ·{" "}
+                {SENSITIVITY_PROFILES[targetGame].verificationLevel}
+              </span>
+            </div>
+          ) : null}
+          <div style={{ marginTop: 24 }}>
+            <SensitivityGamePicker
+              legend="View equivalents"
+              selected={targetGame}
+              onSelect={setTargetGame}
+            />
+          </div>
           {error ? (
             <p className="app-alert" style={{ marginTop: 16 }}>
               {error}
@@ -305,6 +384,13 @@ export function CalibrationFlow() {
           scored on its own scale, then combined. The two tracking modes count
           half -- most players track moving targets poorly at any sensitivity.
         </p>
+        <div style={{ marginTop: 22 }}>
+          <SensitivityGamePicker
+            legend="What game do you want to use this sensitivity in?"
+            selected={targetGame}
+            onSelect={setTargetGame}
+          />
+        </div>
         {error ? (
           <p className="app-alert" style={{ marginTop: 16 }}>
             {error}

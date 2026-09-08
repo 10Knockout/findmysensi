@@ -33,6 +33,7 @@
       "@findmysensi/scenarios": ["../../packages/scenarios/src/index.ts"],
       "@findmysensi/analytics": ["../../packages/analytics/src/index.ts"],
       "@findmysensi/scoring": ["../../packages/scoring/src/index.ts"],
+      "@findmysensi/sensitivity": ["../../packages/sensitivity/src/index.ts"],
       "@findmysensi/trainer-runtime": [
         "../../packages/trainer-runtime/src/index.ts"
       ]
