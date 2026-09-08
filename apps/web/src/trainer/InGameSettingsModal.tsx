@@ -3,6 +3,9 @@
 import React, { useState, useEffect } from "react";
 import {
   DEFAULT_TRAINING_FOV_DEGREES,
+  TrainerSettingsSchema,
+  describeTrainerSettingsError,
+  normalizeHexColor,
   type TrainerSettings,
 } from "@findmysensi/protocol";
 import {
@@ -107,13 +110,20 @@ export function InGameSettingsModal({
     setSaveStatus(null);
     try {
       const crosshairCode = encodeCrosshairShareCode(crosshair);
-      const toSave: TrainerSettings = {
+      // Validate the merged payload here rather than let the API reject it
+      // with a bare "Invalid trainer settings." that names no field.
+      const candidate = TrainerSettingsSchema.safeParse({
         ...settings,
         nominalDpi: dpi,
         crosshairCode,
-      };
+      });
+      if (!candidate.success) {
+        setSaveStatus(describeTrainerSettingsError(candidate.error));
+        setSaving(false);
+        return;
+      }
 
-      await onSaveAndApply(toSave, crosshair);
+      await onSaveAndApply(candidate.data, crosshair);
       setSaveStatus("Applied successfully!");
       window.setTimeout(() => {
         setSaveStatus(null);
@@ -450,7 +460,12 @@ export function InGameSettingsModal({
                     <button
                       key={swatch.hex}
                       type="button"
-                      onClick={() => updateSetting("targetColor", swatch.hex)}
+                      onClick={() =>
+                        updateSetting(
+                          "targetColor",
+                          normalizeHexColor(swatch.hex),
+                        )
+                      }
                       style={{
                         width: 28,
                         height: 28,
@@ -469,7 +484,10 @@ export function InGameSettingsModal({
                     type="color"
                     value={settings.targetColor}
                     onChange={(e) =>
-                      updateSetting("targetColor", e.target.value)
+                      updateSetting(
+                        "targetColor",
+                        normalizeHexColor(e.target.value),
+                      )
                     }
                     style={{
                       width: 48,
@@ -676,7 +694,7 @@ export function InGameSettingsModal({
               setSettings({
                 ...settings,
                 fovDegrees: DEFAULT_TRAINING_FOV_DEGREES,
-                targetColor: "#7CFF6B",
+                targetColor: "#7cff6b",
                 targetOpacity: 1,
                 targetOutline: false,
                 weaponHand: "right",

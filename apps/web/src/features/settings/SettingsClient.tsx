@@ -7,6 +7,8 @@ import { BrowserApiClient } from "@findmysensi/api-client";
 import {
   ProfileSettingsSchema,
   TrainerSettingsSchema,
+  describeTrainerSettingsError,
+  normalizeHexColor,
   type ProfileSettings,
   type TrainerSettings,
 } from "@findmysensi/protocol";
@@ -115,13 +117,27 @@ export function SettingsClient() {
     setError(null);
     setStatus(null);
 
+    let crosshairCode: string;
+    try {
+      crosshairCode = encodeCrosshairShareCode(crosshair);
+    } catch {
+      setError("Crosshair is invalid. Choose a preset and try again.");
+      setSaving(false);
+      return;
+    }
+
     const parsedProfile = ProfileSettingsSchema.safeParse(profile);
     const parsedTrainer = TrainerSettingsSchema.safeParse({
       ...trainer,
-      crosshairCode: encodeCrosshairShareCode(crosshair),
+      crosshairCode,
     });
-    if (!parsedProfile.success || !parsedTrainer.success) {
-      setError("One or more settings are invalid.");
+    if (!parsedProfile.success) {
+      setError("One or more profile settings are invalid.");
+      setSaving(false);
+      return;
+    }
+    if (!parsedTrainer.success) {
+      setError(describeTrainerSettingsError(parsedTrainer.error));
       setSaving(false);
       return;
     }
@@ -502,9 +518,12 @@ export function SettingsClient() {
               <div className="grid gap-4 md:grid-cols-3">
                 <Field label="Target color">
                   <input
-                    value={trainer.targetColor}
+                    value={normalizeHexColor(trainer.targetColor)}
                     onChange={(e) =>
-                      updateTrainer("targetColor", e.target.value)
+                      updateTrainer(
+                        "targetColor",
+                        normalizeHexColor(e.target.value),
+                      )
                     }
                     type="color"
                     style={{

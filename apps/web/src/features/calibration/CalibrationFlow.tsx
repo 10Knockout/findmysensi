@@ -83,6 +83,10 @@ export function CalibrationFlow() {
         }
         const parsed = TrainerSettingsSchema.safeParse(response.data);
         if (!parsed.success) {
+          console.warn(
+            "[calibrate] saved settings rejected",
+            parsed.error.issues,
+          );
           setError("Saved trainer settings are invalid.");
           return;
         }
