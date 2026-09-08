@@ -76,6 +76,7 @@ describe("shared trainer runtime configuration", () => {
       targetOpacity: 0.75,
       targetOutline: true,
       scalingMode: "stretch",
+      weaponHand: "left",
     });
 
     expect(resolved.fovDegrees).toBe(120);
@@ -83,6 +84,7 @@ describe("shared trainer runtime configuration", () => {
     expect(resolved.targetOpacity).toBe(0.75);
     expect(resolved.targetOutline).toBe(true);
     expect(resolved.scalingMode).toBe("stretch");
+    expect(resolved.weaponHand).toBe("left");
     expect("targetRadius" in resolved).toBe(false);
   });
 });

@@ -174,6 +174,7 @@ export function TrainerBootstrap({
   const handleResizeRef = useRef<(() => void) | null>(null);
   const pauseDeadlineRef = useRef<number | null>(null);
   const countdownIntervalRef = useRef<number | null>(null);
+  const completionNavigationRef = useRef<number | null>(null);
   // Mirrors of state the run-start snapshot needs. The snapshot callback is
   // created once, inside the setup effect, so reading the state variables
   // directly would capture whatever they held before the countdown and
@@ -343,7 +344,8 @@ export function TrainerBootstrap({
           setRuntimeConfig(resolved);
           runtimeConfigRef.current = resolved;
           setInitialConfigLoaded(true);
-        } catch {
+        } catch (error) {
+          console.warn("[trainer] settings override rejected", error);
           setSettingsError("Trainer settings are invalid.");
         }
         return;
@@ -376,7 +378,8 @@ export function TrainerBootstrap({
         setRuntimeConfig(resolved);
         runtimeConfigRef.current = resolved;
         setInitialConfigLoaded(true);
-      } catch {
+      } catch (error) {
+        console.warn("[trainer] saved settings rejected", error);
         setSettingsError(
           `Saved trainer settings are invalid. Open Settings and save valid values before starting ${modeTitle}.`,
         );
@@ -439,6 +442,7 @@ export function TrainerBootstrap({
         renderer.initialize(canvas, viewport, {
           crosshair: savedCrosshairRef.current,
           graphicsPreset: activeCfg.graphicsPreset,
+          weaponHand: activeCfg.weaponHand,
           target: {
             bodyColor: activeCfg.targetColor,
             opacity: activeCfg.targetOpacity,
@@ -452,6 +456,7 @@ export function TrainerBootstrap({
         renderer.initialize(canvas, viewport, {
           crosshair: savedCrosshairRef.current,
           graphicsPreset: activeCfg.graphicsPreset,
+          weaponHand: activeCfg.weaponHand,
           target: {
             bodyColor: activeCfg.targetColor,
             opacity: activeCfg.targetOpacity,
@@ -483,14 +488,11 @@ export function TrainerBootstrap({
             pauseDeadlineRef.current = null;
           }
           if (newState === "completed") {
-            if (onRunComplete) {
-              void document.exitPointerLock?.();
-            } else {
-              window.setTimeout(
-                () => router.push(`/app/train/${mode}/results`),
-                600,
-              );
-            }
+            // Unconditionally, whoever owns what happens next. The run is over,
+            // so there is nothing left to capture movement for, and the screen
+            // that follows has buttons on it -- leaving the cursor captured
+            // through the hand-off is what made "Start again" unreachable.
+            document.exitPointerLock?.();
           }
         },
         onTickProgress: (currentTick, totalTicks) => {
@@ -502,7 +504,22 @@ export function TrainerBootstrap({
           setScore(newScore);
           setRuntimeMetrics(newMetrics);
         },
-        onComplete: (result) => onRunComplete?.(result),
+        onComplete: (result) => {
+          if (onRunComplete) {
+            onRunComplete(result);
+            return;
+          }
+
+          // Scheduled from onComplete rather than from the "completed" state
+          // change because onComplete fires only after the run has been written
+          // to local history. Scheduled from the state change it raced that
+          // write, and losing the race put the player on an empty results page
+          // offering nothing but "Play Again".
+          completionNavigationRef.current = window.setTimeout(() => {
+            completionNavigationRef.current = null;
+            router.push(`/app/train/${mode}/results`);
+          }, 600);
+        },
       },
       renderer,
       {
@@ -641,7 +658,14 @@ export function TrainerBootstrap({
         }
         health.lastFrameMs = now;
       }
-      controller.onAnimationFrame(now);
+      try {
+        controller.onAnimationFrame(now);
+      } catch (error) {
+        // One bad frame must not end the session. Before this, any throw from
+        // simulation or rendering skipped the reschedule below and the run
+        // froze mid-exercise with a live HUD and no way forward but a reload.
+        console.error("[trainer] frame failed", error);
+      }
       animationFrameId = requestAnimationFrame(loop);
     };
     animationFrameId = requestAnimationFrame(loop);
@@ -675,6 +699,10 @@ export function TrainerBootstrap({
       if (countdownIntervalRef.current !== null) {
         window.clearInterval(countdownIntervalRef.current);
         countdownIntervalRef.current = null;
+      }
+      if (completionNavigationRef.current !== null) {
+        window.clearTimeout(completionNavigationRef.current);
+        completionNavigationRef.current = null;
       }
       controller.abort();
       renderer.dispose();
@@ -793,8 +821,12 @@ export function TrainerBootstrap({
     pointerLockResultRef.current = acquisition;
     setPointerLockResult(acquisition);
     if (!acquisition.locked) {
+      // Named as a wait rather than a permission problem: browsers refuse
+      // Pointer Lock for a short cooldown after the player released it with
+      // Esc, and the old copy sent people hunting for a setting to change
+      // when the fix was to click again a second later.
       setLockError(
-        "Mouse lock was not granted. Click again and allow Pointer Lock in your browser.",
+        "Mouse lock was not granted. Wait a moment, then click Start again.",
       );
       return;
     }
@@ -840,7 +872,9 @@ export function TrainerBootstrap({
     pointerLockResultRef.current = acquisition;
     setPointerLockResult(acquisition);
     if (!acquisition.locked) {
-      setLockError("Mouse lock was not granted. The run remains paused.");
+      setLockError(
+        "Mouse lock was not granted. Wait a moment, then click Resume again.",
+      );
       return;
     }
     if (!acquisition.rawGranted) {

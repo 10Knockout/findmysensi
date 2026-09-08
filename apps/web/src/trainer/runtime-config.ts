@@ -14,6 +14,7 @@ export interface TrainerRuntimeConfig {
   readonly targetOpacity: number;
   readonly targetOutline: boolean;
   readonly crosshairCode: string | null;
+  readonly weaponHand: TrainerSettings["weaponHand"];
   readonly graphicsPreset: TrainerSettings["graphicsPreset"];
   readonly resolution: TrainerSettings["resolution"];
   readonly customResolutionWidth: number | null;
@@ -44,6 +45,7 @@ export function resolveTrainerRuntimeConfig(
     targetOpacity: settings.targetOpacity,
     targetOutline: settings.targetOutline,
     crosshairCode: settings.crosshairCode,
+    weaponHand: settings.weaponHand,
     graphicsPreset: settings.graphicsPreset,
     resolution: settings.resolution,
     customResolutionWidth: settings.customResolutionWidth,

@@ -504,6 +504,12 @@ export class PracticeRunController {
   }
 
   private completeRun(): void {
+    // A run ends once. The tick runner honours stop() mid-catch-up, so this is
+    // belt-and-braces rather than the primary guard -- but a second completion
+    // would file the same run twice and fire a second navigation, so it is
+    // cheap insurance against any future path that re-enters here.
+    if (this.state === "completed") return;
+
     if (this.runner) {
       this.runner.stop("completed");
     }
@@ -556,8 +562,21 @@ export class PracticeRunController {
         `Unrecognized metrics shape for mode "${this.adapter.modeId}".`,
       );
     }
-    localPracticeHistory.save(summary);
-    this.saveRunRecord(summary, finalScore.score, completedAt);
+    // Persistence is reported, never fatal. This runs inside the tick callback
+    // of a requestAnimationFrame loop, so an escaping throw would take the
+    // frame loop down with it and freeze the player on a dead canvas -- and a
+    // full storage quota is not a reason to lose the run they just played.
+    try {
+      localPracticeHistory.save(summary);
+    } catch (error) {
+      console.error("[run-complete] practice summary was not stored", error);
+    }
+
+    try {
+      this.saveRunRecord(summary, finalScore.score, completedAt);
+    } catch (error) {
+      console.error("[run-complete] run record was not stored", error);
+    }
 
     this.callbacks.onComplete(finalScore);
   }

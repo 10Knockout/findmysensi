@@ -88,7 +88,11 @@ export class BoundedFixedTickRunner implements FixedTickRunner {
 
     let ticksSimulated = 0;
 
-    while (this.accumulatorMs >= this.tickIntervalMs) {
+    // `this.running` is re-checked every iteration because onTick is what ends
+    // a run: the callback that crosses the duration boundary calls stop(), and
+    // without this guard the remaining ticks this frame owed would still be
+    // simulated -- replaying the end of the run once per owed tick.
+    while (this.running && this.accumulatorMs >= this.tickIntervalMs) {
       if (ticksSimulated >= this.maxCatchUpTicks) {
         // Severe lag backlog violation
         const backlogTicks = Math.floor(

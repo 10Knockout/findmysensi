@@ -2,7 +2,11 @@
 
 import React, { useMemo, useState } from "react";
 import { BrowserApiClient } from "@findmysensi/api-client";
-import { TrainerSettings } from "@findmysensi/protocol";
+import {
+  TrainerSettingsSchema,
+  describeTrainerSettingsError,
+  type TrainerSettings,
+} from "@findmysensi/protocol";
 import {
   DEFAULT_BROWSER_INPUT_CALIBRATION_SCALE,
   SENSITIVITY_PROFILES,
@@ -111,20 +115,29 @@ export function QuickSetupModal({
     setSaving(true);
     setError(null);
     try {
-      const updated: TrainerSettings = {
+      // Validate against the shared schema before the network call. The API
+      // answers a bare "Invalid trainer settings." with no field, so a single
+      // stale value spread from currentSettings (an old 3-digit hex colour,
+      // say) used to surface here as an unexplained failure.
+      const candidate = TrainerSettingsSchema.safeParse({
         ...currentSettings,
         fmsSensitivity: calibratedSensitivityText,
         nominalDpi: parsedDpi,
         fovDegrees: parsedFov,
-      };
+      });
+      if (!candidate.success) {
+        setError(describeTrainerSettingsError(candidate.error));
+        setSaving(false);
+        return;
+      }
 
       const client = new BrowserApiClient();
-      const res = await client.saveTrainerSettings(updated);
+      const res = await client.saveTrainerSettings(candidate.data);
       if (!res.ok) {
         throw new Error(res.error ?? "Failed to save sensitivity");
       }
 
-      onSaved(res.data ?? updated);
+      onSaved(TrainerSettingsSchema.parse(res.data ?? candidate.data));
       onClose();
     } catch (err: unknown) {
       setError(
@@ -137,7 +150,10 @@ export function QuickSetupModal({
 
   return (
     <div className="settings-overlay" style={{ position: "fixed" }}>
-      <div className="app-card app-card-wide">
+      <div
+        className="app-card app-card-wide"
+        style={{ maxHeight: "90vh", overflowY: "auto" }}
+      >
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <div
             style={{
@@ -213,11 +229,11 @@ export function QuickSetupModal({
             style={{
               display: "grid",
               gap: 16,
-              gridTemplateColumns: "repeat(auto-fit, minmax(180px,1fr))",
+              gridTemplateColumns: "repeat(auto-fit, minmax(160px,1fr))",
               marginBottom: 18,
             }}
           >
-            <div>
+            <div style={{ minWidth: 0 }}>
               <label
                 htmlFor="setup-source-sensitivity"
                 className="settings-label"
@@ -238,11 +254,17 @@ export function QuickSetupModal({
               />
             </div>
 
-            <div>
+            <div style={{ minWidth: 0 }}>
               <label htmlFor="setup-dpi" className="settings-label">
                 Mouse DPI
               </label>
-              <div style={{ display: "flex", gap: 8 }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                  gap: 8,
+                }}
+              >
                 {[400, 800, 1600, 2400].map((presetDpi) => (
                   <button
                     key={presetDpi}
@@ -250,7 +272,7 @@ export function QuickSetupModal({
                     aria-pressed={dpi === String(presetDpi)}
                     onClick={() => setDpi(String(presetDpi))}
                     className={`settings-chip${dpi === String(presetDpi) ? " settings-chip-active" : ""}`}
-                    style={{ flex: 1, textAlign: "center" }}
+                    style={{ padding: "7px 4px", textAlign: "center" }}
                   >
                     {presetDpi}
                   </button>
@@ -269,7 +291,7 @@ export function QuickSetupModal({
               />
             </div>
 
-            <div>
+            <div style={{ minWidth: 0 }}>
               <label htmlFor="setup-fov" className="settings-label">
                 Horizontal FOV
               </label>
