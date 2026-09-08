@@ -1985,3 +1985,32 @@ html {
     transform: none;
   }
 }
+
+/* Mode leaderboard */
+.app-leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  margin: 16px 0;
+}
+
+.app-leaderboard-table th,
+.app-leaderboard-table td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.app-leaderboard-table th:nth-child(3),
+.app-leaderboard-table td:nth-child(3) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.app-leaderboard-self {
+  background: rgba(163, 230, 53, 0.12);
+}
+
+.app-leaderboard-self-standing {
+  margin-top: -8px;
+}
