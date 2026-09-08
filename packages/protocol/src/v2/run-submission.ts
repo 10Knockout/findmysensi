@@ -363,7 +363,10 @@ export const PracticeRunSubmissionResponseV2Schema = z
     runId: RunIdV2Schema,
     submissionStatus: z.enum(["stored", "already-stored"]),
     runClass: z.literal("practice"),
-    competitiveStatus: z.literal("practice-only"),
+    // Transitional: web must accept "listed" (new) before the API deploy that
+    // sends it, and "practice-only" (old) until that deploy lands. A follow-up
+    // narrows this to z.literal("listed").
+    competitiveStatus: z.enum(["practice-only", "listed"]),
     leaderboard: LeaderboardContextV2Schema,
   })
   .strict();
