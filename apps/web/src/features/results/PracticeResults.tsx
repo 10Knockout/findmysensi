@@ -126,7 +126,7 @@ export function PracticeResults({
                       ? ` ${latestRun.invalidationReasons
                           .map((reason) => RUN_INVALIDATION_MESSAGES[reason])
                           .join(" ")}`
-                      : " It could not be verified for ranked play."}
+                      : " It will not count toward the leaderboard."}
                   </p>
                 </div>
               ) : null}
@@ -163,6 +163,9 @@ export function PracticeResults({
             <a href={routes.playAgain} className="app-button">
               Play Again
             </a>
+            <a href={routes.leaderboard} className="app-button app-button-ghost">
+              View leaderboard
+            </a>
             <a href={routes.hub} className="app-button app-button-ghost">
               Return to Hub
             </a>
@@ -186,9 +189,9 @@ function getRunSyncCopy(state: RunSyncState): {
       };
     case "saved":
       return {
-        tag: "Saved to Account · Practice",
+        tag: "Saved to Account",
         description:
-          "Saved privately to your account. Practice runs cannot enter the official leaderboard without authoritative Ranked verification.",
+          "Your best score for this mode is now on the public leaderboard.",
       };
     case "pending":
       return {

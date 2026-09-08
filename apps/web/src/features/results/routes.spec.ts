@@ -7,6 +7,7 @@ describe("practice results routes", () => {
       playAgain: "/app/train/grid",
       hub: "/app",
       login: "/login?next=%2Fapp%2Ftrain%2Fgrid%2Fresults",
+      leaderboard: "/app/train/grid/leaderboard",
     });
   });
 });
