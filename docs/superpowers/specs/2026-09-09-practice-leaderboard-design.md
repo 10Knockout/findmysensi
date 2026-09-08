@@ -252,28 +252,28 @@ The `!latestRun.leaderboardEligible` note block: see **O1**.
 4. No backfill: existing `run_record_v2` rows are not swept into
    `leaderboard_entry_v2`. Boards populate from the first run after deploy. See O4.
 
-## Open questions
+## Resolved decisions (were open questions; confirmed 2026-09-09)
 
-- **O1 — ineligible local runs:** `RunRecord.leaderboardEligible` is a
-  client-only flag (paused, pointer-lock lost, raw input unavailable, etc.).
-  The server receives `clientEligibility` as advisory data only. Options:
-  (a) server honours `clientEligibility.leaderboardEligible` and skips the board
-  upsert when `false`; (b) ignore it, every completed run counts.
-  **Recommendation: (a)** — one-line guard, keeps mid-run-paused runs off the
-  board without being "anti-cheat". The run row is still stored either way.
-- **O2 — personal standing on the read route:** `GET /api/v2/leaderboards/:mode`
-  already computes `standing` when a session cookie is present and
-  `LeaderboardResponseV2Schema` already includes it. Expected: **no route
-  change** — confirm by test that `credentials: "include"` (the `requestJson`
-  default) yields a `standing` for a signed-in caller outside the top 50.
-- **O3 — deploy ordering for the literal rename:** transitional
-  `z.enum(["practice-only", "listed"])` in `@findmysensi/protocol` for one
-  release, narrow to `z.literal("listed")` in a follow-up once the API is
-  deployed. **Recommendation: accepted.**
-- **O4 — backfill:** skip for launch (boards fill within a day of play), or ship
-  a `tools/` script walking `run_record_v2` grouped by `(user_id, board)` taking
-  the max `final_score`. **Recommendation: skip**; revisit if historical runs
-  should count.
+- **D1 — ineligible local runs are excluded from the board.** `savePracticeRunV2`
+  skips the `leaderboard_entry_v2` upsert when
+  `clientEligibility.leaderboardEligible === false` (paused mid-run, pointer-lock
+  lost, raw input unavailable, incomplete, etc.). The `run_record_v2` row is
+  still stored — the run stays in the player's history, it just does not set or
+  update a board score. This is the only guard; it is not framed as anti-cheat.
+- **D2 — personal standing needs no route change.**
+  `GET /api/v2/leaderboards/:mode` already computes `standing` when a session
+  cookie is present, and `LeaderboardResponseV2Schema` already carries it. The
+  leaderboard page relies on this; an added test asserts that a signed-in caller
+  outside the top 50 still receives a `standing` with the default
+  `credentials: "include"`.
+- **D3 — transitional response literal.** `@findmysensi/protocol`
+  `PracticeRunSubmissionResponseV2Schema.competitiveStatus` ships as
+  `z.enum(["practice-only", "listed"])` for one release so web can deploy before
+  the API starts sending `"listed"`. A follow-up change narrows it to
+  `z.literal("listed")` once the API is deployed.
+- **D4 — no backfill.** Existing `run_record_v2` rows are not swept into
+  `leaderboard_entry_v2`. Boards populate from the first eligible run after
+  deploy. No `tools/` backfill script in this version.
 
 ## Rough build order
 
