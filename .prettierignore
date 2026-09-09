@@ -8,3 +8,4 @@ coverage
 *.tsbuildinfo
 *.tgz
 local.db
+apps/web/public/llms.txt

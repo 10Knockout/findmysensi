@@ -1,0 +1,32 @@
+# FindMySensi
+
+> FindMySensi is a free, open-source aim trainer that runs entirely in the
+> browser. It provides twelve deterministic aiming drills, a physically accurate
+> mouse sensitivity converter (cm/360, in/360, eDPI, counts/360, angular gain),
+> a blinded and counterbalanced calibration mode that recommends only a
+> sensitivity the player has actually tested, and public per-mode leaderboards.
+> No download or installation is required, and no account is needed to use the
+> converter. The trainer, sensitivity math, scenarios, and scoring are public on
+> GitHub under the MPL-2.0 licence.
+
+## Core pages
+
+- [Home](https://findmysensi.com/): Overview of the trainer, drills, calibration, and leaderboards.
+- [Sensitivity Converter](https://findmysensi.com/tools/converter): Convert mouse sensitivity between Valorant, CS2, Apex Legends, and Aim Lab while preserving cm/360. Outputs cm/360, in/360, counts/360, and source eDPI.
+- [Mouse DPI Swap Calculator](https://findmysensi.com/tools/mouse-swap): Recalculate in-game sensitivity after changing mouse or DPI so cm/360 stays constant. Formula: new sensitivity = old sensitivity x (old DPI / new DPI).
+- [Leaderboards](https://findmysensi.com/leaderboards): Public per-mode score boards; every synced practice run is ranked.
+
+## Guides
+
+- [cm/360 Explained](https://findmysensi.com/guides/cm-per-360-explained): cm/360 is the centimetres of mouse movement needed for a 360-degree turn; it is the only sensitivity measure that transfers between games.
+- [Valorant to CS2 Sensitivity](https://findmysensi.com/guides/valorant-to-cs2-sensitivity): CS2 sensitivity = Valorant sensitivity x 3.18 at the same DPI, with worked examples and ADS caveats.
+- [How to Find Your Sensitivity](https://findmysensi.com/guides/how-to-find-your-sensitivity): A repeatable method — pick a cm/360 range, test blind, measure on a fixed drill, adjust in small steps.
+
+## Key facts
+
+- Cost: free. Open source under MPL-2.0.
+- Platform: web browser (desktop, requires pointer lock). No install.
+- Simulation runs at a fixed 128 Hz tick for deterministic, reproducible scoring.
+- Sensitivity conversion is based on angular gain and cm/360, not FOV or forum estimates.
+- Source: https://github.com/10Knockout/findmysensi
+- Author: Hitesh Mahay (https://hiteshmahay.com)
