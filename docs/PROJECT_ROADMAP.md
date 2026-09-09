@@ -175,20 +175,26 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started
   hero artwork, a lightweight animated training preview and loader, smooth
   reveal motion, and reduced-motion/low-power safeguards. Trainer remains
   Canvas2D-only.
-- 🟡 **M14** — Serverless deployment: code/config complete for public + secure
-  Vercel projects and same-origin `/api/v1/*` routing; external Turso/Resend
-  provisioning, first deploy, and production smoke test remain
-- ⬜ **M15** — Verified Gridshot competition pipeline (server-issued ticket →
-  canonical run → server-computed score → verified PB), Gridshot first, then
-  generalize
-- ⬜ **M16** — Full QA / performance / security pass (potato-PC benchmarking,
-  security headers, rate limits)
-- ⬜ **M17** — Final release
+- ✅ **M14** — Serverless deployment: both Vercel projects live on `main`,
+  same-origin `/api` routing, Turso + Brevo/Resend provisioned, production
+  smoke passed.
+- ⏸️ **M15** — Verified competition pipeline (server ticket → canonical run →
+  server score → verified PB). Deferred past 1.0. Ranked/verified was dropped
+  from the product; the public leaderboard is trust-the-client with an
+  impossible-value gate (M16). Bounded input-proof verification is the scoped
+  successor — see `docs/superpowers/plans/2026-09-09-post-leaderboard-hardening.md`
+  Phase 6, which needs its own sub-plan and the sim packages published first.
+- ✅ **M16** — QA / performance / security pass: potato-PC benchmark passed;
+  CSP (nonce + `strict-dynamic` via `proxy.ts`), HSTS on web and API,
+  `/api/v2/*` rate limits (30/min submit, 120/min read), per-mode
+  impossible-value anti-cheat gate, branded error pages, error-surface audit,
+  `npm audit` release cadence.
+- ✅ **M17** — Final release: `v1.0.0` tagged on both repos 2026-09-10.
 
-**Current M14 boundary:** repository deployment wiring is complete and tested
-locally. M14 is not complete until the owner provisions Turso and Resend,
-repairs/authenticates the local Vercel CLI, deploys both projects, and passes
-the documented health, registration, and email-delivery smoke checks.
+**M14–M17 shipped 2026-09-09/10.** 12 trainer modes, Find My Sensi calibration,
+workouts, monthly per-mode leaderboards with profile cosmetics, Switch Track
+hold-to-fire. Post-1.0: M15 verified pipeline, and the owner's real-mouse
+sign-off on Switch Track held-fire and the ephemeral results heatmap.
 
 ---
 
