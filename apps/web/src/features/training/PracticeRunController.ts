@@ -32,12 +32,15 @@ import {
 import {
   ANALYTICS_VERSION,
   createGridModeAdapter,
+  createRunTraceRecorder,
   evaluateRunEligibility,
   ModeRuntimeAdapter,
   RuntimeMetrics,
   RuntimeScoreResult,
   type RunRecord,
   type RunSettingsSnapshot,
+  type RunTrace,
+  type RunTraceRecorder,
 } from "@findmysensi/trainer-runtime";
 import {
   createFixedTickRunner,
@@ -57,7 +60,7 @@ export interface PracticeRunCallbacks {
   onStateChange: (state: PracticeRunState) => void;
   onTickProgress: (currentTick: number, totalTicks: number) => void;
   onScoreUpdate: (currentScore: number, metrics: RuntimeMetrics) => void;
-  onComplete: (result: RuntimeScoreResult) => void;
+  onComplete: (result: RuntimeScoreResult, trace: RunTrace | null) => void;
 }
 
 export interface PracticeRunOptions {
@@ -113,6 +116,10 @@ export class PracticeRunController {
   private snapshotBuffer: SnapshotBuffer;
   private renderer: AimRenderer | null = null;
   private callbacks: PracticeRunCallbacks;
+  // Per-run shot trace for the ephemeral results heatmap. Non-null only for
+  // click-discrete modes, and only for the duration of one run -- never
+  // persisted, never sent anywhere.
+  private traceRecorder: RunTraceRecorder | null = null;
 
   private readonly totalDurationTicks: number;
   private inputScaler: DeterministicBrowserInputScaler;
@@ -297,6 +304,11 @@ export class PracticeRunController {
 
     this.adapter.initialize(this.prng);
 
+    // Only click-discrete modes (MissBreakdownCapable) have a meaningful
+    // per-shot spatial miss to plot.
+    this.traceRecorder =
+      "getMissBreakdown" in this.adapter ? createRunTraceRecorder() : null;
+
     this.writeSnapshot(0);
 
     this.runner = createFixedTickRunner({
@@ -436,9 +448,68 @@ export class PracticeRunController {
     if (!this.prng) return;
 
     const tick = createTick(currentTick);
+    const hitsBefore = this.currentHitCount(currentTick + 1);
     this.adapter.onShot(tick, this.playerYaw, this.playerPitch, this.prng);
+    this.recordTraceShot(currentTick, hitsBefore);
 
     this.publishMetrics(currentTick + 1);
+  }
+
+  /** Adapter hit count at a tick, or 0 when this run has no trace recorder. */
+  private currentHitCount(elapsedTicks: number): number {
+    if (!this.traceRecorder) return 0;
+    const metrics = this.adapter.computeMetrics(elapsedTicks);
+    return isClickMetrics(metrics) ? metrics.hits : 0;
+  }
+
+  /**
+   * Appends one shot to the per-run trace: aim direction, the nearest target
+   * centre, and whether the hit count went up. A shot fired into empty space
+   * (no active target) is recorded as a max-offset miss against its own aim so
+   * the analysis can still plot it.
+   */
+  private recordTraceShot(shotTick: number, hitsBefore: number): void {
+    const recorder = this.traceRecorder;
+    if (!recorder) return;
+
+    const hit = this.currentHitCount(shotTick + 1) > hitsBefore;
+    const aimYaw = Number(this.playerYaw);
+    const aimPitch = Number(this.playerPitch);
+
+    const targets = this.adapter.getRenderTargets();
+    let nearest: (typeof targets)[number] | null = null;
+    let nearestDistanceSq = Number.POSITIVE_INFINITY;
+    for (const target of targets) {
+      const dyaw = aimYaw - target.xAngleUnits;
+      const dpitch = aimPitch - target.yAngleUnits;
+      const distanceSq = dyaw * dyaw + dpitch * dpitch;
+      if (distanceSq < nearestDistanceSq) {
+        nearestDistanceSq = distanceSq;
+        nearest = target;
+      }
+    }
+
+    recorder.record(
+      nearest
+        ? {
+            tick: shotTick,
+            aimYaw,
+            aimPitch,
+            targetYaw: nearest.xAngleUnits,
+            targetPitch: nearest.yAngleUnits,
+            targetRadius: nearest.radiusAngleUnits,
+            hit,
+          }
+        : {
+            tick: shotTick,
+            aimYaw,
+            aimPitch,
+            targetYaw: aimYaw,
+            targetPitch: aimPitch,
+            targetRadius: 1,
+            hit: false,
+          },
+    );
   }
 
   /**
@@ -578,7 +649,8 @@ export class PracticeRunController {
       console.error("[run-complete] run record was not stored", error);
     }
 
-    this.callbacks.onComplete(finalScore);
+    const trace = this.traceRecorder ? this.traceRecorder.finish() : null;
+    this.callbacks.onComplete(finalScore, trace);
   }
 
   /**
