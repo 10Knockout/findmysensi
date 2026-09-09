@@ -380,6 +380,18 @@ test("unfinished public ticket result URLs fail closed", async ({ page }) => {
   await expect(page.locator("body")).not.toContainText("Run Complete");
 });
 
+test("unknown routes render a branded 404 with no stack detail", async ({
+  page,
+}) => {
+  const res = await page.goto("/this-route-does-not-exist");
+  expect(res?.status()).toBe(404);
+  await expect(
+    page.getByRole("heading", { name: "Page not found" }),
+  ).toBeVisible();
+  await expect(page.locator("body")).not.toContainText("at Object.");
+  await expect(page.locator("body")).not.toContainText("node_modules");
+});
+
 test("authenticated Trainer Home renders user greeting, Gridshot play link, and Settings link", async ({
   page,
 }) => {
