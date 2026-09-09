@@ -252,6 +252,9 @@ export default function HomePage() {
         </span>
         <p>Precision over noise. Built for the browser.</p>
         <div>
+          <Link href="/guides">Guides</Link>
+          <Link href="/privacy">Privacy</Link>
+          <Link href="/terms">Terms</Link>
           <a
             href="https://github.com/10Knockout/findmysensi/issues"
             target="_blank"
