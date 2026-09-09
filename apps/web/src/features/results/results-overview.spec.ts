@@ -259,7 +259,7 @@ describe("buildResultsOverview", () => {
     );
   });
 
-  it("shows only a verified server standing as global rank and percentile", () => {
+  it("shows the server standing as rank and percentile", () => {
     const current = run();
     const overview = buildResultsOverview(current, [current], {
       board: {
@@ -281,11 +281,34 @@ describe("buildResultsOverview", () => {
 
     expect(metric(overview.summaryMetrics, "Leaderboard Rank")).toMatchObject({
       value: "#3",
-      note: "Verified PB among 25 players",
+      note: "Best of 25 on this board",
     });
     expect(metric(overview.summaryMetrics, "Percentile")).toMatchObject({
       value: "91.7%",
-      note: "Verified-player population",
+      note: "Top of 25 ranked players",
+    });
+  });
+
+  it("prompts to sync when there is no server standing yet", () => {
+    const current = run();
+    const overview = buildResultsOverview(current, [current], {
+      board: {
+        boardId: "grid:scenario-0:scoring-0",
+        modeId: "grid",
+        scenarioVersion: 0,
+        scoringVersion: 0,
+      },
+      totalPlayers: 0,
+      percentileMinimumPlayers: 10,
+      standing: null,
+    });
+    expect(metric(overview.summaryMetrics, "Leaderboard Rank")).toMatchObject({
+      value: "—",
+      note: "Sync your run to see your rank",
+    });
+    expect(metric(overview.summaryMetrics, "Percentile")).toMatchObject({
+      value: "—",
+      note: "Awaiting sync",
     });
   });
 });

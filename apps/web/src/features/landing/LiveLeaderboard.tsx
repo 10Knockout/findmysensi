@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { BrowserApiClient } from "@findmysensi/api-client";
-import type { LeaderboardRow } from "@findmysensi/protocol";
+import type { LeaderboardRowV2 } from "@findmysensi/protocol";
 
 const REFRESH_MS = 15_000;
 
 export function LiveLeaderboard() {
-  const [rows, setRows] = useState<LeaderboardRow[] | null>(null);
+  const [rows, setRows] = useState<LeaderboardRowV2[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -37,7 +37,7 @@ export function LiveLeaderboard() {
 
       loading = true;
       try {
-        const result = await client.getLeaderboard("gridshot");
+        const result = await client.getLeaderboardV2("grid", 0, 0);
         if (disposed) return;
 
         if (!result.ok || !result.data) {
@@ -45,7 +45,7 @@ export function LiveLeaderboard() {
           setError(result.error ?? "Leaderboard is unavailable.");
           return;
         }
-        setRows(result.data.rows);
+        setRows(result.data.rows.slice());
         setError(null);
       } catch {
         if (!disposed) {
@@ -79,7 +79,7 @@ export function LiveLeaderboard() {
         role="alert"
         className="rounded-xl border border-red-900 bg-red-950/30 p-5 text-sm text-red-200"
       >
-        Could not load the live Gridshot leaderboard. {error}
+        Could not load the live Grid Rush leaderboard. {error}
       </div>
     );
   }
@@ -87,7 +87,7 @@ export function LiveLeaderboard() {
   if (rows === null) {
     return (
       <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5 text-sm text-zinc-400">
-        Loading live Gridshot leaderboard…
+        Loading live Grid Rush leaderboard…
       </div>
     );
   }
@@ -95,7 +95,7 @@ export function LiveLeaderboard() {
   if (rows.length === 0) {
     return (
       <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5 text-sm text-zinc-400">
-        No verified Gridshot scores yet.
+        No Grid Rush scores yet.
       </div>
     );
   }
@@ -113,7 +113,7 @@ export function LiveLeaderboard() {
         <tbody>
           {rows.slice(0, 10).map((row) => (
             <tr
-              key={row.userId}
+              key={`${row.rank}-${row.username}`}
               className="border-b border-zinc-800/70 last:border-0"
             >
               <td className="px-4 py-3 font-mono text-zinc-400">#{row.rank}</td>

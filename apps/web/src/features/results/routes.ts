@@ -2,6 +2,7 @@ export interface PracticeResultsRoutes {
   readonly playAgain: string;
   readonly hub: string;
   readonly login: string;
+  readonly leaderboard: string;
 }
 
 export function getPracticeResultsRoutes(mode: string): PracticeResultsRoutes {
@@ -12,5 +13,6 @@ export function getPracticeResultsRoutes(mode: string): PracticeResultsRoutes {
     playAgain: `/app/train/${encodedMode}`,
     hub: "/app",
     login: `/login?next=${encodeURIComponent(resultsPath)}`,
+    leaderboard: `/app/train/${encodedMode}/leaderboard`,
   };
 }

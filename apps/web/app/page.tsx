@@ -184,8 +184,8 @@ export default function HomePage() {
             without the fiction.
           </h2>
           <p>
-            Practice history stays local. The public board stays empty until
-            server-verified competition is ready.
+            Every synced run lands on a public per-mode board. Your best score
+            shows your rank the moment it saves.
           </p>
         </div>
         <div className="landing-board-panel" data-reveal>
@@ -212,8 +212,9 @@ export default function HomePage() {
           <p className="landing-index">OPEN SOURCE / 02</p>
           <h2>Inspect the engine.</h2>
           <p>
-            The trainer, sensitivity math, scenarios, and scoring live in
-            public. Built by Hitesh Mahay, improved with players.
+            The trainer, sensitivity math, scenarios, and scoring are public on
+            GitHub under the MPL-2.0 licence. Built by Hitesh Mahay, improved
+            with players.
           </p>
           <a
             href="https://github.com/10Knockout/findmysensi"
@@ -221,7 +222,7 @@ export default function HomePage() {
             rel="noreferrer"
             className="landing-arrow-link"
           >
-            View GitHub <ArrowIcon />
+            View source on GitHub <ArrowIcon />
           </a>
         </div>
       </section>

@@ -23,7 +23,7 @@ function captureBrowserErrors(page: Page): string[] {
 test("public home renders and shows a real-data error state when leaderboard is unavailable", async ({
   page,
 }) => {
-  await page.route("**/api/v1/leaderboards/gridshot", async (route) => {
+  await page.route("**/api/v2/leaderboards/grid**", async (route) => {
     await route.fulfill({
       status: 503,
       contentType: "application/json",
@@ -41,7 +41,7 @@ test("public home renders and shows a real-data error state when leaderboard is 
   const startTraining = page.getByRole("link", { name: "START TRAINING" });
   const leaderboardError = page
     .getByRole("alert")
-    .filter({ hasText: "Could not load the live Gridshot leaderboard" });
+    .filter({ hasText: "Could not load the live Grid Rush leaderboard" });
 
   expect(response?.ok()).toBe(true);
   await expect(hero).toBeVisible();
@@ -549,7 +549,7 @@ test("authenticated Results page displays honest local results wording and metri
         runId: submitted.runId,
         submissionStatus: "stored",
         runClass: "practice",
-        competitiveStatus: "practice-only",
+        competitiveStatus: "listed",
         leaderboard: {
           board: {
             boardId: `${submitted.modeId}:scenario-${submitted.scenarioVersion}:scoring-${submitted.scoringVersion}`,
@@ -655,8 +655,10 @@ test("authenticated Results page displays honest local results wording and metri
   expect(response?.ok()).toBe(true);
 
   // Assert honest practice-sync badge and explanation.
-  await expect(page.getByText("Saved to Account · Practice")).toBeVisible();
-  await expect(page.getByText(/Saved privately to your account/)).toBeVisible();
+  await expect(page.getByText("Saved to Account", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText(/now on the public leaderboard/),
+  ).toBeVisible();
 
   await expect(page.getByRole("heading", { name: "Grid Rush" })).toBeVisible();
   const runSummary = page.getByRole("region", { name: "Run Summary" });

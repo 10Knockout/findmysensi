@@ -238,8 +238,7 @@ export default function AppDashboardPage() {
           <p className="app-section-label">Training</p>
           <h2 className="app-section-title">Aim Training</h2>
           <p className="app-section-copy">
-            Twelve focused exercises. Results stay local until verified scoring
-            is enabled.
+            Twelve focused exercises. Each has its own public leaderboard.
           </p>
           <div className="app-mode-grid">
             {TRAINING_MODES.map(([modeId, title, description]) => (

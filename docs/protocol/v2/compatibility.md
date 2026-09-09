@@ -10,8 +10,8 @@ unchanged.
 - Reusing a `runId` with a different canonical payload is a conflict.
 - Mode, scenario, and scoring versions identify one immutable leaderboard
   board. Incompatible versions are never mixed.
-- V2 remains a draft until independent security review approves the complete
-  authoritative Ranked start/proof/finish flow.
+- Practice runs populate the public leaderboard directly under a
+  trust-the-client model; there is no Ranked / verified flow.
 
 Rollback is routing-only: clients may stop calling `/api/v2` while V1 routes
 continue unchanged. Additive V2 tables are retained so accepted private run

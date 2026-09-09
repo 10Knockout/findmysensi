@@ -66,7 +66,7 @@ function responseBody() {
     runId: run.runId,
     submissionStatus: "stored",
     runClass: "practice",
-    competitiveStatus: "practice-only",
+    competitiveStatus: "listed",
     leaderboard: {
       board: {
         boardId: "grid:scenario-0:scoring-0",
@@ -95,7 +95,7 @@ describe("BrowserApiClient Protocol V2 runs", () => {
     const result = await new BrowserApiClient().submitPracticeRunV2(run);
 
     expect(result.ok).toBe(true);
-    expect(result.data?.competitiveStatus).toBe("practice-only");
+    expect(result.data?.competitiveStatus).toBe("listed");
     expect(fetchSpy).toHaveBeenCalledWith(
       "/api/v2/runs",
       expect.objectContaining({

@@ -180,6 +180,44 @@ describe("Protocol V2 practice run submission", () => {
     ).toBe(true);
   });
 
+  it("accepts both the transitional and the new competitiveStatus", () => {
+    const base = {
+      protocolVersion: 2,
+      runId: validClickRun().runId,
+      submissionStatus: "stored",
+      runClass: "practice",
+      leaderboard: {
+        board: {
+          boardId: "grid:scenario-0:scoring-0",
+          modeId: "grid",
+          scenarioVersion: 0,
+          scoringVersion: 0,
+        },
+        totalPlayers: 0,
+        percentileMinimumPlayers: LEADERBOARD_PERCENTILE_MIN_PLAYERS_V2,
+        standing: null,
+      },
+    } as const;
+    expect(
+      PracticeRunSubmissionResponseV2Schema.safeParse({
+        ...base,
+        competitiveStatus: "practice-only",
+      }).success,
+    ).toBe(true);
+    expect(
+      PracticeRunSubmissionResponseV2Schema.safeParse({
+        ...base,
+        competitiveStatus: "listed",
+      }).success,
+    ).toBe(true);
+    expect(
+      PracticeRunSubmissionResponseV2Schema.safeParse({
+        ...base,
+        competitiveStatus: "ranked",
+      }).success,
+    ).toBe(false);
+  });
+
   it("rejects a standing whose population or percentile is inconsistent", () => {
     const response = {
       protocolVersion: 2,

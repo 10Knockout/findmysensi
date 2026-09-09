@@ -25,10 +25,12 @@ describe("results terminology integrity", () => {
     );
     expect(normalizedSource).toContain("Not leaderboard eligible");
     expect(normalizedSource).toContain("submitPracticeRunV2");
-    expect(normalizedSource).toContain("Saved to Account · Practice");
+    expect(normalizedSource).toContain("Saved to Account");
     expect(normalizedSource).toContain(
-      "Practice runs cannot enter the official leaderboard without authoritative Ranked verification.",
+      "Your best score for this mode is now on the public leaderboard.",
     );
+    expect(normalizedSource).not.toContain("authoritative Ranked verification");
+    expect(normalizedSource).toContain("View leaderboard");
   });
 
   it("login page describes access as aim training rather than a single mode", () => {
