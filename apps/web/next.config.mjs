@@ -35,6 +35,23 @@ function resolveApiTarget() {
 
 const apiTarget = resolveApiTarget();
 
+// Next's App Router injects an inline bootstrap <script> and inline styles, so
+// 'unsafe-inline' is required on script-src and style-src until a nonce-based
+// policy is wired through. Browser API calls all go to same-origin /api/*
+// (proxied server-side by the rewrite above), so connect-src stays 'self'.
+const contentSecurityPolicy = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+  "object-src 'none'",
+  "img-src 'self' data:",
+  "font-src 'self' data:",
+  "style-src 'self' 'unsafe-inline'",
+  "script-src 'self' 'unsafe-inline'",
+  "connect-src 'self'",
+].join("; ");
+
 const nextConfig = {
   poweredByHeader: false,
   // The development indicator is a clickable bottom-left overlay. Gridshot
@@ -73,6 +90,10 @@ const nextConfig = {
           {
             key: "Strict-Transport-Security",
             value: "max-age=63072000; includeSubDomains; preload",
+          },
+          {
+            key: "Content-Security-Policy",
+            value: contentSecurityPolicy,
           },
         ],
       },
