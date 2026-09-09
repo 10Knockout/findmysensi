@@ -5,10 +5,10 @@ import { SITE_NAME } from "../../lib/site.js";
 /**
  * Contact + jurisdiction used across the legal pages. These are the only
  * values a lawyer review is likely to change, so they live in one place.
- * Set up real inboxes for these addresses (or forwards) before launch.
+ * The contact address must be a monitored inbox.
  */
-export const LEGAL_CONTACT_EMAIL = "legal@findmysensi.com";
-export const PRIVACY_CONTACT_EMAIL = "privacy@findmysensi.com";
+export const LEGAL_CONTACT_EMAIL = "hitesh@hiteshmahay.com";
+export const PRIVACY_CONTACT_EMAIL = "hitesh@hiteshmahay.com";
 export const GOVERNING_LAW = "India";
 export const LEGAL_LAST_UPDATED = "2026-09-10";
 
