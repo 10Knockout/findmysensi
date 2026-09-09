@@ -78,6 +78,7 @@ export function attachInputListener(
 
   let fractionX = 0;
   let fractionY = 0;
+  let fireHeld = false;
 
   const pushMovement = (dx: number, dy: number, timeStamp: number) => {
     options.onMovementObserved?.({ dx, dy, timeStamp, source });
@@ -152,8 +153,25 @@ export function attachInputListener(
     }
 
     const mEv = ev as MouseEvent;
-    if (mEv.button === 0) {
+    if (mEv.button === 0 && !fireHeld) {
+      fireHeld = true;
+      ringBuffer.pushFireState(true, mEv.timeStamp);
       ringBuffer.pushShot(0, mEv.timeStamp);
+    }
+  };
+
+  const onMouseUp = (ev: Event) => {
+    const mEv = ev as MouseEvent;
+    if (
+      shouldCaptureGameplayInput() &&
+      typeof (ev as { preventDefault?: () => void }).preventDefault ===
+        "function"
+    ) {
+      ev.preventDefault();
+    }
+    if (mEv.button === 0 && fireHeld) {
+      fireHeld = false;
+      ringBuffer.pushFireState(false, mEv.timeStamp);
     }
   };
 
@@ -169,11 +187,19 @@ export function attachInputListener(
 
   const onBlur = (ev: Event) => {
     const timeStamp = (ev as { timeStamp?: number }).timeStamp ?? 0;
+    if (fireHeld) {
+      fireHeld = false;
+      ringBuffer.pushFireState(false, timeStamp);
+    }
     ringBuffer.pushInvalidate(1 /* focus_lost */, timeStamp);
   };
 
   const onPointerLockChange = () => {
     if (typeof document !== "undefined" && !document.pointerLockElement) {
+      if (fireHeld) {
+        fireHeld = false;
+        ringBuffer.pushFireState(false, 0);
+      }
       ringBuffer.pushInvalidate(2 /* pointer_lock_lost */, 0);
     }
   };
@@ -183,7 +209,7 @@ export function attachInputListener(
   // Use the same Mouse Events contract for shots as for locked movement so a
   // browser that suppresses Pointer Events while locked cannot lose clicks.
   target.addEventListener("mousedown", onMouseDown as EventListener);
-  target.addEventListener("mouseup", preventGesture as EventListener);
+  target.addEventListener("mouseup", onMouseUp as EventListener);
   target.addEventListener("click", preventGesture as EventListener);
   target.addEventListener("dblclick", preventGesture as EventListener);
   target.addEventListener("contextmenu", preventGesture as EventListener);
@@ -198,7 +224,7 @@ export function attachInputListener(
   return () => {
     target.removeEventListener(source, onPointerMove as EventListener);
     target.removeEventListener("mousedown", onMouseDown as EventListener);
-    target.removeEventListener("mouseup", preventGesture as EventListener);
+    target.removeEventListener("mouseup", onMouseUp as EventListener);
     target.removeEventListener("click", preventGesture as EventListener);
     target.removeEventListener("dblclick", preventGesture as EventListener);
     target.removeEventListener("contextmenu", preventGesture as EventListener);

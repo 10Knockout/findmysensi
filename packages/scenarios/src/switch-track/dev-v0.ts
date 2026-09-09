@@ -23,12 +23,8 @@ import type {
  * Two skills are measured together -- how cleanly you hold a moving target,
  * and how fast you transition to the next one.
  *
- * NOTE ON FIRING: the spec calls for damage only while the left button is
- * held. The deterministic input pipeline currently carries discrete MOVE and
- * SHOT events with no held-button state (mouseup is bound only to suppress
- * browser gestures), so damage here accrues from crosshair overlap alone.
- * Gating it on a real fire-state needs a new event kind plumbed through the
- * ring buffer, reducer, adapter interface and run controller.
+ * Damage accrues only while the left button is held. Crosshair contact still
+ * contributes to tracking and acquisition analytics while fire is released.
  */
 
 /** Spec: roughly 400 ms of clean contact kills a target, at 128 Hz. */
@@ -52,7 +48,7 @@ export const SWITCH_TRACK_DEV_V0_DEFINITION: RankedScenarioDefinition = {
   modeId: "switch-track",
   scenarioVersion: 0,
   engineVersion: 1,
-  scoringVersion: 0,
+  scoringVersion: 1,
   durationTicks: 128 * 60,
   simulation: {
     maxActiveTargets: SWITCH_TRACK_ACTIVE_TARGETS,
@@ -144,6 +140,7 @@ export class SwitchTrackScenarioEngine {
     playerYaw: number,
     playerPitch: number,
     prng: PrngV1,
+    fireHeld: boolean = false,
   ): SwitchTrackTickResult {
     this.moveTargets(currentTick, prng);
 
@@ -170,7 +167,7 @@ export class SwitchTrackScenarioEngine {
         }
       }
       this.engagedId = hovered.id;
-      hovered.damageTicks++;
+      if (fireHeld) hovered.damageTicks++;
 
       if (hovered.damageTicks >= SWITCH_TRACK_TTK_TICKS) {
         const deadId = hovered.id;

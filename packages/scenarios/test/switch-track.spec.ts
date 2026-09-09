@@ -2,6 +2,7 @@ import { createPrngV1 } from "@findmysensi/aim-core";
 import { describe, expect, it } from "vitest";
 import {
   SWITCH_TRACK_ACTIVE_TARGETS,
+  SWITCH_TRACK_DEV_V0_DEFINITION,
   SWITCH_TRACK_RADIUS_UNITS,
   SWITCH_TRACK_TTK_TICKS,
   SwitchTrackScenarioEngine,
@@ -13,6 +14,7 @@ function trackFirstTarget(
   prng: ReturnType<typeof createPrngV1>,
   ticks: number,
   fromTick = 1,
+  fireHeld = true,
 ): { kills: number; switches: number[] } {
   let kills = 0;
   const switches: number[] = [];
@@ -23,6 +25,7 @@ function trackFirstTarget(
       target.xAngleUnits,
       target.yAngleUnits,
       prng,
+      fireHeld,
     );
     if (sample.killed) kills++;
     if (sample.switchTicks !== null) switches.push(sample.switchTicks);
@@ -31,6 +34,12 @@ function trackFirstTarget(
 }
 
 describe("Switch Track scenario", () => {
+  it("uses a fresh leaderboard scoring partition for fire-gated runs", () => {
+    expect(SWITCH_TRACK_DEV_V0_DEFINITION.engineVersion).toBe(1);
+    expect(SWITCH_TRACK_DEV_V0_DEFINITION.scenarioVersion).toBe(0);
+    expect(SWITCH_TRACK_DEV_V0_DEFINITION.scoringVersion).toBe(1);
+  });
+
   it("keeps four targets alive at all times", () => {
     const engine = new SwitchTrackScenarioEngine();
     const prng = createPrngV1([1, 2, 3, 4]);
@@ -57,6 +66,22 @@ describe("Switch Track scenario", () => {
     // One more tick of contact finishes it.
     const after = trackFirstTarget(engine, prng, 1, SWITCH_TRACK_TTK_TICKS);
     expect(after.kills).toBe(1);
+  });
+
+  it("records contact but deals no damage while fire is not held", () => {
+    const engine = new SwitchTrackScenarioEngine();
+    const prng = createPrngV1([1, 2, 3, 4]);
+    engine.initialize(prng);
+
+    const result = trackFirstTarget(
+      engine,
+      prng,
+      SWITCH_TRACK_TTK_TICKS * 2,
+      1,
+      false,
+    );
+
+    expect(result.kills).toBe(0);
   });
 
   it("makes no progress while contact is broken", () => {
@@ -105,5 +130,33 @@ describe("Switch Track scenario", () => {
     expect(first.initialize(createPrngV1([9, 9, 9, 9]))).toEqual(
       second.initialize(createPrngV1([9, 9, 9, 9])),
     );
+  });
+
+  it("matches the fixed-seed fire-window golden", () => {
+    const engine = new SwitchTrackScenarioEngine();
+    const prng = createPrngV1([9, 9, 9, 9]);
+    engine.initialize(prng);
+    const killTicks: number[] = [];
+    const switchTicks: number[] = [];
+
+    for (let tick = 1; tick <= 70; tick++) {
+      const target = engine.getActiveTargets()[0]!;
+      const fireHeld = (tick >= 5 && tick <= 30) || (tick >= 40 && tick <= 70);
+      const sample = engine.tick(
+        tick,
+        target.xAngleUnits,
+        target.yAngleUnits,
+        prng,
+        fireHeld,
+      );
+      if (sample.killed) killTicks.push(tick);
+      if (sample.switchTicks !== null) switchTicks.push(sample.switchTicks);
+    }
+
+    expect(killTicks).toEqual([64]);
+    expect(switchTicks).toEqual([1]);
+    expect(engine.getActiveTargets().map((target) => target.id)).toEqual([
+      2, 3, 4, 5,
+    ]);
   });
 });

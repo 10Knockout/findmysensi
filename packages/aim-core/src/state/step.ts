@@ -54,6 +54,11 @@ export function stepSimulation(
         });
         break;
 
+      case "fire-state":
+        // Fire state is camera-neutral. Mode runtimes consume it when their
+        // mechanics require held-button state.
+        break;
+
       case "invalidate":
         isValid = false;
         invalidationReason = event.reason;

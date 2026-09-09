@@ -1,6 +1,7 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import {
+  createFireStateEvent,
   createMoveEvent,
   createShotEvent,
   createInvalidateEvent,
@@ -75,6 +76,26 @@ describe("Deterministic Simulation & Causal Input Ordering", () => {
     expect(state.valid).toBe(false);
     expect(state.invalidationReason).toBe("pointer_lock_lost");
     expect(state.yaw).toBe(50); // Halted before tick 3 move
+  });
+
+  it("preserves fire-state ordering without changing shared camera state", () => {
+    const initialState = createInitialSimulationState(1000, 2000);
+    const events: CanonicalInputEvent[] = [
+      createFireStateEvent(2, 0, true),
+      createFireStateEvent(3, 0, false),
+    ];
+
+    const state = stepSimulation(initialState, events);
+
+    expect(events).toEqual([
+      { kind: "fire-state", tick: 2, order: 0, held: true },
+      { kind: "fire-state", tick: 3, order: 0, held: false },
+    ]);
+    expect(state.yaw).toBe(initialState.yaw);
+    expect(state.pitch).toBe(initialState.pitch);
+    expect(state.shots).toEqual(initialState.shots);
+    expect(state.valid).toBe(true);
+    expect(state.tick).toBe(3);
   });
 
   describe("Property Invariant: Chunk-Partition Invariance", () => {

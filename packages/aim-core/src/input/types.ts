@@ -23,6 +23,13 @@ export interface CanonicalShotEvent {
   readonly button: 0;
 }
 
+export interface CanonicalFireStateEvent {
+  readonly kind: "fire-state";
+  readonly tick: Tick;
+  readonly order: number;
+  readonly held: boolean;
+}
+
 export interface CanonicalInvalidateEvent {
   readonly kind: "invalidate";
   readonly tick: Tick;
@@ -31,7 +38,10 @@ export interface CanonicalInvalidateEvent {
 }
 
 export type CanonicalInputEvent =
-  CanonicalMoveEvent | CanonicalShotEvent | CanonicalInvalidateEvent;
+  | CanonicalMoveEvent
+  | CanonicalShotEvent
+  | CanonicalFireStateEvent
+  | CanonicalInvalidateEvent;
 
 export function createMoveEvent(
   tick: number,
@@ -67,6 +77,27 @@ export function createShotEvent(
     tick: createTick(tick),
     order,
     button: 0,
+  };
+}
+
+export function createFireStateEvent(
+  tick: number,
+  order: number,
+  held: boolean,
+): CanonicalFireStateEvent {
+  if (!Number.isSafeInteger(order) || order < 0) {
+    throw new RangeError(
+      `Invalid order: ${order}. Must be a non-negative integer.`,
+    );
+  }
+  if (typeof held !== "boolean") {
+    throw new TypeError("Fire held state must be a boolean.");
+  }
+  return {
+    kind: "fire-state",
+    tick: createTick(tick),
+    order,
+    held,
   };
 }
 

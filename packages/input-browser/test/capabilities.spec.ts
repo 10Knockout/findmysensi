@@ -11,6 +11,7 @@ import {
 import {
   createInputRingBuffer,
   createRawInputBatchTarget,
+  EVENT_KIND_FIRE_STATE,
   EVENT_KIND_INVALIDATE,
   EVENT_KIND_MOVE,
   EVENT_KIND_SHOT,
@@ -106,7 +107,7 @@ describe("Event-Source Capability Detection and Adapter Selection", () => {
     expect(Object.keys(listeners).length).toBe(0);
   });
 
-  it("captures pointer-locked shots through the guaranteed mousedown event", () => {
+  it("captures one held transition and shot until the left button is released", () => {
     const ring = createInputRingBuffer(32);
     const targetBatch = createRawInputBatchTarget(32);
 
@@ -127,11 +128,18 @@ describe("Event-Source Capability Detection and Adapter Selection", () => {
     );
 
     listeners["mousedown"]!({ button: 0, timeStamp: 5.0 });
+    listeners["mousedown"]!({ button: 0, timeStamp: 5.5 });
+    listeners["mouseup"]!({ button: 0, timeStamp: 6.0 });
+    listeners["mouseup"]!({ button: 0, timeStamp: 6.5 });
 
     const stats = ring.drainInto(targetBatch);
-    expect(stats.drainedCount).toBe(1);
-    expect(targetBatch.kinds[0]).toBe(EVENT_KIND_SHOT);
-    expect(targetBatch.buttons[0]).toBe(0);
+    expect(stats.drainedCount).toBe(3);
+    expect(targetBatch.kinds[0]).toBe(EVENT_KIND_FIRE_STATE);
+    expect(targetBatch.buttons[0]).toBe(1);
+    expect(targetBatch.kinds[1]).toBe(EVENT_KIND_SHOT);
+    expect(targetBatch.buttons[1]).toBe(0);
+    expect(targetBatch.kinds[2]).toBe(EVENT_KIND_FIRE_STATE);
+    expect(targetBatch.buttons[2]).toBe(0);
 
     cleanup();
   });
@@ -209,9 +217,11 @@ describe("Event-Source Capability Detection and Adapter Selection", () => {
     listeners["mousedown"]!({ button: 0, timeStamp: 5 });
 
     stats = ring.drainInto(targetBatch);
-    expect(stats.drainedCount).toBe(2);
+    expect(stats.drainedCount).toBe(3);
     expect(targetBatch.kinds[0]).toBe(EVENT_KIND_MOVE);
-    expect(targetBatch.kinds[1]).toBe(EVENT_KIND_SHOT);
+    expect(targetBatch.kinds[1]).toBe(EVENT_KIND_FIRE_STATE);
+    expect(targetBatch.buttons[1]).toBe(1);
+    expect(targetBatch.kinds[2]).toBe(EVENT_KIND_SHOT);
 
     cleanup();
   });

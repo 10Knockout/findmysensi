@@ -36,9 +36,16 @@ class SwitchTrackModeAdapter implements ModeRuntimeAdapter<SwitchTrackMetrics> {
     tick: Tick,
     playerYaw: AngleUnits,
     playerPitch: PitchUnits,
+    fireHeld: boolean = false,
   ): void {
     if (!this.prng) return;
-    const sample = this.engine.tick(tick, playerYaw, playerPitch, this.prng);
+    const sample = this.engine.tick(
+      tick,
+      playerYaw,
+      playerPitch,
+      this.prng,
+      fireHeld,
+    );
     this.tracker.recordSample(sample.errorUnits, sample.onTarget);
     if (sample.acquisitionTicks !== null) {
       this.tracker.recordAcquisition(sample.acquisitionTicks);

@@ -34,6 +34,8 @@ export interface ModeRuntimeAdapter<
     tick: Tick,
     playerYaw: AngleUnits,
     playerPitch: PitchUnits,
+    /** Current primary-button state for modes with hold-to-damage mechanics. */
+    fireHeld?: boolean,
   ): void;
 
   onShot(
