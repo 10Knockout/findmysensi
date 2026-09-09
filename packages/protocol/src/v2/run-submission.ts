@@ -292,6 +292,11 @@ export const LeaderboardBoardV2Schema = z
     modeId: PracticeModeIdV2Schema,
     scenarioVersion: z.number().int().nonnegative().max(65_535),
     scoringVersion: z.number().int().nonnegative().max(65_535),
+    // Optional defaults keep public-first deploys compatible with the older
+    // non-seasonal API response. New API responses always include all three.
+    seasonId: z.string().regex(/^\d{4}-\d{2}$/).optional(),
+    seasonStartsAt: z.string().datetime().optional(),
+    seasonEndsAt: z.string().datetime().optional(),
   })
   .strict();
 
@@ -299,7 +304,11 @@ export const LeaderboardRowV2Schema = z
   .object({
     rank: z.number().int().positive(),
     username: z.string().min(1).max(24),
+    avatarId: z.string().min(1).max(64).optional(),
+    frameId: z.string().min(1).max(64).optional(),
+    tagId: z.string().min(1).max(64).optional(),
     score: NonnegativeIntegerSchema,
+    accuracyPercentage: z.number().min(0).max(100).nullable().optional(),
     achievedAt: z.string().datetime(),
   })
   .strict();
@@ -308,6 +317,7 @@ export const LeaderboardStandingV2Schema = z
   .object({
     rank: z.number().int().positive(),
     score: NonnegativeIntegerSchema,
+    accuracyPercentage: z.number().min(0).max(100).nullable().optional(),
     percentile: z.number().min(0).max(100).nullable(),
     totalPlayers: z.number().int().positive(),
     achievedAt: z.string().datetime(),
@@ -320,6 +330,14 @@ export const LeaderboardContextV2Schema = z
     totalPlayers: z.number().int().nonnegative(),
     percentileMinimumPlayers: z.literal(LEADERBOARD_PERCENTILE_MIN_PLAYERS_V2),
     standing: LeaderboardStandingV2Schema.nullable(),
+    page: z
+      .object({
+        offset: z.number().int().nonnegative(),
+        limit: z.number().int().positive().max(50),
+        hasMore: z.boolean(),
+      })
+      .strict()
+      .optional(),
   })
   .strict()
   .superRefine((leaderboard, context) => {
