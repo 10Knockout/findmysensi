@@ -20,7 +20,7 @@ export const SITE_DESCRIPTION =
   "FindMySensi is a free, open-source aim trainer that runs in your browser. " +
   "Twelve deterministic drills, a physically accurate sensitivity converter " +
   "(cm/360, eDPI, angular gain), blinded calibration, and public per-mode " +
-  "leaderboards — no download, no account required to start.";
+  "leaderboards — no download, and a free account takes about 10 seconds.";
 
 export const GITHUB_URL = "https://github.com/10Knockout/findmysensi";
 

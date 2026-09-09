@@ -696,8 +696,19 @@ html {
 
 .landing-footer > div {
   display: flex;
+  align-items: center;
   justify-self: end;
   gap: 22px;
+}
+
+.landing-footer-yt {
+  display: inline-flex;
+  align-items: center;
+}
+
+.landing-footer-yt svg {
+  width: 20px;
+  height: 20px;
 }
 
 .fms-motion [data-reveal] {

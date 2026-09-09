@@ -5,9 +5,10 @@
 > mouse sensitivity converter (cm/360, in/360, eDPI, counts/360, angular gain),
 > a blinded and counterbalanced calibration mode that recommends only a
 > sensitivity the player has actually tested, and public per-mode leaderboards.
-> No download or installation is required, and no account is needed to use the
-> converter. The trainer, sensitivity math, scenarios, and scoring are public on
-> GitHub under the MPL-2.0 licence.
+> No download or installation is required. The converter is free to use with no
+> account; saving practice runs and appearing on the leaderboards needs a free
+> account that takes about 10 seconds. The trainer, sensitivity math, scenarios,
+> and scoring are public on GitHub under the MPL-2.0 licence.
 
 ## Core pages
 

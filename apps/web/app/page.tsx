@@ -250,7 +250,11 @@ export default function HomePage() {
         <span className="landing-wordmark">
           <span aria-hidden="true">F/</span> FindMySensi
         </span>
-        <p>Precision over noise. Built for the browser.</p>
+        <p>
+          Precision over noise. Built for the browser.
+          <br />
+          <a href="https://findmysensi.com">findmysensi.com</a>
+        </p>
         <div>
           <Link href="/guides">Guides</Link>
           <Link href="/privacy">Privacy</Link>
@@ -265,6 +269,15 @@ export default function HomePage() {
           <a href="https://hiteshmahay.com" target="_blank" rel="noreferrer">
             Hitesh Mahay
           </a>
+          <a
+            href="https://www.youtube.com/@KOgamerX"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="FindMySensi on YouTube"
+            className="landing-footer-yt"
+          >
+            <YouTubeIcon />
+          </a>
         </div>
       </footer>
     </main>
@@ -275,6 +288,14 @@ function ArrowIcon() {
   return (
     <svg viewBox="0 0 20 20" aria-hidden="true">
       <path d="M4 10h11M11 5l5 5-5 5" />
+    </svg>
+  );
+}
+
+function YouTubeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31.4 31.4 0 0 0 0 12a31.4 31.4 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31.4 31.4 0 0 0 24 12a31.4 31.4 0 0 0-.5-5.8ZM9.6 15.6V8.4l6.3 3.6-6.3 3.6Z" />
     </svg>
   );
 }
