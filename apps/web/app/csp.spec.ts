@@ -1,25 +1,52 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import nextConfig from "../next.config.mjs";
 
-describe("Content-Security-Policy header", () => {
-  it("is present on all routes with the required directives", async () => {
-    process.env.API_URL ||= "https://api.findmysensi.com";
-    const groups = await nextConfig.headers();
-    const all = groups.flatMap((g) => g.headers);
-    const csp = all.find(
-      (h) => h.key.toLowerCase() === "content-security-policy",
-    );
-    expect(csp).toBeTruthy();
-    const value = csp!.value.replace(/\s+/g, " ");
+// The public app's Content-Security-Policy is emitted per request by
+// `apps/web/proxy.ts` (Next middleware) so it can carry a fresh nonce and
+// `'strict-dynamic'`. This is the single source of the header -- `next.config.mjs`
+// deliberately does not set a CSP. These assertions run against the proxy
+// source text so a directive can never be silently dropped.
+const proxySource = readFileSync(
+  join(import.meta.dirname, "..", "proxy.ts"),
+  "utf8",
+);
+
+describe("Content-Security-Policy (proxy.ts)", () => {
+  it("declares every required directive", () => {
     for (const directive of [
       "default-src 'self'",
-      "frame-ancestors 'none'",
-      "object-src 'none'",
-      "img-src 'self' data:",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' blob: data:",
+      "font-src 'self' data:",
       "connect-src 'self'",
-      "script-src 'self' 'unsafe-inline'",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "frame-ancestors 'none'",
     ]) {
-      expect(value).toContain(directive);
+      expect(proxySource).toContain(directive);
     }
+  });
+
+  it("uses a nonce with strict-dynamic for scripts, never a bare 'unsafe-inline'", () => {
+    expect(proxySource).toMatch(
+      /script-src 'self' 'nonce-\$\{nonce\}' 'strict-dynamic'/,
+    );
+    expect(proxySource).not.toMatch(/script-src [^\n]*'unsafe-inline'/);
+  });
+
+  it("sets the header on the response", () => {
+    expect(proxySource).toMatch(
+      /response\.headers\.set\(\s*"Content-Security-Policy"/,
+    );
+  });
+
+  it("emits no competing CSP header from next.config.mjs", () => {
+    const config = readFileSync(
+      join(import.meta.dirname, "..", "next.config.mjs"),
+      "utf8",
+    );
+    expect(config).not.toMatch(/key:\s*["']Content-Security-Policy["']/);
   });
 });
