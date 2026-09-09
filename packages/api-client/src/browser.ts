@@ -325,17 +325,22 @@ export class BrowserApiClient {
     scoringVersion: number,
     options: GetLeaderboardV2Options = {},
   ): Promise<ApiResult<LeaderboardResponseV2>> {
-    const query = new URLSearchParams({
-      scenarioVersion: String(scenarioVersion),
-      scoringVersion: String(scoringVersion),
+    // Read parameters travel as path segments, not query string: the API's
+    // Vercel rewrite drops the query. Order: scenarioVersion/scoringVersion/limit/offset.
+    const limit = options.limit ?? 50;
+    const offset = options.offset ?? 0;
+    const path = [
+      "/api/v2/leaderboards",
+      encodeURIComponent(modeId),
+      scenarioVersion,
+      scoringVersion,
+      limit,
+      offset,
+    ].join("/");
+    const result = await this.requestJson<unknown>(path, {
+      method: "GET",
+      cache: "no-store",
     });
-    if (options.limit !== undefined) query.set("limit", String(options.limit));
-    if (options.offset !== undefined)
-      query.set("offset", String(options.offset));
-    const result = await this.requestJson<unknown>(
-      `/api/v2/leaderboards/${encodeURIComponent(modeId)}?${query.toString()}`,
-      { method: "GET", cache: "no-store" },
-    );
     if (!result.ok) {
       return {
         ok: false,
