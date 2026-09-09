@@ -49,6 +49,19 @@ test("public home renders and shows a real-data error state when leaderboard is 
   await expect(leaderboardError).toBeVisible();
 });
 
+test("no CSP violations on the main pages", async ({ page }) => {
+  const violations: string[] = [];
+  page.on("console", (msg) => {
+    if (msg.text().includes("Content Security Policy"))
+      violations.push(msg.text());
+  });
+  for (const path of ["/", "/leaderboards"]) {
+    await page.goto(path);
+    await page.waitForLoadState("networkidle");
+  }
+  expect(violations).toEqual([]);
+});
+
 test("converter maps Valorant into the single FindMySensi sensitivity scale", async ({
   page,
 }) => {
