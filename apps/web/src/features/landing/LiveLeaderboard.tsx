@@ -105,7 +105,9 @@ export function LiveLeaderboard({
   if (!activeMode) return null;
 
   const move = (direction: -1 | 1) => {
-    setActiveIndex((index) => (index + direction + modes.length) % modes.length);
+    setActiveIndex(
+      (index) => (index + direction + modes.length) % modes.length,
+    );
   };
 
   return (
@@ -122,10 +124,16 @@ export function LiveLeaderboard({
           <h3 aria-live="polite">{activeMode.title}</h3>
         </div>
         <div className="landing-leaderboard-controls">
-          <button type="button" onClick={() => move(-1)} aria-label="Previous game">
+          <button
+            type="button"
+            onClick={() => move(-1)}
+            aria-label="Previous game"
+          >
             ←
           </button>
-          <span>{activeIndex + 1} / {modes.length}</span>
+          <span>
+            {activeIndex + 1} / {modes.length}
+          </span>
           <button type="button" onClick={() => move(1)} aria-label="Next game">
             →
           </button>
@@ -133,13 +141,20 @@ export function LiveLeaderboard({
       </header>
 
       {error ? (
-        <div role="alert" className="landing-leaderboard-state landing-leaderboard-error">
+        <div
+          role="alert"
+          className="landing-leaderboard-state landing-leaderboard-error"
+        >
           Could not load {activeMode.title}. {error}
         </div>
       ) : rows === null ? (
-        <div className="landing-leaderboard-state">Loading {activeMode.title}…</div>
+        <div className="landing-leaderboard-state">
+          Loading {activeMode.title}…
+        </div>
       ) : rows.length === 0 ? (
-        <div className="landing-leaderboard-state">No {activeMode.title} scores yet.</div>
+        <div className="landing-leaderboard-state">
+          No {activeMode.title} scores yet.
+        </div>
       ) : (
         <div className="landing-leaderboard-scroll">
           <table className="landing-leaderboard-table">
@@ -186,7 +201,10 @@ export function LiveLeaderboard({
         </div>
       )}
 
-      <div className="landing-leaderboard-dots" aria-label="Choose game leaderboard">
+      <div
+        className="landing-leaderboard-dots"
+        aria-label="Choose game leaderboard"
+      >
         {modes.map((mode, index) => (
           <button
             type="button"

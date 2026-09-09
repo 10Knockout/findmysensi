@@ -54,16 +54,66 @@ export interface AvatarOption {
 }
 
 export const AVATAR_OPTIONS: readonly AvatarOption[] = [
-  { id: "neon-sentinel", label: "Neon Sentinel", imageSrc: "/profile/avatars/neon-sentinel.webp", colorHex: "#bdff2d" },
-  { id: "pulse-ronin", label: "Pulse Ronin", imageSrc: "/profile/avatars/pulse-ronin.webp", colorHex: "#2dd4ff" },
-  { id: "prism-operative", label: "Prism Operative", imageSrc: "/profile/avatars/prism-operative.webp", colorHex: "#c084fc" },
-  { id: "circuit-fox", label: "Circuit Fox", imageSrc: "/profile/avatars/circuit-fox.webp", colorHex: "#fb7185" },
-  { id: "void-ranger", label: "Void Ranger", imageSrc: "/profile/avatars/void-ranger.webp", colorHex: "#818cf8" },
-  { id: "ember-scout", label: "Ember Scout", imageSrc: "/profile/avatars/ember-scout.webp", colorHex: "#fb923c" },
-  { id: "aqua-striker", label: "Aqua Striker", imageSrc: "/profile/avatars/aqua-striker.webp", colorHex: "#22d3ee" },
-  { id: "glitch-warden", label: "Glitch Warden", imageSrc: "/profile/avatars/glitch-warden.webp", colorHex: "#f472b6" },
-  { id: "solar-spectre", label: "Solar Spectre", imageSrc: "/profile/avatars/solar-spectre.webp", colorHex: "#facc15" },
-  { id: "chrome-oracle", label: "Chrome Oracle", imageSrc: "/profile/avatars/chrome-oracle.webp", colorHex: "#e2e8f0" },
+  {
+    id: "neon-sentinel",
+    label: "Neon Sentinel",
+    imageSrc: "/profile/avatars/neon-sentinel.webp",
+    colorHex: "#bdff2d",
+  },
+  {
+    id: "pulse-ronin",
+    label: "Pulse Ronin",
+    imageSrc: "/profile/avatars/pulse-ronin.webp",
+    colorHex: "#2dd4ff",
+  },
+  {
+    id: "prism-operative",
+    label: "Prism Operative",
+    imageSrc: "/profile/avatars/prism-operative.webp",
+    colorHex: "#c084fc",
+  },
+  {
+    id: "circuit-fox",
+    label: "Circuit Fox",
+    imageSrc: "/profile/avatars/circuit-fox.webp",
+    colorHex: "#fb7185",
+  },
+  {
+    id: "void-ranger",
+    label: "Void Ranger",
+    imageSrc: "/profile/avatars/void-ranger.webp",
+    colorHex: "#818cf8",
+  },
+  {
+    id: "ember-scout",
+    label: "Ember Scout",
+    imageSrc: "/profile/avatars/ember-scout.webp",
+    colorHex: "#fb923c",
+  },
+  {
+    id: "aqua-striker",
+    label: "Aqua Striker",
+    imageSrc: "/profile/avatars/aqua-striker.webp",
+    colorHex: "#22d3ee",
+  },
+  {
+    id: "glitch-warden",
+    label: "Glitch Warden",
+    imageSrc: "/profile/avatars/glitch-warden.webp",
+    colorHex: "#f472b6",
+  },
+  {
+    id: "solar-spectre",
+    label: "Solar Spectre",
+    imageSrc: "/profile/avatars/solar-spectre.webp",
+    colorHex: "#facc15",
+  },
+  {
+    id: "chrome-oracle",
+    label: "Chrome Oracle",
+    imageSrc: "/profile/avatars/chrome-oracle.webp",
+    colorHex: "#e2e8f0",
+  },
 ];
 
 export interface ProfileFrameOption {
@@ -74,16 +124,56 @@ export interface ProfileFrameOption {
 
 export const PROFILE_FRAME_OPTIONS: readonly ProfileFrameOption[] = [
   { id: "frame-none", label: "No frame", imageSrc: null },
-  { id: "neon-green", label: "Neon Green", imageSrc: "/profile/frames/neon-green.webp" },
-  { id: "electric-blue", label: "Electric Blue", imageSrc: "/profile/frames/electric-blue.webp" },
-  { id: "plasma-purple", label: "Plasma Purple", imageSrc: "/profile/frames/plasma-purple.webp" },
-  { id: "solar-gold", label: "Solar Gold", imageSrc: "/profile/frames/solar-gold.webp" },
-  { id: "ember-red", label: "Ember Red", imageSrc: "/profile/frames/ember-red.webp" },
-  { id: "cyan-circuit", label: "Cyan Circuit", imageSrc: "/profile/frames/cyan-circuit.webp" },
-  { id: "prism-shift", label: "Prism Shift", imageSrc: "/profile/frames/prism-shift.webp" },
-  { id: "void-black", label: "Void Black", imageSrc: "/profile/frames/void-black.webp" },
-  { id: "chrome-silver", label: "Chrome Silver", imageSrc: "/profile/frames/chrome-silver.webp" },
-  { id: "radiant-white", label: "Radiant White", imageSrc: "/profile/frames/radiant-white.webp" },
+  {
+    id: "neon-green",
+    label: "Neon Green",
+    imageSrc: "/profile/frames/neon-green.webp",
+  },
+  {
+    id: "electric-blue",
+    label: "Electric Blue",
+    imageSrc: "/profile/frames/electric-blue.webp",
+  },
+  {
+    id: "plasma-purple",
+    label: "Plasma Purple",
+    imageSrc: "/profile/frames/plasma-purple.webp",
+  },
+  {
+    id: "solar-gold",
+    label: "Solar Gold",
+    imageSrc: "/profile/frames/solar-gold.webp",
+  },
+  {
+    id: "ember-red",
+    label: "Ember Red",
+    imageSrc: "/profile/frames/ember-red.webp",
+  },
+  {
+    id: "cyan-circuit",
+    label: "Cyan Circuit",
+    imageSrc: "/profile/frames/cyan-circuit.webp",
+  },
+  {
+    id: "prism-shift",
+    label: "Prism Shift",
+    imageSrc: "/profile/frames/prism-shift.webp",
+  },
+  {
+    id: "void-black",
+    label: "Void Black",
+    imageSrc: "/profile/frames/void-black.webp",
+  },
+  {
+    id: "chrome-silver",
+    label: "Chrome Silver",
+    imageSrc: "/profile/frames/chrome-silver.webp",
+  },
+  {
+    id: "radiant-white",
+    label: "Radiant White",
+    imageSrc: "/profile/frames/radiant-white.webp",
+  },
 ];
 
 export interface GamerTagOption {

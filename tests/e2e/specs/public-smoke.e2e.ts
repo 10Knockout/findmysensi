@@ -692,10 +692,10 @@ test("authenticated Results page displays honest local results wording and metri
   expect(response?.ok()).toBe(true);
 
   // Assert honest practice-sync badge and explanation.
-  await expect(page.getByText("Saved to Account", { exact: true })).toBeVisible();
   await expect(
-    page.getByText(/now on the public leaderboard/),
+    page.getByText("Saved to Account", { exact: true }),
   ).toBeVisible();
+  await expect(page.getByText(/now on the public leaderboard/)).toBeVisible();
 
   await expect(
     page.getByRole("heading", { name: "Grid Rush", level: 1 }),

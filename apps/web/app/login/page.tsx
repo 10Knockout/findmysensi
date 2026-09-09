@@ -24,9 +24,7 @@ export default function LoginPage() {
       .then((session) => {
         if (!active) return;
         if (session?.user) {
-          router.replace(
-            resolveSafeLoginDestination(window.location.search),
-          );
+          router.replace(resolveSafeLoginDestination(window.location.search));
           return;
         }
         setCheckingSession(false);

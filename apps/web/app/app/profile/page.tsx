@@ -194,7 +194,9 @@ export default function ProfilePage() {
               {user.username ?? user.email}
             </h1>
             <p className="app-profile-rank">{title}</p>
-            {selectedTag ? <p className="app-profile-tag">{selectedTag}</p> : null}
+            {selectedTag ? (
+              <p className="app-profile-tag">{selectedTag}</p>
+            ) : null}
           </div>
         </header>
 
@@ -283,7 +285,10 @@ export default function ProfilePage() {
           </div>
         </section>
 
-        <section className="app-profile-cover-locked" aria-label="Cover photo locked">
+        <section
+          className="app-profile-cover-locked"
+          aria-label="Cover photo locked"
+        >
           <div>
             <p className="app-section-label">Cover photo</p>
             <h2 className="app-section-title app-profile-subheading">Locked</h2>
@@ -297,7 +302,11 @@ export default function ProfilePage() {
           disabled={!profileChanged || savingProfile}
           onClick={() => void saveProfile()}
         >
-          {savingProfile ? "Saving…" : profileChanged ? "Save profile" : "Profile saved"}
+          {savingProfile
+            ? "Saving…"
+            : profileChanged
+              ? "Save profile"
+              : "Profile saved"}
         </button>
 
         <section className="app-stat-grid">

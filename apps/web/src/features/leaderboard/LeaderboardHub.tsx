@@ -59,10 +59,13 @@ export function LeaderboardHub({
             <Link href={requireSession ? "/app" : "/"} className="app-link">
               ← {requireSession ? "Trainer Home" : "Main site"}
             </Link>
-            <p className="app-section-label app-leaderboard-hub-label">Monthly competition</p>
+            <p className="app-section-label app-leaderboard-hub-label">
+              Monthly competition
+            </p>
             <h1 className="app-section-title">All Leaderboards</h1>
             <p className="app-section-copy">
-              Choose any game. Every board has its own scores, accuracy, and monthly ranks.
+              Choose any game. Every board has its own scores, accuracy, and
+              monthly ranks.
             </p>
           </div>
           {!requireSession ? (
@@ -72,7 +75,10 @@ export function LeaderboardHub({
           ) : null}
         </header>
 
-        <nav className="app-leaderboard-mode-tabs" aria-label="Game leaderboards">
+        <nav
+          className="app-leaderboard-mode-tabs"
+          aria-label="Game leaderboards"
+        >
           {modes.map((mode) => (
             <button
               type="button"

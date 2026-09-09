@@ -174,7 +174,10 @@ export function PracticeResults({
             <a href={routes.playAgain} className="app-button">
               Play Again
             </a>
-            <a href={routes.leaderboard} className="app-button app-button-ghost">
+            <a
+              href={routes.leaderboard}
+              className="app-button app-button-ghost"
+            >
               View leaderboard
             </a>
             <a href={routes.hub} className="app-button app-button-ghost">

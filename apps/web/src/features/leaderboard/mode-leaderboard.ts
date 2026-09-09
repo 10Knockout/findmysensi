@@ -76,8 +76,7 @@ export function buildLeaderboardView(
     tag: gamerTagLabel(row.tagId ?? "tag-none"),
     score: formatScore(row.score),
     accuracy: formatAccuracy(row.accuracyPercentage),
-    isSelf:
-      viewerProfile !== null && row.username === viewerProfile.username,
+    isSelf: viewerProfile !== null && row.username === viewerProfile.username,
   }));
 
   const standing = response.standing;

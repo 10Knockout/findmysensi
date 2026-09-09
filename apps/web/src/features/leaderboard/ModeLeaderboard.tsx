@@ -105,7 +105,9 @@ export function ModeLeaderboard({
         <p className="app-section-label">
           {embedded ? "This game leaderboard" : "Leaderboard"}
         </p>
-        <h2 className={embedded ? "app-results-section-heading" : "app-heading"}>
+        <h2
+          className={embedded ? "app-results-section-heading" : "app-heading"}
+        >
           {taskName}
         </h2>
         <p className="app-subtext">
@@ -125,7 +127,9 @@ export function ModeLeaderboard({
           offset={offset}
           pageSize={pageSize}
           embedded={embedded}
-          onPrevious={() => setOffset((current) => Math.max(0, current - pageSize))}
+          onPrevious={() =>
+            setOffset((current) => Math.max(0, current - pageSize))
+          }
           onNext={() => setOffset((current) => current + pageSize)}
         />
       )}
@@ -151,7 +155,8 @@ export function ModeLeaderboard({
     </div>
   );
 
-  if (embedded) return <section aria-label={`${taskName} leaderboard`}>{board}</section>;
+  if (embedded)
+    return <section aria-label={`${taskName} leaderboard`}>{board}</section>;
   if (contained) {
     return <article className="app-card app-leaderboard-card">{board}</article>;
   }
@@ -190,14 +195,18 @@ function LeaderboardReadyState({
       <div className="app-leaderboard-meta">
         <span>{view.seasonLabel}</span>
         <span>{view.totalPlayers.toLocaleString("en-US")} players</span>
-        {view.resetLabel ? <span>Resets {view.resetLabel} at 00:00 UTC</span> : null}
+        {view.resetLabel ? (
+          <span>Resets {view.resetLabel} at 00:00 UTC</span>
+        ) : null}
       </div>
 
       {selfRow ? (
         <div className="app-leaderboard-standing" role="status">
           <span>Your best this month</span>
           <strong>#{selfRow.rank}</strong>
-          <span>{selfRow.score} points · {selfRow.accuracy} accuracy</span>
+          <span>
+            {selfRow.score} points · {selfRow.accuracy} accuracy
+          </span>
           {view.percentileLabel ? <span>{view.percentileLabel}</span> : null}
         </div>
       ) : null}
@@ -216,14 +225,28 @@ function LeaderboardReadyState({
       ) : null}
 
       {!embedded && (offset > 0 || state.hasMore) ? (
-        <nav className="app-leaderboard-pagination" aria-label="Leaderboard pages">
-          <button type="button" className="app-chip" disabled={offset === 0} onClick={onPrevious}>
+        <nav
+          className="app-leaderboard-pagination"
+          aria-label="Leaderboard pages"
+        >
+          <button
+            type="button"
+            className="app-chip"
+            disabled={offset === 0}
+            onClick={onPrevious}
+          >
             Previous
           </button>
           <span>
-            {offset + 1}–{Math.min(offset + pageSize, view.totalPlayers)} of {view.totalPlayers}
+            {offset + 1}–{Math.min(offset + pageSize, view.totalPlayers)} of{" "}
+            {view.totalPlayers}
           </span>
-          <button type="button" className="app-chip" disabled={!state.hasMore} onClick={onNext}>
+          <button
+            type="button"
+            className="app-chip"
+            disabled={!state.hasMore}
+            onClick={onNext}
+          >
             Next
           </button>
         </nav>
@@ -232,7 +255,11 @@ function LeaderboardReadyState({
   );
 }
 
-function LeaderboardTable({ rows }: { readonly rows: LeaderboardView["rows"] }) {
+function LeaderboardTable({
+  rows,
+}: {
+  readonly rows: LeaderboardView["rows"];
+}) {
   return (
     <div className="app-leaderboard-scroll">
       <table className="app-leaderboard-table">
@@ -277,28 +304,48 @@ function LeaderboardTable({ rows }: { readonly rows: LeaderboardView["rows"] }) 
 
 export function LeaderboardRules() {
   return (
-    <section className="app-leaderboard-rules" aria-labelledby="leaderboard-rules-title">
+    <section
+      className="app-leaderboard-rules"
+      aria-labelledby="leaderboard-rules-title"
+    >
       <p className="app-section-label">Rules and ranks</p>
       <h2 id="leaderboard-rules-title" className="app-results-section-heading">
         How ranking works
       </h2>
       <ul>
-        <li>Each game has its own board. Scenario or scoring changes create a new board.</li>
-        <li>Only your highest eligible score for the current UTC month counts.</li>
-        <li>Pausing or losing pointer lock makes that run ineligible. Local history remains safe.</li>
-        <li>Equal scores share the same place. Accuracy is shown but does not break score ties.</li>
-        <li>A new season starts automatically at 00:00 UTC on the first day of every month.</li>
+        <li>
+          Each game has its own board. Scenario or scoring changes create a new
+          board.
+        </li>
+        <li>
+          Only your highest eligible score for the current UTC month counts.
+        </li>
+        <li>
+          Pausing or losing pointer lock makes that run ineligible. Local
+          history remains safe.
+        </li>
+        <li>
+          Equal scores share the same place. Accuracy is shown but does not
+          break score ties.
+        </li>
+        <li>
+          A new season starts automatically at 00:00 UTC on the first day of
+          every month.
+        </li>
       </ul>
       <p className="app-subtext">
-        Aimer titles use best accuracy. These fixed thresholds stay comparable across games;
-        leaderboard place uses score inside one game only.
+        Aimer titles use best accuracy. These fixed thresholds stay comparable
+        across games; leaderboard place uses score inside one game only.
       </p>
       <div className="app-rank-grid">
         {RANK_TIERS.map((tier, index) => (
           <div key={tier.name}>
             <strong>{tier.name} Aimer</strong>
             <span>
-              {tier.minAccuracyPercentage}%{index < RANK_TIERS.length - 1 ? `–${RANK_TIERS[index + 1]!.minAccuracyPercentage - 0.1}%` : "+"}
+              {tier.minAccuracyPercentage}%
+              {index < RANK_TIERS.length - 1
+                ? `–${RANK_TIERS[index + 1]!.minAccuracyPercentage - 0.1}%`
+                : "+"}
             </span>
           </div>
         ))}

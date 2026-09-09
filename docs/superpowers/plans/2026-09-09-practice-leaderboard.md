@@ -4,7 +4,7 @@
 
 **Goal:** Make every synced practice run appear on a per-mode public leaderboard with a visible rank and score, and remove the unused Ranked / verified concept from user-facing surfaces.
 
-**Architecture:** Approach A from the spec — the V2 read path (`getLeaderboardV2`) already returns ranked rows + the caller's personal `standing` + percentile. The only missing server piece is a *writer*: `savePracticeRunV2` gains a best-score-wins upsert into `leaderboard_entry_v2` (no verification, no publication opt-in). The submit route already reads `standing` back and the results screen already renders it, so the rank appears as soon as the writer exists. Web adds a per-mode leaderboard page and repoints the homepage widget from the dead V1 path to V2.
+**Architecture:** Approach A from the spec — the V2 read path (`getLeaderboardV2`) already returns ranked rows + the caller's personal `standing` + percentile. The only missing server piece is a _writer_: `savePracticeRunV2` gains a best-score-wins upsert into `leaderboard_entry_v2` (no verification, no publication opt-in). The submit route already reads `standing` back and the results screen already renders it, so the rank appears as soon as the writer exists. Web adds a per-mode leaderboard page and repoints the homepage widget from the dead V1 path to V2.
 
 **Tech Stack:** TypeScript, Drizzle ORM (libSQL/Turso), Zod, Next.js App Router (React), Vitest. Two repos: `findmysensi` (public: `apps/web`, `packages/protocol`, `packages/api-client`) and `findmysensi-secure` (private: `apps/api`, `packages/database`, `packages/public-runtime`).
 
@@ -29,47 +29,49 @@
 
 ### findmysensi-secure
 
-| File | Responsibility | Change |
-|---|---|---|
-| `packages/database/src/run-v2.ts` | V2 run storage + leaderboard reads | Add `leaderboardEligible` to `StoredRunInputV2`; wrap `savePracticeRunV2` in a transaction; add best-score-wins upsert into `leaderboardEntryV2` unless ineligible |
-| `packages/database/test/run-v2.spec.ts` | DB-layer tests | Replace the "never writes a practice submission to the verified board" test; add board-writer coverage |
-| `apps/api/src/run-v2.ts` | HTTP route for `/api/v2/runs` + `/api/v2/leaderboards` | Pass `leaderboardEligible` into `savePracticeRunV2`; response literal `"practice-only"` -> `"listed"` |
-| `apps/api/src/run-v2.spec.ts` | Route tests | Update the stored-response assertion to `"listed"`; assert `savePracticeRunV2` receives `leaderboardEligible` |
+| File                                    | Responsibility                                         | Change                                                                                                                                                             |
+| --------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `packages/database/src/run-v2.ts`       | V2 run storage + leaderboard reads                     | Add `leaderboardEligible` to `StoredRunInputV2`; wrap `savePracticeRunV2` in a transaction; add best-score-wins upsert into `leaderboardEntryV2` unless ineligible |
+| `packages/database/test/run-v2.spec.ts` | DB-layer tests                                         | Replace the "never writes a practice submission to the verified board" test; add board-writer coverage                                                             |
+| `apps/api/src/run-v2.ts`                | HTTP route for `/api/v2/runs` + `/api/v2/leaderboards` | Pass `leaderboardEligible` into `savePracticeRunV2`; response literal `"practice-only"` -> `"listed"`                                                              |
+| `apps/api/src/run-v2.spec.ts`           | Route tests                                            | Update the stored-response assertion to `"listed"`; assert `savePracticeRunV2` receives `leaderboardEligible`                                                      |
 
 ### findmysensi
 
-| File | Responsibility | Change |
-|---|---|---|
-| `packages/protocol/src/v2/run-submission.ts` | Wire schemas | `competitiveStatus` literal -> transitional `z.enum(["practice-only", "listed"])` |
-| `packages/protocol/test/run-submission-v2.spec.ts` | Schema tests | Accept `"listed"`; keep `"practice-only"` accepted during transition |
-| `packages/api-client/test/run-v2.spec.ts` | Client tests | Response fixture + assertion -> `"listed"` |
-| `apps/web/src/features/results/results-overview.ts` | Results view-model | Reword the two leaderboard-metric notes + the score-delta note; no branching-logic change |
-| `apps/web/src/features/results/results-overview.spec.ts` | View-model tests | Update expected note strings; keep the populated-`standing` case |
-| `apps/web/src/features/results/PracticeResults.tsx` | Results screen | `getRunSyncCopy("saved")` copy; eligibility note copy; add a "View leaderboard" action link |
-| `apps/web/src/features/results/practice-results.spec.ts` | Copy-integrity test | Update the asserted copy strings |
-| `apps/web/src/features/leaderboard/mode-leaderboard.ts` | **New.** Pure view-model: turn a `LeaderboardResponseV2` + optional self username into rendered rows + a self-standing line | Create |
-| `apps/web/src/features/leaderboard/mode-leaderboard.spec.ts` | **New.** View-model tests | Create |
-| `apps/web/src/features/leaderboard/routes.ts` | **New.** `getModeLeaderboardRoutes(mode)` | Create |
-| `apps/web/src/features/leaderboard/routes.spec.ts` | **New.** Routes test | Create |
-| `apps/web/src/features/leaderboard/ModeLeaderboard.tsx` | **New.** Client component: fetch + states + table, delegates shaping to `mode-leaderboard.ts` | Create |
-| `apps/web/app/app/train/[mode]/leaderboard/page.tsx` | **New.** Server route: resolve mode, 404, render `<ModeLeaderboard>` | Create |
-| `apps/web/app/train/[mode]/leaderboard/page.tsx` | **New.** Redirect stub -> `/app/train/[mode]/leaderboard` | Create |
-| `apps/web/app/globals.css` | Global styles | Add `.app-leaderboard-*` rules |
-| `apps/web/src/features/landing/LiveLeaderboard.tsx` | Homepage widget | Repoint `getLeaderboard("gridshot")` -> `getLeaderboardV2("grid", 0, 0)`; adapt row shape + copy |
-| `apps/web/app/page.tsx` | Landing page | Reword the section-03 "public board stays empty" copy |
-| `apps/web/app/app/page.tsx` | Trainer hub | Reword "Results stay local until verified scoring is enabled." |
-| `docs/adr/0001-repository-and-trust-boundary.md` | ADR | Note practice runs now populate the public board directly |
-| `docs/protocol/v2/runs.md`, `docs/protocol/v2/compatibility.md` | Protocol docs | Rewrite the "no public route may create a leaderboard row" language |
+| File                                                            | Responsibility                                                                                                              | Change                                                                                           |
+| --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `packages/protocol/src/v2/run-submission.ts`                    | Wire schemas                                                                                                                | `competitiveStatus` literal -> transitional `z.enum(["practice-only", "listed"])`                |
+| `packages/protocol/test/run-submission-v2.spec.ts`              | Schema tests                                                                                                                | Accept `"listed"`; keep `"practice-only"` accepted during transition                             |
+| `packages/api-client/test/run-v2.spec.ts`                       | Client tests                                                                                                                | Response fixture + assertion -> `"listed"`                                                       |
+| `apps/web/src/features/results/results-overview.ts`             | Results view-model                                                                                                          | Reword the two leaderboard-metric notes + the score-delta note; no branching-logic change        |
+| `apps/web/src/features/results/results-overview.spec.ts`        | View-model tests                                                                                                            | Update expected note strings; keep the populated-`standing` case                                 |
+| `apps/web/src/features/results/PracticeResults.tsx`             | Results screen                                                                                                              | `getRunSyncCopy("saved")` copy; eligibility note copy; add a "View leaderboard" action link      |
+| `apps/web/src/features/results/practice-results.spec.ts`        | Copy-integrity test                                                                                                         | Update the asserted copy strings                                                                 |
+| `apps/web/src/features/leaderboard/mode-leaderboard.ts`         | **New.** Pure view-model: turn a `LeaderboardResponseV2` + optional self username into rendered rows + a self-standing line | Create                                                                                           |
+| `apps/web/src/features/leaderboard/mode-leaderboard.spec.ts`    | **New.** View-model tests                                                                                                   | Create                                                                                           |
+| `apps/web/src/features/leaderboard/routes.ts`                   | **New.** `getModeLeaderboardRoutes(mode)`                                                                                   | Create                                                                                           |
+| `apps/web/src/features/leaderboard/routes.spec.ts`              | **New.** Routes test                                                                                                        | Create                                                                                           |
+| `apps/web/src/features/leaderboard/ModeLeaderboard.tsx`         | **New.** Client component: fetch + states + table, delegates shaping to `mode-leaderboard.ts`                               | Create                                                                                           |
+| `apps/web/app/app/train/[mode]/leaderboard/page.tsx`            | **New.** Server route: resolve mode, 404, render `<ModeLeaderboard>`                                                        | Create                                                                                           |
+| `apps/web/app/train/[mode]/leaderboard/page.tsx`                | **New.** Redirect stub -> `/app/train/[mode]/leaderboard`                                                                   | Create                                                                                           |
+| `apps/web/app/globals.css`                                      | Global styles                                                                                                               | Add `.app-leaderboard-*` rules                                                                   |
+| `apps/web/src/features/landing/LiveLeaderboard.tsx`             | Homepage widget                                                                                                             | Repoint `getLeaderboard("gridshot")` -> `getLeaderboardV2("grid", 0, 0)`; adapt row shape + copy |
+| `apps/web/app/page.tsx`                                         | Landing page                                                                                                                | Reword the section-03 "public board stays empty" copy                                            |
+| `apps/web/app/app/page.tsx`                                     | Trainer hub                                                                                                                 | Reword "Results stay local until verified scoring is enabled."                                   |
+| `docs/adr/0001-repository-and-trust-boundary.md`                | ADR                                                                                                                         | Note practice runs now populate the public board directly                                        |
+| `docs/protocol/v2/runs.md`, `docs/protocol/v2/compatibility.md` | Protocol docs                                                                                                               | Rewrite the "no public route may create a leaderboard row" language                              |
 
 ---
 
 ## Task 1: Board-entry writer in `savePracticeRunV2` (findmysensi-secure)
 
 **Files:**
+
 - Modify: `packages/database/src/run-v2.ts`
 - Test: `packages/database/test/run-v2.spec.ts`
 
 **Interfaces:**
+
 - Consumes: existing `db` (drizzle), `leaderboardEntryV2`, `runRecordV2` from `./schema.js`; `and, eq, sql` from `drizzle-orm`; `randomUUID` from `node:crypto` (all already imported in `run-v2.ts`).
 - Produces:
   - `StoredRunInputV2` gains `readonly leaderboardEligible: boolean;`
@@ -91,96 +93,100 @@ In `packages/database/test/run-v2.spec.ts`, delete the whole test
 (currently lines ~175-183, inside `describe("Protocol V2 private run storage", ...)`), and add these tests in its place:
 
 ```ts
-  it("lists a practice run on the public board, best-score-wins", async () => {
-    const userId = await seedUser("practice-board-write");
-    await savePracticeRunV2(storedRun(userId, "board-run-1", 1_000));
+it("lists a practice run on the public board, best-score-wins", async () => {
+  const userId = await seedUser("practice-board-write");
+  await savePracticeRunV2(storedRun(userId, "board-run-1", 1_000));
 
-    let board = await getLeaderboardV2("grid", 0, 0, userId);
-    expect(board.rows).toHaveLength(1);
-    expect(board.rows[0]?.score).toBe(1_000);
-    expect(board.standing).toMatchObject({ rank: 1, score: 1_000, totalPlayers: 1 });
-
-    await savePracticeRunV2(storedRun(userId, "board-run-2", 400));
-    board = await getLeaderboardV2("grid", 0, 0, userId);
-    expect(board.rows[0]?.score).toBe(1_000);
-
-    await savePracticeRunV2(storedRun(userId, "board-run-3", 1_500));
-    board = await getLeaderboardV2("grid", 0, 0, userId);
-    expect(board.rows[0]?.score).toBe(1_500);
-
-    const entry = await db
-      .select({ runRecordId: leaderboardEntryV2.runRecordId })
-      .from(leaderboardEntryV2)
-      .where(eq(leaderboardEntryV2.userId, userId));
-    const run3 = await db
-      .select({ id: runRecordV2.id })
-      .from(runRecordV2)
-      .where(
-        and(eq(runRecordV2.userId, userId), eq(runRecordV2.runId, "board-run-3")),
-      );
-    expect(entry[0]?.runRecordId).toBe(run3[0]?.id);
+  let board = await getLeaderboardV2("grid", 0, 0, userId);
+  expect(board.rows).toHaveLength(1);
+  expect(board.rows[0]?.score).toBe(1_000);
+  expect(board.standing).toMatchObject({
+    rank: 1,
+    score: 1_000,
+    totalPlayers: 1,
   });
 
-  it("does not list a client-ineligible run but still stores the run row", async () => {
-    const userId = await seedUser("practice-board-ineligible");
-    await savePracticeRunV2(
-      storedRun(userId, "ineligible-run", 9_999, { leaderboardEligible: false }),
+  await savePracticeRunV2(storedRun(userId, "board-run-2", 400));
+  board = await getLeaderboardV2("grid", 0, 0, userId);
+  expect(board.rows[0]?.score).toBe(1_000);
+
+  await savePracticeRunV2(storedRun(userId, "board-run-3", 1_500));
+  board = await getLeaderboardV2("grid", 0, 0, userId);
+  expect(board.rows[0]?.score).toBe(1_500);
+
+  const entry = await db
+    .select({ runRecordId: leaderboardEntryV2.runRecordId })
+    .from(leaderboardEntryV2)
+    .where(eq(leaderboardEntryV2.userId, userId));
+  const run3 = await db
+    .select({ id: runRecordV2.id })
+    .from(runRecordV2)
+    .where(
+      and(eq(runRecordV2.userId, userId), eq(runRecordV2.runId, "board-run-3")),
     );
+  expect(entry[0]?.runRecordId).toBe(run3[0]?.id);
+});
 
-    const board = await getLeaderboardV2("grid", 0, 0, userId);
-    expect(board.rows).toEqual([]);
-    expect(board.standing).toBeNull();
+it("does not list a client-ineligible run but still stores the run row", async () => {
+  const userId = await seedUser("practice-board-ineligible");
+  await savePracticeRunV2(
+    storedRun(userId, "ineligible-run", 9_999, { leaderboardEligible: false }),
+  );
 
-    const stored = await db
-      .select({ runId: runRecordV2.runId })
-      .from(runRecordV2)
-      .where(
-        and(
-          eq(runRecordV2.userId, userId),
-          eq(runRecordV2.runId, "ineligible-run"),
-        ),
-      );
-    expect(stored).toHaveLength(1);
-  });
+  const board = await getLeaderboardV2("grid", 0, 0, userId);
+  expect(board.rows).toEqual([]);
+  expect(board.standing).toBeNull();
 
-  it("leaves no partial board row when the run payload conflicts", async () => {
-    const userId = await seedUser("practice-board-conflict");
-    const input = storedRun(userId, "conflict-run", 700);
-    await savePracticeRunV2(input);
-
-    const changed = JSON.stringify({
-      runId: input.runId,
-      score: 700,
-      changed: true,
-    });
-    await expect(
-      savePracticeRunV2({
-        ...input,
-        finalScore: 5_000,
-        payloadJson: changed,
-        payloadHash: createHash("sha256").update(changed).digest("hex"),
-      }),
-    ).rejects.toBeInstanceOf(RunSubmissionConflictErrorV2);
-
-    const board = await getLeaderboardV2("grid", 0, 0, userId);
-    expect(board.rows[0]?.score).toBe(700);
-  });
-
-  it("ranks two users on the same board", async () => {
-    const a = await seedUser("board-two-a");
-    const b = await seedUser("board-two-b");
-    await savePracticeRunV2(
-      storedRun(a, "two-a", 800, { modeId: "pinpoint", scenarioVersion: 5 }),
+  const stored = await db
+    .select({ runId: runRecordV2.runId })
+    .from(runRecordV2)
+    .where(
+      and(
+        eq(runRecordV2.userId, userId),
+        eq(runRecordV2.runId, "ineligible-run"),
+      ),
     );
-    await savePracticeRunV2(
-      storedRun(b, "two-b", 900, { modeId: "pinpoint", scenarioVersion: 5 }),
-    );
+  expect(stored).toHaveLength(1);
+});
 
-    const board = await getLeaderboardV2("pinpoint", 5, 0, a);
-    expect(board.totalPlayers).toBe(2);
-    expect(board.rows.map((r) => r.score)).toEqual([900, 800]);
-    expect(board.standing).toMatchObject({ rank: 2, totalPlayers: 2 });
+it("leaves no partial board row when the run payload conflicts", async () => {
+  const userId = await seedUser("practice-board-conflict");
+  const input = storedRun(userId, "conflict-run", 700);
+  await savePracticeRunV2(input);
+
+  const changed = JSON.stringify({
+    runId: input.runId,
+    score: 700,
+    changed: true,
   });
+  await expect(
+    savePracticeRunV2({
+      ...input,
+      finalScore: 5_000,
+      payloadJson: changed,
+      payloadHash: createHash("sha256").update(changed).digest("hex"),
+    }),
+  ).rejects.toBeInstanceOf(RunSubmissionConflictErrorV2);
+
+  const board = await getLeaderboardV2("grid", 0, 0, userId);
+  expect(board.rows[0]?.score).toBe(700);
+});
+
+it("ranks two users on the same board", async () => {
+  const a = await seedUser("board-two-a");
+  const b = await seedUser("board-two-b");
+  await savePracticeRunV2(
+    storedRun(a, "two-a", 800, { modeId: "pinpoint", scenarioVersion: 5 }),
+  );
+  await savePracticeRunV2(
+    storedRun(b, "two-b", 900, { modeId: "pinpoint", scenarioVersion: 5 }),
+  );
+
+  const board = await getLeaderboardV2("pinpoint", 5, 0, a);
+  expect(board.totalPlayers).toBe(2);
+  expect(board.rows.map((r) => r.score)).toEqual([900, 800]);
+  expect(board.standing).toMatchObject({ rank: 2, totalPlayers: 2 });
+});
 ```
 
 - [ ] **Step 3: Run the tests to verify they fail**
@@ -209,104 +215,104 @@ In `assertStoredRunInputV2`, add to the large boolean `if (...)` chain (any posi
 In `packages/database/src/run-v2.ts`, replace the entire body of `savePracticeRunV2` — everything from `assertStoredRunInputV2(input);` down to (and including) its final `return ...;` — with:
 
 ```ts
-  assertStoredRunInputV2(input);
+assertStoredRunInputV2(input);
 
-  return db.transaction(async (tx) => {
-    const inserted = await tx
-      .insert(runRecordV2)
+return db.transaction(async (tx) => {
+  const inserted = await tx
+    .insert(runRecordV2)
+    .values({
+      id: randomUUID(),
+      runId: input.runId,
+      userId: input.userId,
+      modeId: input.modeId,
+      scenarioVersion: input.scenarioVersion,
+      scoringVersion: input.scoringVersion,
+      analyticsVersion: input.analyticsVersion,
+      runClass: "practice",
+      serverDisposition: "practice-only",
+      finalScore: input.finalScore,
+      startedAtMs: input.startedAtMs,
+      completedAtMs: input.completedAtMs,
+      activeDurationMs: input.activeDurationMs,
+      payloadHash: input.payloadHash,
+      payloadJson: input.payloadJson,
+      createdAt: new Date(),
+    })
+    .onConflictDoNothing({ target: [runRecordV2.userId, runRecordV2.runId] })
+    .returning({ id: runRecordV2.id });
+
+  let runRecordId: string;
+  let status: "stored" | "already-stored";
+
+  const created = inserted[0];
+  if (created) {
+    runRecordId = created.id;
+    status = "stored";
+  } else {
+    const existing = (
+      await tx
+        .select({
+          id: runRecordV2.id,
+          payloadHash: runRecordV2.payloadHash,
+          runClass: runRecordV2.runClass,
+          serverDisposition: runRecordV2.serverDisposition,
+        })
+        .from(runRecordV2)
+        .where(
+          and(
+            eq(runRecordV2.userId, input.userId),
+            eq(runRecordV2.runId, input.runId),
+          ),
+        )
+        .limit(1)
+    )[0];
+    if (
+      !existing ||
+      existing.payloadHash !== input.payloadHash ||
+      existing.runClass !== "practice" ||
+      existing.serverDisposition !== "practice-only"
+    ) {
+      throw new RunSubmissionConflictErrorV2();
+    }
+    runRecordId = existing.id;
+    status = "already-stored";
+  }
+
+  if (input.leaderboardEligible) {
+    const boardId = createBoardIdV2(
+      input.modeId,
+      input.scenarioVersion,
+      input.scoringVersion,
+    );
+    const now = new Date();
+    await tx
+      .insert(leaderboardEntryV2)
       .values({
         id: randomUUID(),
-        runId: input.runId,
-        userId: input.userId,
+        boardId,
         modeId: input.modeId,
         scenarioVersion: input.scenarioVersion,
         scoringVersion: input.scoringVersion,
-        analyticsVersion: input.analyticsVersion,
-        runClass: "practice",
-        serverDisposition: "practice-only",
-        finalScore: input.finalScore,
-        startedAtMs: input.startedAtMs,
-        completedAtMs: input.completedAtMs,
-        activeDurationMs: input.activeDurationMs,
-        payloadHash: input.payloadHash,
-        payloadJson: input.payloadJson,
-        createdAt: new Date(),
+        userId: input.userId,
+        runRecordId,
+        score: input.finalScore,
+        achievedAt: new Date(input.completedAtMs),
+        updatedAt: now,
       })
-      .onConflictDoNothing({ target: [runRecordV2.userId, runRecordV2.runId] })
-      .returning({ id: runRecordV2.id });
-
-    let runRecordId: string;
-    let status: "stored" | "already-stored";
-
-    const created = inserted[0];
-    if (created) {
-      runRecordId = created.id;
-      status = "stored";
-    } else {
-      const existing = (
-        await tx
-          .select({
-            id: runRecordV2.id,
-            payloadHash: runRecordV2.payloadHash,
-            runClass: runRecordV2.runClass,
-            serverDisposition: runRecordV2.serverDisposition,
-          })
-          .from(runRecordV2)
-          .where(
-            and(
-              eq(runRecordV2.userId, input.userId),
-              eq(runRecordV2.runId, input.runId),
-            ),
-          )
-          .limit(1)
-      )[0];
-      if (
-        !existing ||
-        existing.payloadHash !== input.payloadHash ||
-        existing.runClass !== "practice" ||
-        existing.serverDisposition !== "practice-only"
-      ) {
-        throw new RunSubmissionConflictErrorV2();
-      }
-      runRecordId = existing.id;
-      status = "already-stored";
-    }
-
-    if (input.leaderboardEligible) {
-      const boardId = createBoardIdV2(
-        input.modeId,
-        input.scenarioVersion,
-        input.scoringVersion,
-      );
-      const now = new Date();
-      await tx
-        .insert(leaderboardEntryV2)
-        .values({
-          id: randomUUID(),
-          boardId,
-          modeId: input.modeId,
-          scenarioVersion: input.scenarioVersion,
-          scoringVersion: input.scoringVersion,
-          userId: input.userId,
+      .onConflictDoUpdate({
+        target: [leaderboardEntryV2.boardId, leaderboardEntryV2.userId],
+        set: {
           runRecordId,
           score: input.finalScore,
           achievedAt: new Date(input.completedAtMs),
           updatedAt: now,
-        })
-        .onConflictDoUpdate({
-          target: [leaderboardEntryV2.boardId, leaderboardEntryV2.userId],
-          set: {
-            runRecordId,
-            score: input.finalScore,
-            achievedAt: new Date(input.completedAtMs),
-            updatedAt: now,
-          },
-          setWhere: sql`${leaderboardEntryV2.score} < excluded.score`,
-        });
-    }
+        },
+        setWhere: sql`${leaderboardEntryV2.score} < excluded.score`,
+      });
+  }
 
-    return { id: runRecordId, status };
-  });
+  return { id: runRecordId, status };
+});
 ```
 
 Then run `grep -n "findRunByUserAndRunId" packages/database/src/run-v2.ts`. If the only remaining reference is its own definition, delete the `findRunByUserAndRunId` function.
@@ -324,7 +330,7 @@ Expected: no errors.
 - [ ] **Step 8: Confirm there is no schema delta**
 
 Run: `cd f:/Dev/findmysensi/findmysensi-secure && npm run -w @findmysensi-secure/database db:generate`
-Expected: drizzle-kit reports no changes / creates no new `drizzle/0009_*.sql`. If it *does* create one, discard it (`git checkout -- packages/database/drizzle`) and re-check the schema — the plan assumes zero structural change.
+Expected: drizzle-kit reports no changes / creates no new `drizzle/0009_*.sql`. If it _does_ create one, discard it (`git checkout -- packages/database/drizzle`) and re-check the schema — the plan assumes zero structural change.
 
 - [ ] **Step 9: Commit**
 
@@ -345,10 +351,12 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 ## Task 2: Route wiring + response literal (findmysensi-secure)
 
 **Files:**
+
 - Modify: `apps/api/src/run-v2.ts`
 - Test: `apps/api/src/run-v2.spec.ts`
 
 **Interfaces:**
+
 - Consumes: `savePracticeRunV2` (Task 1 — now expects `leaderboardEligible: boolean` in its input), `getLeaderboardV2` (unchanged).
 - Produces: `POST /api/v2/runs` success body `competitiveStatus: "listed"` (was `"practice-only"`).
 
@@ -360,38 +368,38 @@ Rename `it("stores a valid payload as practice-only and hashes canonical content
 `it("stores a valid payload as a listed board score and hashes canonical content", ...)` and change its body's two expectations to:
 
 ```ts
-    expect(await response?.json()).toMatchObject({
-      protocolVersion: 2,
-      runId: RUN_ID,
-      submissionStatus: "stored",
-      runClass: "practice",
-      competitiveStatus: "listed",
-      leaderboard: { standing: null },
-    });
-    expect(mocks.savePracticeRunV2).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userId: "user-1",
-        runId: RUN_ID,
-        leaderboardEligible: true,
-        payloadHash: expect.stringMatching(/^[0-9a-f]{64}$/),
-      }),
-    );
+expect(await response?.json()).toMatchObject({
+  protocolVersion: 2,
+  runId: RUN_ID,
+  submissionStatus: "stored",
+  runClass: "practice",
+  competitiveStatus: "listed",
+  leaderboard: { standing: null },
+});
+expect(mocks.savePracticeRunV2).toHaveBeenCalledWith(
+  expect.objectContaining({
+    userId: "user-1",
+    runId: RUN_ID,
+    leaderboardEligible: true,
+    payloadHash: expect.stringMatching(/^[0-9a-f]{64}$/),
+  }),
+);
 ```
 
 Add a new test immediately after it:
 
 ```ts
-  it("forwards a client-ineligible flag to the store", async () => {
-    const payload = validRunPayload();
-    payload.clientEligibility = {
-      leaderboardEligible: false,
-      invalidationReasons: ["paused-mid-run"],
-    };
-    await handleRunV2Request(runRequest(JSON.stringify(payload)));
-    expect(mocks.savePracticeRunV2).toHaveBeenCalledWith(
-      expect.objectContaining({ leaderboardEligible: false }),
-    );
-  });
+it("forwards a client-ineligible flag to the store", async () => {
+  const payload = validRunPayload();
+  payload.clientEligibility = {
+    leaderboardEligible: false,
+    invalidationReasons: ["paused-mid-run"],
+  };
+  await handleRunV2Request(runRequest(JSON.stringify(payload)));
+  expect(mocks.savePracticeRunV2).toHaveBeenCalledWith(
+    expect.objectContaining({ leaderboardEligible: false }),
+  );
+});
 ```
 
 - [ ] **Step 2: Run the test to verify it fails**
@@ -444,10 +452,12 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 ## Task 3: Transitional response literal (findmysensi protocol)
 
 **Files:**
+
 - Modify: `packages/protocol/src/v2/run-submission.ts`
 - Test: `packages/protocol/test/run-submission-v2.spec.ts`
 
 **Interfaces:**
+
 - Produces: `PracticeRunSubmissionResponseV2Schema.competitiveStatus` accepts `"practice-only"` **and** `"listed"`. `PracticeRunSubmissionResponseV2` type widens to that union.
 
 - [ ] **Step 1: Add the schema test**
@@ -456,43 +466,43 @@ In `packages/protocol/test/run-submission-v2.spec.ts`, add a new `it` immediatel
 `it("models a practice-only response without inventing a standing", ...)`:
 
 ```ts
-  it("accepts both the transitional and the new competitiveStatus", () => {
-    const base = {
-      protocolVersion: 2,
-      runId: validClickRun().runId,
-      submissionStatus: "stored",
-      runClass: "practice",
-      leaderboard: {
-        board: {
-          boardId: "grid:scenario-0:scoring-0",
-          modeId: "grid",
-          scenarioVersion: 0,
-          scoringVersion: 0,
-        },
-        totalPlayers: 0,
-        percentileMinimumPlayers: LEADERBOARD_PERCENTILE_MIN_PLAYERS_V2,
-        standing: null,
+it("accepts both the transitional and the new competitiveStatus", () => {
+  const base = {
+    protocolVersion: 2,
+    runId: validClickRun().runId,
+    submissionStatus: "stored",
+    runClass: "practice",
+    leaderboard: {
+      board: {
+        boardId: "grid:scenario-0:scoring-0",
+        modeId: "grid",
+        scenarioVersion: 0,
+        scoringVersion: 0,
       },
-    } as const;
-    expect(
-      PracticeRunSubmissionResponseV2Schema.safeParse({
-        ...base,
-        competitiveStatus: "practice-only",
-      }).success,
-    ).toBe(true);
-    expect(
-      PracticeRunSubmissionResponseV2Schema.safeParse({
-        ...base,
-        competitiveStatus: "listed",
-      }).success,
-    ).toBe(true);
-    expect(
-      PracticeRunSubmissionResponseV2Schema.safeParse({
-        ...base,
-        competitiveStatus: "ranked",
-      }).success,
-    ).toBe(false);
-  });
+      totalPlayers: 0,
+      percentileMinimumPlayers: LEADERBOARD_PERCENTILE_MIN_PLAYERS_V2,
+      standing: null,
+    },
+  } as const;
+  expect(
+    PracticeRunSubmissionResponseV2Schema.safeParse({
+      ...base,
+      competitiveStatus: "practice-only",
+    }).success,
+  ).toBe(true);
+  expect(
+    PracticeRunSubmissionResponseV2Schema.safeParse({
+      ...base,
+      competitiveStatus: "listed",
+    }).success,
+  ).toBe(true);
+  expect(
+    PracticeRunSubmissionResponseV2Schema.safeParse({
+      ...base,
+      competitiveStatus: "ranked",
+    }).success,
+  ).toBe(false);
+});
 ```
 
 (`LEADERBOARD_PERCENTILE_MIN_PLAYERS_V2` and `validClickRun` are already imported in this spec file.)
@@ -539,14 +549,17 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 ## Task 4: api-client response fixture (findmysensi)
 
 **Files:**
+
 - Test: `packages/api-client/test/run-v2.spec.ts`
 
 **Interfaces:**
+
 - Consumes: `PracticeRunSubmissionResponseV2Schema` (Task 3). No source change to `packages/api-client/src/browser.ts` — `submitPracticeRunV2` already validates against the schema.
 
 - [ ] **Step 1: Update the fixture + assertion**
 
 In `packages/api-client/test/run-v2.spec.ts`:
+
 - line ~69: `competitiveStatus: "practice-only",` -> `competitiveStatus: "listed",`
 - line ~98: `expect(result.data?.competitiveStatus).toBe("practice-only");` -> `expect(result.data?.competitiveStatus).toBe("listed");`
 
@@ -570,10 +583,12 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 ## Task 5: Results-screen copy in the view-model (findmysensi)
 
 **Files:**
+
 - Modify: `apps/web/src/features/results/results-overview.ts`
 - Test: `apps/web/src/features/results/results-overview.spec.ts`
 
 **Interfaces:**
+
 - No signature change. `buildResultsOverview(current, history, leaderboard?)` unchanged. Only `note` strings inside `getLeaderboardMetrics` and `getScoreDeltaNote` change.
 
 - [ ] **Step 1: Update the view-model tests**
@@ -584,41 +599,41 @@ Rename `it("shows only a verified server standing as global rank and percentile"
 `it("shows the server standing as rank and percentile", ...)` and change its two `toMatchObject` blocks to:
 
 ```ts
-    expect(metric(overview.summaryMetrics, "Leaderboard Rank")).toMatchObject({
-      value: "#3",
-      note: "Best of 25 on this board",
-    });
-    expect(metric(overview.summaryMetrics, "Percentile")).toMatchObject({
-      value: "91.7%",
-      note: "Top of 25 ranked players",
-    });
+expect(metric(overview.summaryMetrics, "Leaderboard Rank")).toMatchObject({
+  value: "#3",
+  note: "Best of 25 on this board",
+});
+expect(metric(overview.summaryMetrics, "Percentile")).toMatchObject({
+  value: "91.7%",
+  note: "Top of 25 ranked players",
+});
 ```
 
 Add a new test at the end of the `describe("buildResultsOverview", ...)` block:
 
 ```ts
-  it("prompts to sync when there is no server standing yet", () => {
-    const current = run();
-    const overview = buildResultsOverview(current, [current], {
-      board: {
-        boardId: "grid:scenario-0:scoring-0",
-        modeId: "grid",
-        scenarioVersion: 0,
-        scoringVersion: 0,
-      },
-      totalPlayers: 0,
-      percentileMinimumPlayers: 10,
-      standing: null,
-    });
-    expect(metric(overview.summaryMetrics, "Leaderboard Rank")).toMatchObject({
-      value: "—",
-      note: "Sync your run to see your rank",
-    });
-    expect(metric(overview.summaryMetrics, "Percentile")).toMatchObject({
-      value: "—",
-      note: "Awaiting sync",
-    });
+it("prompts to sync when there is no server standing yet", () => {
+  const current = run();
+  const overview = buildResultsOverview(current, [current], {
+    board: {
+      boardId: "grid:scenario-0:scoring-0",
+      modeId: "grid",
+      scenarioVersion: 0,
+      scoringVersion: 0,
+    },
+    totalPlayers: 0,
+    percentileMinimumPlayers: 10,
+    standing: null,
   });
+  expect(metric(overview.summaryMetrics, "Leaderboard Rank")).toMatchObject({
+    value: "—",
+    note: "Sync your run to see your rank",
+  });
+  expect(metric(overview.summaryMetrics, "Percentile")).toMatchObject({
+    value: "—",
+    note: "Awaiting sync",
+  });
+});
 ```
 
 - [ ] **Step 2: Run the tests to verify they fail**
@@ -681,27 +696,27 @@ In the same file, in `getScoreDeltaNote`:
 Change:
 
 ```ts
-    return current.leaderboardEligible
-      ? "First eligible result"
-      : "No eligible comparison";
+return current.leaderboardEligible
+  ? "First eligible result"
+  : "No eligible comparison";
 ```
 
 to:
 
 ```ts
-    return current.leaderboardEligible ? "First run" : "Run not counted";
+return current.leaderboardEligible ? "First run" : "Run not counted";
 ```
 
 Change:
 
 ```ts
-  if (!current.leaderboardEligible) return "Run not eligible for PB";
+if (!current.leaderboardEligible) return "Run not eligible for PB";
 ```
 
 to:
 
 ```ts
-  if (!current.leaderboardEligible) return "Run not counted for best";
+if (!current.leaderboardEligible) return "Run not counted for best";
 ```
 
 - [ ] **Step 5: Run the tests to verify they pass**
@@ -724,12 +739,14 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 ## Task 6: Results screen copy + leaderboard link (findmysensi)
 
 **Files:**
+
 - Modify: `apps/web/src/features/results/routes.ts`
 - Modify: `apps/web/src/features/results/PracticeResults.tsx`
 - Test: `apps/web/src/features/results/practice-results.spec.ts`
 - Test: `apps/web/src/features/results/routes.spec.ts` (existing — extend if it asserts the route object shape; otherwise leave)
 
 **Interfaces:**
+
 - Produces: `PracticeResultsRoutes` gains `readonly leaderboard: string;` = `/app/train/${encodedMode}/leaderboard`.
 
 - [ ] **Step 1: Update the copy-integrity test**
@@ -737,21 +754,21 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 In `apps/web/src/features/results/practice-results.spec.ts`, replace these two lines:
 
 ```ts
-    expect(normalizedSource).toContain("Saved to Account · Practice");
-    expect(normalizedSource).toContain(
-      "Practice runs cannot enter the official leaderboard without authoritative Ranked verification.",
-    );
+expect(normalizedSource).toContain("Saved to Account · Practice");
+expect(normalizedSource).toContain(
+  "Practice runs cannot enter the official leaderboard without authoritative Ranked verification.",
+);
 ```
 
 with:
 
 ```ts
-    expect(normalizedSource).toContain("Saved to Account");
-    expect(normalizedSource).toContain(
-      "Your best score for this mode is now on the public leaderboard.",
-    );
-    expect(normalizedSource).not.toContain("authoritative Ranked verification");
-    expect(normalizedSource).toContain("View leaderboard");
+expect(normalizedSource).toContain("Saved to Account");
+expect(normalizedSource).toContain(
+  "Your best score for this mode is now on the public leaderboard.",
+);
+expect(normalizedSource).not.toContain("authoritative Ranked verification");
+expect(normalizedSource).toContain("View leaderboard");
 ```
 
 Leave every other assertion untouched.
@@ -764,6 +781,7 @@ Expected: FAIL.
 - [ ] **Step 3: Add the `leaderboard` route**
 
 In `apps/web/src/features/results/routes.ts`:
+
 - Add `readonly leaderboard: string;` to the `PracticeResultsRoutes` interface.
 - In the returned object add:
 
@@ -795,9 +813,9 @@ In the eligibility `role="note"` block, change the fallback sentence
 In the `<div className="app-results-actions">` block, insert a link between the "Play Again" and "Return to Hub" anchors:
 
 ```tsx
-            <a href={routes.leaderboard} className="app-button app-button-ghost">
-              View leaderboard
-            </a>
+<a href={routes.leaderboard} className="app-button app-button-ghost">
+  View leaderboard
+</a>
 ```
 
 - [ ] **Step 5: Run the test to verify it passes**
@@ -820,17 +838,20 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 ## Task 7: Leaderboard view-model (findmysensi)
 
 **Files:**
+
 - Create: `apps/web/src/features/leaderboard/mode-leaderboard.ts`
 - Create: `apps/web/src/features/leaderboard/mode-leaderboard.spec.ts`
 
 **Interfaces:**
+
 - Consumes: `LeaderboardResponseV2` type from `@findmysensi/protocol`.
 - Produces:
+
   ```ts
   export interface LeaderboardViewRow {
     readonly rank: number;
     readonly username: string;
-    readonly score: string;      // pre-formatted, e.g. "151,200"
+    readonly score: string; // pre-formatted, e.g. "151,200"
     readonly achievedAt: string; // pre-formatted, e.g. "Sep 8, 2026"
     readonly isSelf: boolean;
   }
@@ -867,8 +888,18 @@ function response(
       scoringVersion: 0,
     },
     rows: [
-      { rank: 1, username: "ace", score: 151200, achievedAt: "2026-09-08T00:00:00.000Z" },
-      { rank: 2, username: "bee", score: 140000, achievedAt: "2026-09-08T00:00:00.000Z" },
+      {
+        rank: 1,
+        username: "ace",
+        score: 151200,
+        achievedAt: "2026-09-08T00:00:00.000Z",
+      },
+      {
+        rank: 2,
+        username: "bee",
+        score: 140000,
+        achievedAt: "2026-09-08T00:00:00.000Z",
+      },
     ],
     totalPlayers: 2,
     percentileMinimumPlayers: 10,
@@ -1054,6 +1085,7 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 ## Task 8: Leaderboard page + routes + component (findmysensi)
 
 **Files:**
+
 - Create: `apps/web/src/features/leaderboard/routes.ts`
 - Create: `apps/web/src/features/leaderboard/routes.spec.ts`
 - Create: `apps/web/src/features/leaderboard/ModeLeaderboard.tsx`
@@ -1062,8 +1094,10 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 - Modify: `apps/web/app/globals.css`
 
 **Interfaces:**
+
 - Consumes: `buildLeaderboardView` (Task 7); `BrowserApiClient.getLeaderboardV2(modeId, scenarioVersion, scoringVersion)` -> `ApiResult<LeaderboardResponseV2>` and `.getSession()` -> `SessionResponse | null` (existing); `trainerModeManifest` from `apps/web/src/trainer/mode-manifest.js` (existing — entries expose `.enabled`, `.scenarioEntry.presentation.title`, `.scenarioEntry.definition.scenarioVersion`, `.scenarioEntry.definition.scoringVersion`).
 - Produces:
+
   ```ts
   export interface ModeLeaderboardRoutes {
     readonly play: string;
@@ -1179,10 +1213,7 @@ export function ModeLeaderboard({
 
       setState({
         kind: "ready",
-        view: buildLeaderboardView(
-          board.data,
-          session?.user?.username ?? null,
-        ),
+        view: buildLeaderboardView(board.data, session?.user?.username ?? null),
       });
     })();
 
@@ -1380,11 +1411,13 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 ## Task 9: Repoint the homepage widget + landing/hub copy (findmysensi)
 
 **Files:**
+
 - Modify: `apps/web/src/features/landing/LiveLeaderboard.tsx`
 - Modify: `apps/web/app/page.tsx`
 - Modify: `apps/web/app/app/page.tsx`
 
 **Interfaces:**
+
 - Consumes: `BrowserApiClient.getLeaderboardV2("grid", 0, 0)` -> `ApiResult<LeaderboardResponseV2>`; `LeaderboardRowV2` type (`{ rank, username, score, achievedAt }` — no `userId`).
 
 - [ ] **Step 1: Repoint `LiveLeaderboard.tsx`**
@@ -1395,16 +1428,16 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 - In `load()`, replace `const result = await client.getLeaderboard("gridshot");` and the lines that follow it through `setError(null);` with:
 
 ```ts
-        const result = await client.getLeaderboardV2("grid", 0, 0);
-        if (disposed) return;
+const result = await client.getLeaderboardV2("grid", 0, 0);
+if (disposed) return;
 
-        if (!result.ok || !result.data) {
-          setRows(null);
-          setError(result.error ?? "Leaderboard is unavailable.");
-          return;
-        }
-        setRows(result.data.rows.slice());
-        setError(null);
+if (!result.ok || !result.data) {
+  setRows(null);
+  setError(result.error ?? "Leaderboard is unavailable.");
+  return;
+}
+setRows(result.data.rows.slice());
+setError(null);
 ```
 
 - In the `<tbody>` map, change `key={row.userId}` to `key={`${row.rank}-${row.username}`}`.
@@ -1418,19 +1451,19 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 In `apps/web/app/page.tsx` (the `id="leaderboard"` section, ~line 186) replace:
 
 ```tsx
-          <p>
-            Practice history stays local. The public board stays empty until
-            server-verified competition is ready.
-          </p>
+<p>
+  Practice history stays local. The public board stays empty until
+  server-verified competition is ready.
+</p>
 ```
 
 with:
 
 ```tsx
-          <p>
-            Every synced run lands on a public per-mode board. Your best score
-            shows your rank the moment it saves.
-          </p>
+<p>
+  Every synced run lands on a public per-mode board. Your best score shows your
+  rank the moment it saves.
+</p>
 ```
 
 - [ ] **Step 3: Trainer hub copy**
@@ -1460,6 +1493,7 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 ## Task 10: Documentation (findmysensi)
 
 **Files:**
+
 - Modify: `docs/protocol/v2/runs.md`
 - Modify: `docs/protocol/v2/compatibility.md`
 - Modify: `docs/adr/0001-repository-and-trust-boundary.md`
@@ -1495,7 +1529,6 @@ with
 Append to the end of the document:
 
 ```markdown
-
 > **2026-09-09 update:** the ranked / proof-replay leaderboard projection was
 > not built. Practice runs are listed on the public leaderboard directly by
 > `POST /api/v2/runs` under a trust-the-client model. `storeAuthoritativelyVerifiedRunV2`
@@ -1560,6 +1593,7 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 ## Self-Review
 
 **Spec coverage:**
+
 - Writer into `leaderboard_entry_v2`, best-score-wins, no publication check → Task 1. ✅
 - Transactional save; rollback leaves no partial board row → Task 1 Step 5 + the "leaves no partial board row" test. ✅
 - D1 (skip ineligible) → Task 1 (`input.leaderboardEligible` guard) + Task 2 (route passes it). ✅
@@ -1575,6 +1609,7 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 **Placeholder scan:** No "TBD" / "handle appropriately" / "similar to Task N". Every code step contains literal code. The E2E command in Task 11 Step 4 is intentionally "check the repo's script" because the exact runner name is not pinned in this plan's context — flagged, not blank.
 
 **Type consistency:**
+
 - `StoredRunInputV2.leaderboardEligible: boolean` — defined Task 1 Step 4, consumed Task 2 Step 3 (`parsed.data.clientEligibility.leaderboardEligible`). ✅
 - `buildLeaderboardView(response, selfUsername) -> LeaderboardView` — defined Task 7, consumed Task 8 `ModeLeaderboard.tsx`. ✅
 - `getModeLeaderboardRoutes(mode) -> { play, results, hub }` — defined Task 8 Step 3, used in `ModeLeaderboard.tsx` (same task). ✅

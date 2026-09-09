@@ -22,9 +22,7 @@ export function PlayerAvatar({
   const avatar =
     AVATAR_OPTIONS.find((option) => option.id === avatarId) ??
     AVATAR_OPTIONS[0]!;
-  const frame = PROFILE_FRAME_OPTIONS.find(
-    (option) => option.id === frameId,
-  );
+  const frame = PROFILE_FRAME_OPTIONS.find((option) => option.id === frameId);
 
   return (
     <span

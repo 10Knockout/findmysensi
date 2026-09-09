@@ -68,23 +68,23 @@ Homepage widget:  GET /api/v2/leaderboards/grid?scenarioVersion=0&scoringVersion
 
 ### Components touched
 
-| Component | Repo | Change |
-|---|---|---|
-| `packages/database/src/run-v2.ts` `savePracticeRunV2` | secure | Wrap in a transaction; after the run insert, upsert `leaderboard_entry_v2`. Remove publication dependency. |
-| `packages/database/drizzle/0009_*.sql` + `meta` | secure | Migration: no structural change required to `leaderboard_entry_v2`; migration exists to record intent. `leaderboard_publication_v2` retained, unused. |
-| `apps/api/src/run-v2.ts` `handlePracticeRunSubmission` | secure | Response literal `competitiveStatus: "practice-only"` -> `"listed"`. No other change (already fetches + returns `leaderboard`). |
-| `packages/public-runtime/src/run-v2.ts` | secure | No change (holds request schema only; response is a plain object literal in the route). |
-| `packages/protocol/src/v2/run-submission.ts` | public | `PracticeRunSubmissionResponseV2Schema.competitiveStatus` literal `"practice-only"` -> `"listed"` (see O3 for a transitional union). |
-| `packages/api-client/src/browser.ts` | public | No functional change; `submitPracticeRunV2` already validates the response schema. `getLeaderboardV2` already present for page use. |
-| `apps/web/src/features/results/results-overview.ts` | public | Rewrite the two leaderboard-metric notes and the score-delta note wording. No branching-logic change. |
-| `apps/web/src/features/results/PracticeResults.tsx` | public | `getRunSyncCopy` "saved" tag/description rewritten. Eligibility `role="note"` block wording updated. Add a link to the new leaderboard page. |
-| `apps/web/app/app/train/[mode]/leaderboard/page.tsx` | public | **New.** Server component: resolve mode from `trainerModeManifest`, 404 if disabled, render `<ModeLeaderboard>`. |
-| `apps/web/app/train/[mode]/leaderboard/page.tsx` | public | **New.** Redirect stub -> `/app/train/[mode]/leaderboard` (mirrors the results route pattern). |
-| `apps/web/src/features/leaderboard/ModeLeaderboard.tsx` | public | **New.** Client component: calls `getLeaderboardV2`, renders top 50 + highlighted self row + own standing when outside top 50 + empty/error states. |
-| `apps/web/src/features/leaderboard/routes.ts` | public | **New.** `getModeLeaderboardRoutes(mode)` helper, mirroring `results/routes.ts`. |
-| `apps/web/src/features/landing/LiveLeaderboard.tsx` | public | Switch to `getLeaderboardV2("grid", 0, 0)`; adapt row shape (`LeaderboardRowV2`: `rank/username/score/achievedAt`, no `userId`). |
-| `apps/web/app/app/workouts/page.tsx` + `[mode]` training page | public | Add a "Leaderboard" link per mode. |
-| `docs/adr/0001-repository-and-trust-boundary.md` | public | Note that practice runs now populate the public board directly; the "verified-only projection" statement is superseded for practice modes. |
+| Component                                                       | Repo   | Change                                                                                                                                                                   |
+| --------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `packages/database/src/run-v2.ts` `savePracticeRunV2`           | secure | Wrap in a transaction; after the run insert, upsert `leaderboard_entry_v2`. Remove publication dependency.                                                               |
+| `packages/database/drizzle/0009_*.sql` + `meta`                 | secure | Migration: no structural change required to `leaderboard_entry_v2`; migration exists to record intent. `leaderboard_publication_v2` retained, unused.                    |
+| `apps/api/src/run-v2.ts` `handlePracticeRunSubmission`          | secure | Response literal `competitiveStatus: "practice-only"` -> `"listed"`. No other change (already fetches + returns `leaderboard`).                                          |
+| `packages/public-runtime/src/run-v2.ts`                         | secure | No change (holds request schema only; response is a plain object literal in the route).                                                                                  |
+| `packages/protocol/src/v2/run-submission.ts`                    | public | `PracticeRunSubmissionResponseV2Schema.competitiveStatus` literal `"practice-only"` -> `"listed"` (see O3 for a transitional union).                                     |
+| `packages/api-client/src/browser.ts`                            | public | No functional change; `submitPracticeRunV2` already validates the response schema. `getLeaderboardV2` already present for page use.                                      |
+| `apps/web/src/features/results/results-overview.ts`             | public | Rewrite the two leaderboard-metric notes and the score-delta note wording. No branching-logic change.                                                                    |
+| `apps/web/src/features/results/PracticeResults.tsx`             | public | `getRunSyncCopy` "saved" tag/description rewritten. Eligibility `role="note"` block wording updated. Add a link to the new leaderboard page.                             |
+| `apps/web/app/app/train/[mode]/leaderboard/page.tsx`            | public | **New.** Server component: resolve mode from `trainerModeManifest`, 404 if disabled, render `<ModeLeaderboard>`.                                                         |
+| `apps/web/app/train/[mode]/leaderboard/page.tsx`                | public | **New.** Redirect stub -> `/app/train/[mode]/leaderboard` (mirrors the results route pattern).                                                                           |
+| `apps/web/src/features/leaderboard/ModeLeaderboard.tsx`         | public | **New.** Client component: calls `getLeaderboardV2`, renders top 50 + highlighted self row + own standing when outside top 50 + empty/error states.                      |
+| `apps/web/src/features/leaderboard/routes.ts`                   | public | **New.** `getModeLeaderboardRoutes(mode)` helper, mirroring `results/routes.ts`.                                                                                         |
+| `apps/web/src/features/landing/LiveLeaderboard.tsx`             | public | Switch to `getLeaderboardV2("grid", 0, 0)`; adapt row shape (`LeaderboardRowV2`: `rank/username/score/achievedAt`, no `userId`).                                         |
+| `apps/web/app/app/workouts/page.tsx` + `[mode]` training page   | public | Add a "Leaderboard" link per mode.                                                                                                                                       |
+| `docs/adr/0001-repository-and-trust-boundary.md`                | public | Note that practice runs now populate the public board directly; the "verified-only projection" statement is superseded for practice modes.                               |
 | `docs/protocol/v2/runs.md`, `docs/protocol/v2/compatibility.md` | public | Rewrite: `POST /api/v2/runs` now lists the run on the public board; remove "no public route may create a leaderboard row" language; document the trust-the-client model. |
 
 ---
@@ -194,6 +194,7 @@ The `!latestRun.leaderboardEligible` note block: see **O1**.
 ### Homepage widget
 
 `LiveLeaderboard.tsx`:
+
 - Replace `client.getLeaderboard("gridshot")` with
   `client.getLeaderboardV2("grid", 0, 0)`.
 - Row type becomes `LeaderboardRowV2` (`rank`, `username`, `score`,
@@ -205,19 +206,20 @@ The `!latestRun.leaderboardEligible` note block: see **O1**.
 
 ## Error handling
 
-| Situation | Behaviour |
-|---|---|
-| Board upsert fails inside the transaction | Whole `savePracticeRunV2` transaction rolls back; route returns `503`. The run is **not** stored — consistent with today's all-or-nothing save. Client keeps the local run and retries on next results view. |
-| `runId` reused with different payload | `409` (unchanged). |
-| Idempotent resubmit | `200 already-stored`; board upsert is a no-op or a harmless re-point; response still carries current `standing`. |
-| Leaderboard read route down while submitting | Route currently lets `getLeaderboardV2` throw -> `503`. Leave as-is. |
-| Leaderboard page: API error / offline | Component shows its error state; no crash. |
-| Leaderboard page: unknown / disabled mode | `notFound()` (404). |
-| Player has no score on a board yet (viewing the page) | Empty or "not on this board yet" pinned row; never an error. |
+| Situation                                             | Behaviour                                                                                                                                                                                                    |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Board upsert fails inside the transaction             | Whole `savePracticeRunV2` transaction rolls back; route returns `503`. The run is **not** stored — consistent with today's all-or-nothing save. Client keeps the local run and retries on next results view. |
+| `runId` reused with different payload                 | `409` (unchanged).                                                                                                                                                                                           |
+| Idempotent resubmit                                   | `200 already-stored`; board upsert is a no-op or a harmless re-point; response still carries current `standing`.                                                                                             |
+| Leaderboard read route down while submitting          | Route currently lets `getLeaderboardV2` throw -> `503`. Leave as-is.                                                                                                                                         |
+| Leaderboard page: API error / offline                 | Component shows its error state; no crash.                                                                                                                                                                   |
+| Leaderboard page: unknown / disabled mode             | `notFound()` (404).                                                                                                                                                                                          |
+| Player has no score on a board yet (viewing the page) | Empty or "not on this board yet" pinned row; never an error.                                                                                                                                                 |
 
 ## Testing
 
 **Secure repo (`vitest`):**
+
 - `savePracticeRunV2`:
   - first submit -> `run_record_v2` row **and** `leaderboard_entry_v2` row, score matches.
   - second submit, higher score -> entry updated, `run_record_id` re-pointed.
@@ -229,6 +231,7 @@ The `!latestRun.leaderboardEligible` note block: see **O1**.
 - `getLeaderboardV2`: existing tests still pass; add a case asserting a practice-written entry appears.
 
 **Public repo (`vitest`):**
+
 - `PracticeRunSubmissionResponseV2Schema` accepts `"listed"` (and, transitionally, `"practice-only"` per O3).
 - `results-overview.spec.ts`: update expected note strings; add a case with a populated `standing` asserting `#rank` + percentile rendering.
 - `practice-results.spec.ts`: update the "cannot enter the official leaderboard" assertion to the new copy.
@@ -236,6 +239,7 @@ The `!latestRun.leaderboardEligible` note block: see **O1**.
 - `api-client` `run-v2.spec.ts`: response fixture uses `"listed"`.
 
 **E2E (`tests/e2e`, Chromium):**
+
 - Existing `public-smoke` updated if it asserts leaderboard copy.
 - Optional new journey: authenticated run -> results shows a numeric rank -> leaderboard page lists the player.
 

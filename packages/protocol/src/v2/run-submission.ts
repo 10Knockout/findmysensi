@@ -294,7 +294,10 @@ export const LeaderboardBoardV2Schema = z
     scoringVersion: z.number().int().nonnegative().max(65_535),
     // Optional defaults keep public-first deploys compatible with the older
     // non-seasonal API response. New API responses always include all three.
-    seasonId: z.string().regex(/^\d{4}-\d{2}$/).optional(),
+    seasonId: z
+      .string()
+      .regex(/^\d{4}-\d{2}$/)
+      .optional(),
     seasonStartsAt: z.string().datetime().optional(),
     seasonEndsAt: z.string().datetime().optional(),
   })
