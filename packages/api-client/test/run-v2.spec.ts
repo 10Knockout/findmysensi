@@ -183,7 +183,7 @@ describe("BrowserApiClient Protocol V2 leaderboard", () => {
       ok: true,
     });
     expect(fetchSpy).toHaveBeenCalledWith(
-      "/api/v2/leaderboards/grid?scenarioVersion=2&scoringVersion=3",
+      "/api/v2/leaderboards/grid/2/3/50/0",
       expect.objectContaining({ method: "GET", cache: "no-store" }),
     );
 
@@ -242,7 +242,7 @@ describe("BrowserApiClient Protocol V2 leaderboard", () => {
       }),
     ).resolves.toMatchObject({ ok: true });
     expect(fetchSpy).toHaveBeenCalledWith(
-      "/api/v2/leaderboards/grid?scenarioVersion=0&scoringVersion=0&limit=10&offset=20",
+      "/api/v2/leaderboards/grid/0/0/10/20",
       expect.objectContaining({ method: "GET" }),
     );
   });
