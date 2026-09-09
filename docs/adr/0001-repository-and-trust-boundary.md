@@ -33,3 +33,10 @@ If private anti-cheat heuristics, production signing keys, database connection s
 
 - **Positive**: Clean separation of open-source trainer logic and server-authoritative security; zero risk of public leaks of private heuristics or database credentials; clear contribution guidelines for open-source developers.
 - **Negative**: Coordinated feature releases requiring changes in both repositories must follow a formal Release Candidate (RC) package flow and strict cross-repository contract testing.
+
+> **2026-09-09 update:** the ranked / proof-replay leaderboard projection was
+> not built. Practice runs are listed on the public leaderboard directly by
+> `POST /api/v2/runs` under a trust-the-client model (best-score-wins per mode
+> board; runs the client flags ineligible are excluded). `storeAuthoritativelyVerifiedRunV2`
+> and the `leaderboard_publication_v2` table remain in `findmysensi-secure`,
+> unused, as the seam for a future verified flow.

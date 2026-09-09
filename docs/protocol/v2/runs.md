@@ -1,19 +1,17 @@
-# Protocol V2: Practice Run Sync and Verified Leaderboard Reads
+# Protocol V2: Practice Run Sync and Leaderboard Reads
 
 ## Status and trust boundary
 
-`POST /api/v2/runs` is an authenticated, private **practice-summary sync**.
-It stores a completed run for the player's own history. It does not turn that
-run into Ranked, an official personal best, or a global leaderboard entry.
+`POST /api/v2/runs` is an authenticated **practice-run sync**. It stores a
+completed run for the player's own history and lists the run on the public
+per-mode leaderboard: the server records the client-reported `finalScore` as
+the player's best for that board when it beats their previous best.
 
-The request's `clientEligibility` field describes local technical conditions
-for user feedback. It is never accepted as an authoritative competitive
-decision, and the browser cannot select a competitive run class.
-
-An official leaderboard projection may only consume a server-side run whose
-immutable disposition is `verified`. No public V2 route can create that
-disposition until server-issued run identity, bounded proof capture, and
-authoritative deterministic replay are implemented and reviewed.
+There is no replay verification — the model is trust-the-client. The only
+guard is `clientEligibility.leaderboardEligible`: a run the client marks
+ineligible (paused mid-run, pointer-lock lost, incomplete) is still stored to
+the player's history but is not written to the board. The browser still cannot
+select a run class; every stored run is `runClass: "practice"`.
 
 ## Endpoints
 
@@ -26,8 +24,8 @@ authoritative deterministic replay are implemented and reviewed.
 - Returns `200` with `submissionStatus: "already-stored"` for an identical
   retry.
 - Returns `409` when the same user reuses a `runId` with different content.
-- Always returns `runClass: "practice"` and
-  `competitiveStatus: "practice-only"`.
+- Always returns `runClass: "practice"`; `competitiveStatus` is `"listed"`
+  (transitional builds may still send `"practice-only"`).
 
 ### `GET /api/v2/leaderboards/:modeId`
 
