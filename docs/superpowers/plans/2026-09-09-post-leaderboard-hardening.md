@@ -1578,7 +1578,7 @@ Not implemented here. The owner runs the trainer on a real 7th-gen i3 / integrat
 
 ## Phase 9 — M17 final release
 
-- [ ] All of Phases 1–7 merged and deployed; Phase 8 findings triaged.
+- [ ] Phases 1–5 and 7 merged and deployed; Phase 6 either landed after its prerequisites or explicitly deferred; Phase 8 findings triaged.
 - [ ] Run the full verify gate on both repos one last time.
 - [ ] Tag both repos `v1.0.0`, write release notes summarising: 12 modes, Find My Sensi, workouts, monthly per-mode leaderboards, profile cosmetics, impossible-value anti-cheat, bounded-proof verification (if Phase 6 landed), CSP + rate limits.
 - [ ] Update `docs/PROJECT_ROADMAP.md`: M14–M17 done.
