@@ -31,6 +31,7 @@ describe("Switch Track adapter", () => {
         createTick(tick),
         createAngleUnits(target.xAngleUnits),
         createPitchUnits(target.yAngleUnits),
+        true,
       );
     }
 
@@ -55,6 +56,25 @@ describe("Switch Track adapter", () => {
 
     const metrics = adapter.computeMetrics(200);
     expect(metrics.onTargetTicks).toBe(0);
+    expect(metrics.switchesCompleted).toBe(0);
+  });
+
+  it("does not complete a switch from unfired contact", () => {
+    const adapter = createSwitchTrackModeAdapter();
+    adapter.initialize(createPrngV1([1, 2, 3, 4]));
+
+    for (let tick = 1; tick <= SWITCH_TRACK_TTK_TICKS * 2; tick++) {
+      const target = adapter.getRenderTargets()[0]!;
+      adapter.onSimulationTick(
+        createTick(tick),
+        createAngleUnits(target.xAngleUnits),
+        createPitchUnits(target.yAngleUnits),
+        false,
+      );
+    }
+
+    const metrics = adapter.computeMetrics(SWITCH_TRACK_TTK_TICKS * 2);
+    expect(metrics.onTargetTicks).toBeGreaterThan(0);
     expect(metrics.switchesCompleted).toBe(0);
   });
 

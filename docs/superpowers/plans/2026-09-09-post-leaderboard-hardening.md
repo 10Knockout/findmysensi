@@ -10,7 +10,7 @@
 - **Phase 4** (error surface) — ✅ done, merged + pushed (both repos). Branded `not-found.tsx` / `error.tsx` / `global-error.tsx`; HSTS in the API's `SECURITY_HEADERS`; `error-surface.spec.ts` audit test (leak regex + HSTS assertion). The audit caught two real `message: error.message` sites (`app.ts` OTP resend, `run-v2.ts` run conflict) — both fixed to route-owned generic copy. `npm audit --omit=dev`: public clean; secure has 2 moderate `vitest` dev-only advisories, recorded in a new `findmysensi-secure/SECURITY.md`.
 - **Phase 5** (ephemeral movement heatmap) — ✅ done, merged + pushed (`findmysensi` `main`). Added `packages/trainer-runtime/src/run-trace.ts` (`RunTrace` + recorder + `toShotOffsets`), `apps/web/src/features/results/movement-analysis.ts` (view-model — `classifyMiss` is called with aim-minus-target to get landing direction, the inverse of its "how to correct" framing), `MovementHeatmap.tsx` Canvas2D scatter, and `run-trace-handoff.ts` — an **in-memory module variable** the trainer stashes the trace in for the one client-side hop to the results route (the results screen is a separate route reached via `router.push`, so plain React state could not survive; the handoff never serializes and is gone on reload). Manual verification (play a run, see scatter, Play Again resets, reload clears) NOT done — needs the owner.
 - **Phase 6** — untouched, design-only, blocked on publishing the sim packages.
-- **Phase 7** (Switch Track fire-state) — **NOT STARTED. Needs its own brainstormed sub-plan.** It adds a `CanonicalInputEvent` variant to frozen `@findmysensi/aim-core`, changes `ModeRuntimeAdapter.onSimulationTick`'s signature across all 12 adapters, changes deterministic Switch Track damage accrual (every existing switch-track test that builds damage from crosshair overlap breaks by design), and needs a deliberate `engineVersion`/`analyticsVersion`/`scoringVersion` decision + golden regeneration with cross-repo (`analyticsVersion` schema) reach. Out of scope for a task-by-task pass; treat like Phase 6.
+- **Phase 7** (Switch Track fire-state) — implemented locally on `feat/switch-track-fire-state`; automated gates green. Detailed decisions and acceptance evidence: `docs/superpowers/plans/2026-09-09-switch-track-fire-state.md`. `scoringVersion` is bumped to `1` for a fresh leaderboard partition; `engineVersion` and `analyticsVersion` stay unchanged because their semantics do not change. Real-mouse verification and merge/push remain.
 - **Phase 8** — owner-run manual benchmark.
 - **Phase 9** — release; blocked on 7.
 
@@ -1529,12 +1529,12 @@ This task is the gate for everything else in Phase 6.
 
 **Files:**
 
-- Modify: `packages/input-browser/src/ring-buffer.ts`, `packages/input-browser/src/reduce.ts`
+- Modify: `packages/input-browser/src/ring-buffer.ts`, `packages/input-browser/src/reducer.ts`
 - Test: `packages/input-browser/test/*` (follow the existing reducer test style)
 
-- [ ] **Step 1: Add `EVENT_KIND_FIRE_STATE = 4`** to `ring-buffer.ts`, extend `EventKindCode`, and let the batch target carry a `held` bit in its existing `buttons: Uint8Array` lane (0 = up, 1 = down). Write a ring-buffer test that a fire-state event round-trips.
+- [x] **Step 1: Add `EVENT_KIND_FIRE_STATE = 4`** to `ring-buffer.ts`, extend `EventKindCode`, and let the batch target carry a `held` bit in its existing `buttons: Uint8Array` lane (0 = up, 1 = down). Write a ring-buffer test that a fire-state event round-trips.
 
-- [ ] **Step 2: Emit a `fire-state` segment event** in `reduce.ts` — `{ kind: "fire-state", held: boolean, tick }` — whenever the held bit changes between consecutive samples. Test: a down→up→down button sequence produces exactly two `fire-state` events with the right `held` values at the right ticks.
+- [x] **Step 2: Emit a `fire-state` segment event** in `reducer.ts` — `{ kind: "fire-state", held: boolean, tick }`. The event source de-duplicates DOM state, and the reducer preserves every transition across drain batches. Test: down→up→down produces three canonical transitions with the right values, ticks, and order.
 
 - [ ] **Step 3: Commit** (`feat(input): fire-state event kind for held-button gating`).
 
@@ -1547,13 +1547,13 @@ This task is the gate for everything else in Phase 6.
 - Modify: `apps/web/src/features/training/PracticeRunController.ts`
 - Regenerate: Switch Track deterministic goldens
 
-- [ ] **Step 1: Add `fireHeld` to `onSimulationTick`** with a default of `false` so the other 11 adapters are unaffected. Update the interface doc comment.
+- [x] **Step 1: Add `fireHeld` to `onSimulationTick`** with a default of `false` so the other 11 adapters are unaffected. Update the interface doc comment.
 
-- [ ] **Step 2: Gate damage in `switch-track/dev-v0.ts`** — accrue on-target ticks only when `fireHeld === true`. Update the mode's unit tests for the new behaviour (holding vs not holding over a target).
+- [x] **Step 2: Gate damage in `switch-track/dev-v0.ts`** — accrue on-target ticks only when `fireHeld === true`. Update the mode's unit tests for the new behaviour (holding vs not holding over a target).
 
-- [ ] **Step 3: Track held state in `PracticeRunController`** — maintain a `private fireHeld = false` updated from `fire-state` segment events in `handleSimulationTick`, and pass it into `this.adapter.onSimulationTick(...)`.
+- [x] **Step 3: Track held state in `PracticeRunController`** — maintain a `private fireHeld = false` updated from `fire-state` segment events in `handleSimulationTick`, and pass it into `this.adapter.onSimulationTick(...)`.
 
-- [ ] **Step 4: Regenerate the Switch Track goldens** deliberately, `npm run protocol:freeze:check`, review the diff, commit the new fixtures.
+- [x] **Step 4: Add fixed-seed Switch Track fire-window golden evidence** and run `npm run protocol:freeze:check`. The audit found no pre-existing Switch Track golden fixture or regeneration command to update; Protocol V1 remains unchanged.
 
 - [ ] **Step 5: Full public gate, commit, merge, push.**
 

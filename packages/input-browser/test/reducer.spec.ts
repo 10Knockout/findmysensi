@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { reduceRawEvents, TickBucketer } from "../src/reducer.js";
 import {
   createRawInputBatchTarget,
+  EVENT_KIND_FIRE_STATE,
   EVENT_KIND_INVALIDATE,
   EVENT_KIND_MOVE,
   EVENT_KIND_SHOT,
@@ -189,6 +190,37 @@ describe("Semantic-Boundary-Preserving Input Reducer", () => {
     expect(segments[0]?.events).toEqual([
       { kind: "move", tick: 0, order: 0, dx: 0, dy: 400 },
       { kind: "move", tick: 0, order: 1, dx: 0, dy: -50 },
+    ]);
+  });
+
+  it("preserves every fire-state transition with tick and causal order", () => {
+    const batch = createRawInputBatchTarget(16);
+    batch.count = 3;
+
+    batch.kinds[0] = EVENT_KIND_FIRE_STATE;
+    batch.buttons[0] = 1;
+    batch.timeIndices[0] = 1;
+
+    batch.kinds[1] = EVENT_KIND_FIRE_STATE;
+    batch.buttons[1] = 0;
+    batch.timeIndices[1] = 2;
+
+    batch.kinds[2] = EVENT_KIND_FIRE_STATE;
+    batch.buttons[2] = 1;
+    batch.timeIndices[2] = 10;
+
+    expect(reduceRawEvents(batch, clock)).toEqual([
+      {
+        tick: 0,
+        events: [
+          { kind: "fire-state", tick: 0, order: 0, held: true },
+          { kind: "fire-state", tick: 0, order: 1, held: false },
+        ],
+      },
+      {
+        tick: 1,
+        events: [{ kind: "fire-state", tick: 1, order: 0, held: true }],
+      },
     ]);
   });
 

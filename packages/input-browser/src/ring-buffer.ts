@@ -1,6 +1,7 @@
 export const EVENT_KIND_MOVE = 1;
 export const EVENT_KIND_SHOT = 2;
 export const EVENT_KIND_INVALIDATE = 3;
+export const EVENT_KIND_FIRE_STATE = 4;
 
 const INT32_MIN = -2_147_483_648;
 const INT32_MAX = 2_147_483_647;
@@ -8,7 +9,8 @@ const INT32_MAX = 2_147_483_647;
 export type EventKindCode =
   | typeof EVENT_KIND_MOVE
   | typeof EVENT_KIND_SHOT
-  | typeof EVENT_KIND_INVALIDATE;
+  | typeof EVENT_KIND_INVALIDATE
+  | typeof EVENT_KIND_FIRE_STATE;
 
 export interface PushResult {
   readonly accepted: boolean;
@@ -69,6 +71,7 @@ export function createRawInputBatchTarget(
 export interface InputRingBuffer {
   pushMove(dx: number, dy: number, timeIndex: number): PushResult;
   pushShot(button: number, timeIndex: number): PushResult;
+  pushFireState(held: boolean, timeIndex: number): PushResult;
   pushInvalidate(reasonCode: number, timeIndex: number): PushResult;
   drainInto(target: RawInputBatchTarget): DrainStats;
   getHighWaterMark(): number;
@@ -150,6 +153,28 @@ export class PreallocatedInputRingBuffer implements InputRingBuffer {
     this.dy[idx] = 0;
     this.timeIndices[idx] = timeIndex;
     this.buttons[idx] = button;
+
+    this.head = (this.head + 1) % this.capacity;
+    this.size++;
+    if (this.size > this.highWaterMark) this.highWaterMark = this.size;
+
+    return { accepted: true, overflow: false };
+  }
+
+  public pushFireState(held: boolean, timeIndex: number): PushResult {
+    assertFiniteTimeIndex(timeIndex);
+    if (this.size >= this.capacity) {
+      this.overflowCount++;
+      this.lostTemporalPrecision = true;
+      return { accepted: false, overflow: true };
+    }
+
+    const idx = this.head;
+    this.kinds[idx] = EVENT_KIND_FIRE_STATE;
+    this.dx[idx] = 0;
+    this.dy[idx] = 0;
+    this.timeIndices[idx] = timeIndex;
+    this.buttons[idx] = held ? 1 : 0;
 
     this.head = (this.head + 1) % this.capacity;
     this.size++;

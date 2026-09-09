@@ -228,9 +228,9 @@ FULL_TURN_UNITS`, because `resolveCameraBounds` derives the yaw clamp from
   protocol schema as a dead, accepted-but-ignored field for backward
   compatibility with old persisted settings.
 - **`ModeRuntimeAdapter` interface** (traced against real code, not designed
-  abstractly): `initialize(prng)`, `onSimulationTick(tick, yaw, pitch)` (fires
-  every tick, click-discrete modes no-op it), `onShot(tick, yaw, pitch, prng)`
-  (fires per discrete shot), `getRenderTargets()`, `computeMetrics
+  abstractly): `initialize(prng)`, `onSimulationTick(tick, yaw, pitch,
+fireHeld?)` (fires every tick, click-discrete modes no-op it), `onShot(tick,
+yaw, pitch, prng)` (fires per discrete shot), `getRenderTargets()`, `computeMetrics
 (elapsedTicks)`, `computeScore(metrics)`. `ClickMetrics = GridMetrics` is
   the shared shape for the nine click modes; Strafe Track and Sphere Track
   share `TrackingMetrics`, and Switch Track has its own family. Because two
@@ -242,13 +242,12 @@ FULL_TURN_UNITS`, because `resolveCameraBounds` derives the yaw clamp from
   adapter interface. Implemented by every click-discrete adapter; deliberately
   absent from Strafe Track/Sphere Track/Switch Track, which have no
   spatial-miss concept.
-- **Switch Track firing:** the spec calls for damage only while the left
-  button is held. The deterministic input pipeline carries discrete
-  `MOVE`/`SHOT`/`INVALIDATE` events with no held-button state (`mouseup` is
-  bound only to suppress browser gestures), so damage currently accrues from
-  crosshair overlap alone. Gating it on a real fire-state needs a new event
-  kind plumbed through the ring buffer, reducer, adapter interface and run
-  controller — and may be a protocol change. Not yet done.
+- **Switch Track firing:** damage accrues only while the left button is held.
+  The browser emits de-duplicated `fire-state` transitions through the typed
+  ring buffer and canonical reducer; the run controller retains held state and
+  passes it to the Switch Track adapter each tick. `scoringVersion: 1` keeps
+  fire-gated runs off the old leaderboard partition. Protocol V1 wire files,
+  engine semantics, and analytics formulas remain unchanged.
 
 ---
 

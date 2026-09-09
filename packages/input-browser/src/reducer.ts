@@ -1,5 +1,6 @@
 import {
   CanonicalInputEvent,
+  createFireStateEvent,
   createInvalidateEvent,
   createMoveEvent,
   createShotEvent,
@@ -8,6 +9,7 @@ import {
 import { Tick } from "@findmysensi/protocol";
 import {
   EVENT_KIND_INVALIDATE,
+  EVENT_KIND_FIRE_STATE,
   EVENT_KIND_MOVE,
   EVENT_KIND_SHOT,
   RawInputBatchTarget,
@@ -113,6 +115,18 @@ export function reduceRawEvents(
       case EVENT_KIND_SHOT: {
         flushMove(currentSegmentTick);
         currentEvents.push(createShotEvent(currentSegmentTick, currentOrder++));
+        break;
+      }
+
+      case EVENT_KIND_FIRE_STATE: {
+        flushMove(currentSegmentTick);
+        currentEvents.push(
+          createFireStateEvent(
+            currentSegmentTick,
+            currentOrder++,
+            (input.buttons[i] ?? 0) === 1,
+          ),
+        );
         break;
       }
 

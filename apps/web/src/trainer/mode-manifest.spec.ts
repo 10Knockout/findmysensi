@@ -41,6 +41,13 @@ describe("Trainer mode manifest", () => {
     expect(isTrainerModeEnabled("not-a-real-mode")).toBe(false);
   });
 
+  it("publishes Switch Track on its fire-gated leaderboard partition", () => {
+    expect(
+      trainerModeManifest.get("switch-track")?.scenarioEntry.definition
+        .scoringVersion,
+    ).toBe(1);
+  });
+
   it.each([
     "grid",
     "pinpoint",

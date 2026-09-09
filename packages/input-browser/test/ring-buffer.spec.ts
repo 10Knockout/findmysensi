@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   createInputRingBuffer,
   createRawInputBatchTarget,
+  EVENT_KIND_FIRE_STATE,
   EVENT_KIND_INVALIDATE,
   EVENT_KIND_MOVE,
   EVENT_KIND_SHOT,
@@ -135,6 +136,29 @@ describe("Preallocated Typed-Array Input Ring Buffer", () => {
     expect(stats.drainedCount).toBe(2);
     expect(target.kinds[1]).toBe(EVENT_KIND_INVALIDATE);
     expect(target.buttons[1]).toBe(1);
+  });
+
+  it("round-trips fire-state transitions through the buttons lane", () => {
+    const ring = createInputRingBuffer(16);
+    const target = createRawInputBatchTarget(16);
+
+    expect(ring.pushFireState(true, 1.5)).toEqual({
+      accepted: true,
+      overflow: false,
+    });
+    expect(ring.pushFireState(false, 2.5)).toEqual({
+      accepted: true,
+      overflow: false,
+    });
+
+    const stats = ring.drainInto(target);
+    expect(stats.drainedCount).toBe(2);
+    expect(target.kinds[0]).toBe(EVENT_KIND_FIRE_STATE);
+    expect(target.buttons[0]).toBe(1);
+    expect(target.timeIndices[0]).toBe(1.5);
+    expect(target.kinds[1]).toBe(EVENT_KIND_FIRE_STATE);
+    expect(target.buttons[1]).toBe(0);
+    expect(target.timeIndices[1]).toBe(2.5);
   });
 
   it("resets high-water mark and buffer state cleanly", () => {

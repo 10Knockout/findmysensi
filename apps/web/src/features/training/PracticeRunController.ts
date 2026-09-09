@@ -125,6 +125,7 @@ export class PracticeRunController {
   private inputScaler: DeterministicBrowserInputScaler;
   private playerYaw: AngleUnits = createAngleUnits(0);
   private playerPitch: PitchUnits = createPitchUnits(0);
+  private fireHeld: boolean = false;
   // Display-only camera, in the same angle-unit scale as playerYaw/Pitch but
   // deliberately NOT tick-quantized: it is advanced the instant the browser
   // delivers a mouse event (see recordDisplayMovement), independent of the
@@ -277,6 +278,7 @@ export class PracticeRunController {
     this.shotTracker.reset();
     this.playerYaw = createAngleUnits(0);
     this.playerPitch = createPitchUnits(0);
+    this.fireHeld = false;
     this.displayYawUnits = 0;
     this.displayPitchUnits = 0;
     this.domInputUnitsX = 0;
@@ -348,6 +350,7 @@ export class PracticeRunController {
       // Sticky: resuming does not restore eligibility, because the pause gave
       // the player time the clock did not charge them for.
       this.wasPaused = true;
+      this.fireHeld = false;
       this.callbacks.onStateChange(this.state);
     }
   }
@@ -373,6 +376,7 @@ export class PracticeRunController {
     if (this.runner) {
       this.runner.stop("manual_abort");
     }
+    this.fireHeld = false;
     this.state = "aborted";
     this.callbacks.onStateChange(this.state);
   }
@@ -424,8 +428,11 @@ export class PracticeRunController {
             this.cumulativeEnginePitchAngleUnits -= pitchDelta;
           } else if (event.kind === "shot") {
             this.handlePlayerShot(tick);
+          } else if (event.kind === "fire-state") {
+            this.fireHeld = event.held;
           } else if (event.kind === "invalidate") {
             this.exactReplayPreserved = false;
+            this.fireHeld = false;
           }
         }
       }
@@ -435,6 +442,7 @@ export class PracticeRunController {
       createTick(tick),
       this.playerYaw,
       this.playerPitch,
+      this.fireHeld,
     );
     if (tick % 16 === 0) {
       this.publishMetrics(tick + 1);
