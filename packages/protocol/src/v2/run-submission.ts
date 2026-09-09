@@ -382,6 +382,7 @@ export const LeaderboardResponseV2Schema =
   }).strict();
 
 export type LeaderboardResponseV2 = z.infer<typeof LeaderboardResponseV2Schema>;
+export type LeaderboardRowV2 = z.infer<typeof LeaderboardRowV2Schema>;
 export type LeaderboardStandingV2 = z.infer<typeof LeaderboardStandingV2Schema>;
 
 export function calculateLeaderboardPercentileV2(
