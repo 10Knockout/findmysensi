@@ -1,17 +1,17 @@
 # CODEOWNERS — defines required reviewers for protected paths
 #
-# Changes to these paths require review from a maintainer.
+# Changes to these paths require review from the repository owner.
 
 # Root config and governance
-/*                          @findmysensi/maintainers
+/*                          @10Knockout
 
 # Deterministic engine — requires strict review
-packages/aim-core/          @findmysensi/maintainers
-packages/protocol/          @findmysensi/maintainers
-packages/scoring/           @findmysensi/maintainers
-packages/scenarios/         @findmysensi/maintainers
+packages/aim-core/          @10Knockout
+packages/protocol/          @10Knockout
+packages/scoring/           @10Knockout
+packages/scenarios/         @10Knockout
 
 # Architecture and CI
-.github/                    @findmysensi/maintainers
-tools/architecture/         @findmysensi/maintainers
-tests/architecture/         @findmysensi/maintainers
+.github/                    @10Knockout
+tools/architecture/         @10Knockout
+tests/architecture/         @10Knockout
