@@ -210,4 +210,40 @@ describe("BrowserApiClient Protocol V2 leaderboard", () => {
       error: "The leaderboard response was invalid.",
     });
   });
+
+  it("accepts a matching monthly board and sends bounded page parameters", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          protocolVersion: 2,
+          board: {
+            boardId: "grid:scenario-0:scoring-0:season-2026-09",
+            modeId: "grid",
+            scenarioVersion: 0,
+            scoringVersion: 0,
+            seasonId: "2026-09",
+            seasonStartsAt: "2026-09-01T00:00:00.000Z",
+            seasonEndsAt: "2026-10-01T00:00:00.000Z",
+          },
+          rows: [],
+          totalPlayers: 70,
+          percentileMinimumPlayers: 10,
+          standing: null,
+          page: { offset: 20, limit: 10, hasMore: true },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    await expect(
+      new BrowserApiClient().getLeaderboardV2("grid", 0, 0, {
+        limit: 10,
+        offset: 20,
+      }),
+    ).resolves.toMatchObject({ ok: true });
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "/api/v2/leaderboards/grid?scenarioVersion=0&scoringVersion=0&limit=10&offset=20",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
 });

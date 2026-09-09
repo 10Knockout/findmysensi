@@ -17,7 +17,11 @@ function response(
       {
         rank: 1,
         username: "ace",
+        avatarId: "neon-sentinel",
+        frameId: "neon-green",
+        tagId: "one-tap",
         score: 151200,
+        accuracyPercentage: 92.45,
         achievedAt: "2026-09-08T00:00:00.000Z",
       },
       {
@@ -40,7 +44,11 @@ describe("buildLeaderboardView", () => {
     expect(view.rows[0]).toMatchObject({
       rank: 1,
       username: "ace",
+      avatarId: "neon-sentinel",
+      frameId: "neon-green",
+      tag: "One Tap",
       score: "151,200",
+      accuracy: "92.5%",
       isSelf: false,
     });
     expect(view.rows[1]?.isSelf).toBe(true);
@@ -105,5 +113,24 @@ describe("buildLeaderboardView", () => {
     const view = buildLeaderboardView(response(), null);
     expect(view.rows.every((r) => r.isSelf === false)).toBe(true);
     expect(view.selfOutsideList).toBeNull();
+  });
+
+  it("formats monthly season and reset metadata", () => {
+    const view = buildLeaderboardView(
+      response({
+        board: {
+          boardId: "grid:scenario-0:scoring-0:season-2026-09",
+          modeId: "grid",
+          scenarioVersion: 0,
+          scoringVersion: 0,
+          seasonId: "2026-09",
+          seasonStartsAt: "2026-09-01T00:00:00.000Z",
+          seasonEndsAt: "2026-10-01T00:00:00.000Z",
+        },
+      }),
+      null,
+    );
+    expect(view.seasonLabel).toBe("September 2026");
+    expect(view.resetLabel).toBe("Oct 1, 2026");
   });
 });

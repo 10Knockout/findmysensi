@@ -103,6 +103,29 @@ export interface GetSessionOptions {
   ttlMs?: number;
 }
 
+export interface GetLeaderboardV2Options {
+  limit?: number;
+  offset?: number;
+}
+
+function leaderboardBoardMatches(
+  board: LeaderboardResponseV2["board"],
+  modeId: string,
+  scenarioVersion: number,
+  scoringVersion: number,
+): boolean {
+  const baseBoardId = `${modeId}:scenario-${scenarioVersion}:scoring-${scoringVersion}`;
+  const expectedBoardId = board.seasonId
+    ? `${baseBoardId}:season-${board.seasonId}`
+    : baseBoardId;
+  return (
+    board.boardId === expectedBoardId &&
+    board.modeId === modeId &&
+    board.scenarioVersion === scenarioVersion &&
+    board.scoringVersion === scoringVersion
+  );
+}
+
 export class BrowserApiClient {
   private baseUrl: string;
 
@@ -300,11 +323,15 @@ export class BrowserApiClient {
     modeId: string,
     scenarioVersion: number,
     scoringVersion: number,
+    options: GetLeaderboardV2Options = {},
   ): Promise<ApiResult<LeaderboardResponseV2>> {
     const query = new URLSearchParams({
       scenarioVersion: String(scenarioVersion),
       scoringVersion: String(scoringVersion),
     });
+    if (options.limit !== undefined) query.set("limit", String(options.limit));
+    if (options.offset !== undefined)
+      query.set("offset", String(options.offset));
     const result = await this.requestJson<unknown>(
       `/api/v2/leaderboards/${encodeURIComponent(modeId)}?${query.toString()}`,
       { method: "GET", cache: "no-store" },
@@ -317,13 +344,14 @@ export class BrowserApiClient {
     }
 
     const parsed = LeaderboardResponseV2Schema.safeParse(result.data);
-    const expectedBoardId = `${modeId}:scenario-${scenarioVersion}:scoring-${scoringVersion}`;
     if (
       !parsed.success ||
-      parsed.data.board.boardId !== expectedBoardId ||
-      parsed.data.board.modeId !== modeId ||
-      parsed.data.board.scenarioVersion !== scenarioVersion ||
-      parsed.data.board.scoringVersion !== scoringVersion
+      !leaderboardBoardMatches(
+        parsed.data.board,
+        modeId,
+        scenarioVersion,
+        scoringVersion,
+      )
     ) {
       return { ok: false, error: "The leaderboard response was invalid." };
     }
@@ -351,16 +379,15 @@ export class BrowserApiClient {
     }
 
     const parsed = PracticeRunSubmissionResponseV2Schema.safeParse(result.data);
-    const expectedBoardId = `${parsedRun.data.modeId}:scenario-${parsedRun.data.scenarioVersion}:scoring-${parsedRun.data.scoringVersion}`;
     if (
       !parsed.success ||
       parsed.data.runId !== parsedRun.data.runId ||
-      parsed.data.leaderboard.board.boardId !== expectedBoardId ||
-      parsed.data.leaderboard.board.modeId !== parsedRun.data.modeId ||
-      parsed.data.leaderboard.board.scenarioVersion !==
-        parsedRun.data.scenarioVersion ||
-      parsed.data.leaderboard.board.scoringVersion !==
-        parsedRun.data.scoringVersion
+      !leaderboardBoardMatches(
+        parsed.data.leaderboard.board,
+        parsedRun.data.modeId,
+        parsedRun.data.scenarioVersion,
+        parsedRun.data.scoringVersion,
+      )
     ) {
       return { ok: false, error: "The run-sync response was invalid." };
     }
