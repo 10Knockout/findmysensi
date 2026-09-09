@@ -5,21 +5,31 @@ import { BrowserApiClient } from "@findmysensi/api-client";
 import {
   RUN_INVALIDATION_MESSAGES,
   type RunRecord,
+  type RunTrace,
 } from "@findmysensi/trainer-runtime";
 import { localRunHistory } from "../training/local-run-history.js";
 import { toPracticeRunSubmissionV2 } from "../training/run-sync.js";
 import { ModeLeaderboard } from "../leaderboard/ModeLeaderboard.js";
+import { buildMovementAnalysis } from "./movement-analysis.js";
+import { MovementHeatmap } from "./MovementHeatmap.js";
 import {
   buildResultsOverview,
   type OverviewMetric,
   type ResultsOverview,
 } from "./results-overview.js";
 import { getPracticeResultsRoutes } from "./routes.js";
+import { takeRunTrace } from "./run-trace-handoff.js";
 
 interface PracticeResultsProps {
   readonly mode?: string;
   readonly taskName?: string;
   readonly syncEnabled?: boolean;
+  /**
+   * The just-finished run's shot trace. Normally left unset -- the trainer
+   * shell stashes it in `run-trace-handoff` and this component picks it up on
+   * mount. The prop is a test seam for rendering the heatmap directly.
+   */
+  readonly trace?: RunTrace | null;
 }
 
 type RunSyncState = "local" | "syncing" | "saved" | "pending";
@@ -28,11 +38,13 @@ export function PracticeResults({
   mode = "grid",
   taskName,
   syncEnabled = false,
+  trace,
 }: PracticeResultsProps) {
   const [latestRun, setLatestRun] = useState<RunRecord | null>(null);
   const [overview, setOverview] = useState<ResultsOverview | null>(null);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [syncState, setSyncState] = useState<RunSyncState>("local");
+  const [runTrace, setRunTrace] = useState<RunTrace | null>(null);
   const attemptedRunId = useRef<string | null>(null);
   const routes = getPracticeResultsRoutes(mode);
   const resolvedTaskName = taskName ?? formatModeLabel(mode);
@@ -46,7 +58,10 @@ export function PracticeResults({
     setOverview(run ? buildResultsOverview(run, history) : null);
     setSyncState("local");
     setHistoryLoaded(true);
-  }, [mode]);
+    // Consume the in-memory trace once. Absent after a reload or a direct
+    // visit -- correct: there is no run in progress to analyse.
+    setRunTrace(trace ?? takeRunTrace());
+  }, [mode, trace]);
 
   useEffect(() => {
     if (
@@ -149,6 +164,18 @@ export function PracticeResults({
                   ))}
                 </div>
               </section>
+
+              {runTrace && runTrace.shots.length > 0 ? (
+                <section
+                  aria-label="Movement analysis"
+                  className="results-movement"
+                >
+                  <p className="app-section-label">
+                    Movement analysis · this run only
+                  </p>
+                  <MovementHeatmap analysis={buildMovementAnalysis(runTrace)} />
+                </section>
+              ) : null}
 
               <ModeLeaderboard
                 mode={latestRun.modeId}

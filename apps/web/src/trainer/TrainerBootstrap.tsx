@@ -28,6 +28,7 @@ import type {
   RuntimeScoreResult,
 } from "@findmysensi/trainer-runtime";
 import { BackLink } from "../components/BackLink.js";
+import { stashRunTrace } from "../features/results/run-trace-handoff.js";
 import {
   PracticeRunController,
   PracticeRunState,
@@ -504,7 +505,11 @@ export function TrainerBootstrap({
           setScore(newScore);
           setRuntimeMetrics(newMetrics);
         },
-        onComplete: (result) => {
+        onComplete: (result, trace) => {
+          // Hand the ephemeral per-run trace to the results screen we are
+          // about to navigate to. In-memory only; gone on reload.
+          stashRunTrace(trace);
+
           if (onRunComplete) {
             onRunComplete(result);
             return;
