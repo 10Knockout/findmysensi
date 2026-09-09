@@ -47,3 +47,13 @@ components (authentication, database, ranked verification, encryption) are
 maintained in a separate private repository. The public repository never
 contains production database credentials, signing keys, or security
 thresholds.
+
+## Dependency Audits
+
+Run `npm audit --omit=dev` before each release; triage every `high` /
+`critical` advisory (apply the patch if it is non-breaking, otherwise track
+it below with a date and a mitigation).
+
+### Known advisories
+
+- _None._ (`npm audit --omit=dev` reported 0 vulnerabilities on 2026-09-09.)
