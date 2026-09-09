@@ -8,6 +8,7 @@ import {
 } from "@findmysensi/trainer-runtime";
 import { localRunHistory } from "../training/local-run-history.js";
 import { toPracticeRunSubmissionV2 } from "../training/run-sync.js";
+import { ModeLeaderboard } from "../leaderboard/ModeLeaderboard.js";
 import {
   buildResultsOverview,
   type OverviewMetric,
@@ -148,6 +149,16 @@ export function PracticeResults({
                   ))}
                 </div>
               </section>
+
+              <ModeLeaderboard
+                mode={latestRun.modeId}
+                taskName={resolvedTaskName}
+                scenarioVersion={latestRun.scenarioVersion}
+                scoringVersion={latestRun.scoringVersion}
+                embedded
+                pageSize={10}
+                refreshKey={syncState}
+              />
             </>
           ) : historyLoaded ? (
             <p className="app-subtext app-results-empty">

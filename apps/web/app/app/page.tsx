@@ -182,6 +182,9 @@ export default function AppDashboardPage() {
             <Link href="/app/workouts" className="app-chip">
               Workouts
             </Link>
+            <Link href="/app/leaderboards" className="app-chip">
+              Leaderboards
+            </Link>
             <Link href="/app/profile" className="app-chip">
               Profile
             </Link>

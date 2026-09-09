@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { LandingMotion } from "../src/features/landing/LandingMotion.js";
 import { LiveLeaderboard } from "../src/features/landing/LiveLeaderboard.js";
+import { trainerModeManifest } from "../src/trainer/mode-manifest.js";
 
 const MODES = [
   "Grid Rush",
@@ -17,6 +18,15 @@ const MODES = [
   "Headshot Lane",
   "180 Flick",
 ] as const;
+
+const LEADERBOARD_MODES = Array.from(trainerModeManifest.values())
+  .filter((entry) => entry.enabled)
+  .map((entry) => ({
+    modeId: entry.modeId,
+    title: entry.scenarioEntry.presentation.title,
+    scenarioVersion: entry.scenarioEntry.definition.scenarioVersion,
+    scoringVersion: entry.scenarioEntry.definition.scoringVersion,
+  }));
 
 export default function HomePage() {
   return (
@@ -189,7 +199,7 @@ export default function HomePage() {
           </p>
         </div>
         <div className="landing-board-panel" data-reveal>
-          <LiveLeaderboard />
+          <LiveLeaderboard modes={LEADERBOARD_MODES} />
         </div>
       </section>
 

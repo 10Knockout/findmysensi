@@ -42,32 +42,83 @@ export function bestAccuracyFromHistory(
  * deliberately derived 1:1 from the existing RANK_TIERS (ranks.ts) rather
  * than a second, parallel progression system -- one source of truth for
  * "how good is this player," reused for both the leaderboard rank and the
- * profile decoration. Avatars are a free curated preset list (identity, not
- * a reward) rendered as glyph-on-color, so no image asset pipeline is
- * required.
+ * profile decoration. Avatars, selectable frames, and tags are curated
+ * presets. Arbitrary uploads stay out of the profile and leaderboard path.
  */
 
 export interface AvatarOption {
   readonly id: string;
   readonly label: string;
-  readonly glyph: string;
+  readonly imageSrc: string;
   readonly colorHex: string;
 }
 
 export const AVATAR_OPTIONS: readonly AvatarOption[] = [
-  { id: "crosshair", label: "Crosshair", glyph: "◎", colorHex: "#22c55e" },
-  { id: "target", label: "Target", glyph: "◉", colorHex: "#ef4444" },
-  { id: "bolt", label: "Bolt", glyph: "⚡", colorHex: "#eab308" },
-  { id: "flame", label: "Flame", glyph: "🔥", colorHex: "#f97316" },
-  { id: "eye", label: "Eye", glyph: "◈", colorHex: "#3b82f6" },
-  { id: "star", label: "Star", glyph: "★", colorHex: "#a855f7" },
-  { id: "diamond", label: "Diamond", glyph: "◆", colorHex: "#06b6d4" },
-  { id: "shield", label: "Shield", glyph: "⛨", colorHex: "#64748b" },
-  { id: "wave", label: "Wave", glyph: "〜", colorHex: "#14b8a6" },
-  { id: "spark", label: "Spark", glyph: "✦", colorHex: "#ec4899" },
-  { id: "hex", label: "Hex", glyph: "⬡", colorHex: "#84cc16" },
-  { id: "arrow", label: "Arrow", glyph: "➤", colorHex: "#f43f5e" },
+  { id: "neon-sentinel", label: "Neon Sentinel", imageSrc: "/profile/avatars/neon-sentinel.webp", colorHex: "#bdff2d" },
+  { id: "pulse-ronin", label: "Pulse Ronin", imageSrc: "/profile/avatars/pulse-ronin.webp", colorHex: "#2dd4ff" },
+  { id: "prism-operative", label: "Prism Operative", imageSrc: "/profile/avatars/prism-operative.webp", colorHex: "#c084fc" },
+  { id: "circuit-fox", label: "Circuit Fox", imageSrc: "/profile/avatars/circuit-fox.webp", colorHex: "#fb7185" },
+  { id: "void-ranger", label: "Void Ranger", imageSrc: "/profile/avatars/void-ranger.webp", colorHex: "#818cf8" },
+  { id: "ember-scout", label: "Ember Scout", imageSrc: "/profile/avatars/ember-scout.webp", colorHex: "#fb923c" },
+  { id: "aqua-striker", label: "Aqua Striker", imageSrc: "/profile/avatars/aqua-striker.webp", colorHex: "#22d3ee" },
+  { id: "glitch-warden", label: "Glitch Warden", imageSrc: "/profile/avatars/glitch-warden.webp", colorHex: "#f472b6" },
+  { id: "solar-spectre", label: "Solar Spectre", imageSrc: "/profile/avatars/solar-spectre.webp", colorHex: "#facc15" },
+  { id: "chrome-oracle", label: "Chrome Oracle", imageSrc: "/profile/avatars/chrome-oracle.webp", colorHex: "#e2e8f0" },
 ];
+
+export interface ProfileFrameOption {
+  readonly id: string;
+  readonly label: string;
+  readonly imageSrc: string | null;
+}
+
+export const PROFILE_FRAME_OPTIONS: readonly ProfileFrameOption[] = [
+  { id: "frame-none", label: "No frame", imageSrc: null },
+  { id: "neon-green", label: "Neon Green", imageSrc: "/profile/frames/neon-green.webp" },
+  { id: "electric-blue", label: "Electric Blue", imageSrc: "/profile/frames/electric-blue.webp" },
+  { id: "plasma-purple", label: "Plasma Purple", imageSrc: "/profile/frames/plasma-purple.webp" },
+  { id: "solar-gold", label: "Solar Gold", imageSrc: "/profile/frames/solar-gold.webp" },
+  { id: "ember-red", label: "Ember Red", imageSrc: "/profile/frames/ember-red.webp" },
+  { id: "cyan-circuit", label: "Cyan Circuit", imageSrc: "/profile/frames/cyan-circuit.webp" },
+  { id: "prism-shift", label: "Prism Shift", imageSrc: "/profile/frames/prism-shift.webp" },
+  { id: "void-black", label: "Void Black", imageSrc: "/profile/frames/void-black.webp" },
+  { id: "chrome-silver", label: "Chrome Silver", imageSrc: "/profile/frames/chrome-silver.webp" },
+  { id: "radiant-white", label: "Radiant White", imageSrc: "/profile/frames/radiant-white.webp" },
+];
+
+export interface GamerTagOption {
+  readonly id: string;
+  readonly label: string;
+}
+
+export const GAMER_TAG_OPTIONS: readonly GamerTagOption[] = [
+  { id: "tag-none", label: "No tag" },
+  { id: "one-tap", label: "One Tap" },
+  { id: "aim-demon", label: "Aim Demon" },
+  { id: "clutch-mind", label: "Clutch Mind" },
+  { id: "head-hunter", label: "Head Hunter" },
+  { id: "flick-master", label: "Flick Master" },
+  { id: "pixel-peek", label: "Pixel Peek" },
+  { id: "dead-center", label: "Dead Center" },
+  { id: "calm-crosshair", label: "Calm Crosshair" },
+  { id: "entry-spark", label: "Entry Spark" },
+  { id: "angle-holder", label: "Angle Holder" },
+  { id: "snap-shot", label: "Snap Shot" },
+  { id: "track-star", label: "Track Star" },
+  { id: "reflex-ace", label: "Reflex Ace" },
+  { id: "eco-warrior", label: "Eco Warrior" },
+  { id: "last-alive", label: "Last Alive" },
+  { id: "silent-carry", label: "Silent Carry" },
+  { id: "queue-crusher", label: "Queue Crusher" },
+  { id: "focus-fire", label: "Focus Fire" },
+  { id: "clean-sweep", label: "Clean Sweep" },
+  { id: "aim-architect", label: "Aim Architect" },
+];
+
+export function gamerTagLabel(tagId: string): string | null {
+  const tag = GAMER_TAG_OPTIONS.find((option) => option.id === tagId);
+  return tag && tag.id !== "tag-none" ? tag.label : null;
+}
 
 export interface FrameTier {
   readonly id: string;

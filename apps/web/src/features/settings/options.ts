@@ -1,10 +1,12 @@
-export const PROFILE_AVATARS = [
-  { id: "avatar-default", label: "Default" },
-] as const;
+import {
+  AVATAR_OPTIONS,
+  GAMER_TAG_OPTIONS,
+  PROFILE_FRAME_OPTIONS,
+} from "@findmysensi/trainer-runtime";
 
-export const PROFILE_FRAMES = [
-  { id: "frame-none", label: "No frame" },
-] as const;
+export const PROFILE_AVATARS = AVATAR_OPTIONS;
+export const PROFILE_FRAMES = PROFILE_FRAME_OPTIONS;
+export const PROFILE_TAGS = GAMER_TAG_OPTIONS;
 
 export const GRAPHICS_OPTIONS = [
   "automatic",

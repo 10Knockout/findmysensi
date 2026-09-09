@@ -6,6 +6,7 @@ export const ProfileSettingsSchema = z
     username: UsernameSchema,
     avatarId: z.string().min(1).max(64).default("avatar-default"),
     frameId: z.string().min(1).max(64).default("frame-none"),
+    tagId: z.string().min(1).max(64).default("tag-none"),
   })
   .strict();
 

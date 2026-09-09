@@ -23,7 +23,7 @@ function captureBrowserErrors(page: Page): string[] {
 test("public home renders and shows a real-data error state when leaderboard is unavailable", async ({
   page,
 }) => {
-  await page.route("**/api/v2/leaderboards/grid**", async (route) => {
+  await page.route("**/api/v2/leaderboards/**", async (route) => {
     await route.fulfill({
       status: 503,
       contentType: "application/json",
@@ -41,7 +41,7 @@ test("public home renders and shows a real-data error state when leaderboard is 
   const startTraining = page.getByRole("link", { name: "START TRAINING" });
   const leaderboardError = page
     .getByRole("alert")
-    .filter({ hasText: "Could not load the live Grid Rush leaderboard" });
+    .filter({ hasText: "Could not load Grid Rush" });
 
   expect(response?.ok()).toBe(true);
   await expect(hero).toBeVisible();
@@ -565,6 +565,43 @@ test("authenticated Results page displays honest local results wording and metri
     });
   });
 
+  await page.route("**/api/v1/me/profile", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        username: "BrowserAudit",
+        avatarId: "avatar-default",
+        frameId: "frame-none",
+        tagId: "tag-none",
+      }),
+    });
+  });
+
+  await page.route("**/api/v2/leaderboards/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        protocolVersion: 2,
+        board: {
+          boardId: "grid:scenario-0:scoring-0:season-2026-09",
+          modeId: "grid",
+          scenarioVersion: 0,
+          scoringVersion: 0,
+          seasonId: "2026-09",
+          seasonStartsAt: "2026-09-01T00:00:00.000Z",
+          seasonEndsAt: "2026-10-01T00:00:00.000Z",
+        },
+        rows: [],
+        page: { offset: 0, limit: 10, hasMore: false },
+        totalPlayers: 0,
+        percentileMinimumPlayers: 10,
+        standing: null,
+      }),
+    });
+  });
+
   await page.addInitScript(() => {
     const completedAt = Date.now();
     const previousCompletedAt = completedAt - 120_000;
@@ -660,7 +697,9 @@ test("authenticated Results page displays honest local results wording and metri
     page.getByText(/now on the public leaderboard/),
   ).toBeVisible();
 
-  await expect(page.getByRole("heading", { name: "Grid Rush" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Grid Rush", level: 1 }),
+  ).toBeVisible();
   const runSummary = page.getByRole("region", { name: "Run Summary" });
   await expect(runSummary.getByText("72,450", { exact: true })).toBeVisible();
   await expect(runSummary.getByText("75,000", { exact: true })).toBeVisible();

@@ -25,6 +25,7 @@ import {
   GRAPHICS_OPTIONS,
   PROFILE_AVATARS,
   PROFILE_FRAMES,
+  PROFILE_TAGS,
   RESOLUTION_OPTIONS,
   SCALING_OPTIONS,
   WEAPON_HAND_OPTIONS,
@@ -235,9 +236,9 @@ export function SettingsClient() {
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           <SettingsSection
             title="Profile"
-            description="Your account identity. More avatar and frame rewards can be added later without allowing arbitrary uploads."
+            description="Choose your public name, picture, frame, and gamer tag. Cover photos are reserved for a later release."
           >
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-4">
               <Field label="Username">
                 <input
                   value={profile.username}
@@ -273,6 +274,21 @@ export function SettingsClient() {
                   className={inputClass}
                 >
                   {PROFILE_FRAMES.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Gamer tag">
+                <select
+                  value={profile.tagId}
+                  onChange={(e) =>
+                    setProfile({ ...profile, tagId: e.target.value })
+                  }
+                  className={inputClass}
+                >
+                  {PROFILE_TAGS.map((option) => (
                     <option key={option.id} value={option.id}>
                       {option.label}
                     </option>

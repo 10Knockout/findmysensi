@@ -8,11 +8,14 @@ import type { ProfileSettings, SessionUser } from "@findmysensi/protocol";
 import {
   ACHIEVEMENT_DEFINITIONS,
   AVATAR_OPTIONS,
+  GAMER_TAG_OPTIONS,
+  PROFILE_FRAME_OPTIONS,
   bestAccuracyFromHistory,
-  frameForAccuracy,
+  gamerTagLabel,
   titleForAccuracy,
   type LifetimeStats,
 } from "@findmysensi/trainer-runtime";
+import { PlayerAvatar } from "../../../src/features/profile/PlayerAvatar.js";
 import { localPracticeHistory } from "../../../src/features/training/local-history.js";
 import { localAchievements } from "../../../src/features/training/local-achievements.js";
 import {
@@ -32,12 +35,17 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null);
 
   const [avatarId, setAvatarId] = useState(AVATAR_OPTIONS[0]!.id);
+  const [frameId, setFrameId] = useState("frame-none");
+  const [tagId, setTagId] = useState("tag-none");
   const [bestAccuracy, setBestAccuracy] = useState(0);
   const [lifetime, setLifetime] = useState<LifetimeStats>(ZERO_LIFETIME);
   const [unlocked, setUnlocked] = useState<ReadonlySet<string>>(new Set());
   const [remoteProfile, setRemoteProfile] = useState<ProfileSettings | null>(
     null,
   );
+  const [profileStatus, setProfileStatus] = useState<string | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [savingProfile, setSavingProfile] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -61,8 +69,25 @@ export default function ProfilePage() {
         if (!active || !res) return;
         if (res.ok && res.data) {
           setRemoteProfile(res.data);
-          setAvatarId(res.data.avatarId);
-          setSelectedAvatarId(res.data.avatarId);
+          const nextAvatarId = AVATAR_OPTIONS.some(
+            (option) => option.id === res.data!.avatarId,
+          )
+            ? res.data.avatarId
+            : AVATAR_OPTIONS[0]!.id;
+          const nextFrameId = PROFILE_FRAME_OPTIONS.some(
+            (option) => option.id === res.data!.frameId,
+          )
+            ? res.data.frameId
+            : "frame-none";
+          const nextTagId = GAMER_TAG_OPTIONS.some(
+            (option) => option.id === res.data!.tagId,
+          )
+            ? res.data.tagId
+            : "tag-none";
+          setAvatarId(nextAvatarId);
+          setFrameId(nextFrameId);
+          setTagId(nextTagId);
+          setSelectedAvatarId(nextAvatarId);
         }
       })
       .catch(() => {
@@ -89,23 +114,30 @@ export default function ProfilePage() {
     // fallback of record if the account sync below can't complete.
     setSelectedAvatarId(id);
     setAvatarId(id);
+    setProfileStatus(null);
+  };
 
-    if (!user?.username) return; // No valid username yet: stay local-only.
+  const saveProfile = async () => {
+    if (!user?.username) return;
+    setSavingProfile(true);
+    setProfileError(null);
+    setProfileStatus(null);
     const client = new BrowserApiClient();
     const nextProfile: ProfileSettings = {
       username: user.username,
-      avatarId: id,
-      frameId: remoteProfile?.frameId ?? "frame-none",
+      avatarId,
+      frameId,
+      tagId,
     };
-    client
-      .saveProfileSettings(nextProfile)
-      .then((res) => {
-        if (res.ok && res.data) setRemoteProfile(res.data);
-      })
-      .catch(() => {
-        // Best-effort cross-device sync; the local selection above already
-        // took effect, so a failed sync here doesn't block the user.
-      });
+    const result = await client.saveProfileSettings(nextProfile);
+    if (!result.ok || !result.data) {
+      setProfileError(result.error ?? "Could not save profile choices.");
+      setSavingProfile(false);
+      return;
+    }
+    setRemoteProfile(result.data);
+    setProfileStatus("Profile choices saved.");
+    setSavingProfile(false);
   };
 
   if (error) {
@@ -134,10 +166,13 @@ export default function ProfilePage() {
     );
   }
 
-  const avatar =
-    AVATAR_OPTIONS.find((a) => a.id === avatarId) ?? AVATAR_OPTIONS[0]!;
-  const frame = frameForAccuracy(bestAccuracy);
   const title = titleForAccuracy(bestAccuracy);
+  const selectedTag = gamerTagLabel(tagId);
+  const profileChanged =
+    !remoteProfile ||
+    remoteProfile.avatarId !== avatarId ||
+    remoteProfile.frameId !== frameId ||
+    remoteProfile.tagId !== tagId;
 
   return (
     <main className="app-page">
@@ -147,39 +182,37 @@ export default function ProfilePage() {
         </Link>
 
         <header className="app-avatar-header">
-          <div
-            className="app-avatar-ring"
-            style={{
-              backgroundColor: `${avatar.colorHex}22`,
-              border: `3px solid ${frame.colorHex}`,
-              color: avatar.colorHex,
-            }}
-          >
-            {avatar.glyph}
-          </div>
+          <PlayerAvatar
+            avatarId={avatarId}
+            frameId={frameId}
+            label={user.username ?? user.email}
+            size={88}
+            priority
+          />
           <div>
             <h1 className="app-section-title" style={{ marginBottom: 4 }}>
               {user.username ?? user.email}
             </h1>
-            <p
-              style={{
-                fontFamily: "var(--font-turret-road), monospace",
-                fontSize: 11,
-                fontWeight: 700,
-                letterSpacing: "0.14em",
-                textTransform: "uppercase",
-                color: frame.colorHex,
-              }}
-            >
-              {title}
-            </p>
+            <p className="app-profile-rank">{title}</p>
+            {selectedTag ? <p className="app-profile-tag">{selectedTag}</p> : null}
           </div>
         </header>
 
+        {profileError ? (
+          <div role="alert" className="app-alert">
+            {profileError}
+          </div>
+        ) : null}
+        {profileStatus ? (
+          <div role="status" className="app-profile-status">
+            {profileStatus}
+          </div>
+        ) : null}
+
         <section style={{ marginBottom: 40 }}>
           <p className="app-section-label">Avatar</p>
-          <h2 className="app-section-title" style={{ fontSize: 22 }}>
-            Choose Your Look
+          <h2 className="app-section-title app-profile-subheading">
+            Choose Your Picture
           </h2>
           <div className="app-avatar-grid">
             {AVATAR_OPTIONS.map((option) => (
@@ -188,14 +221,84 @@ export default function ProfilePage() {
                 onClick={() => selectAvatar(option.id)}
                 aria-pressed={option.id === avatarId}
                 className={`app-avatar-swatch${option.id === avatarId ? " app-avatar-swatch-active" : ""}`}
-                style={{ color: option.colorHex }}
                 title={option.label}
               >
-                {option.glyph}
+                <PlayerAvatar
+                  avatarId={option.id}
+                  label={option.label}
+                  size={56}
+                />
               </button>
             ))}
           </div>
         </section>
+
+        <section className="app-profile-section">
+          <p className="app-section-label">Frame</p>
+          <h2 className="app-section-title app-profile-subheading">
+            Choose Your Frame
+          </h2>
+          <div className="app-avatar-grid">
+            {PROFILE_FRAME_OPTIONS.map((option) => (
+              <button
+                key={option.id}
+                onClick={() => {
+                  setFrameId(option.id);
+                  setProfileStatus(null);
+                }}
+                aria-pressed={option.id === frameId}
+                className={`app-avatar-swatch${option.id === frameId ? " app-avatar-swatch-active" : ""}`}
+                title={option.label}
+              >
+                <PlayerAvatar
+                  avatarId={avatarId}
+                  frameId={option.id}
+                  label={option.label}
+                  size={56}
+                />
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="app-profile-section">
+          <p className="app-section-label">Gamer tag</p>
+          <h2 className="app-section-title app-profile-subheading">
+            Choose Your Tag
+          </h2>
+          <div className="app-tag-grid">
+            {GAMER_TAG_OPTIONS.map((option) => (
+              <button
+                key={option.id}
+                onClick={() => {
+                  setTagId(option.id);
+                  setProfileStatus(null);
+                }}
+                aria-pressed={option.id === tagId}
+                className={`app-tag-option${option.id === tagId ? " app-tag-option-active" : ""}`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="app-profile-cover-locked" aria-label="Cover photo locked">
+          <div>
+            <p className="app-section-label">Cover photo</p>
+            <h2 className="app-section-title app-profile-subheading">Locked</h2>
+          </div>
+          <p>Cover photos will arrive in a later release.</p>
+        </section>
+
+        <button
+          type="button"
+          className="app-button app-profile-save"
+          disabled={!profileChanged || savingProfile}
+          onClick={() => void saveProfile()}
+        >
+          {savingProfile ? "Saving…" : profileChanged ? "Save profile" : "Profile saved"}
+        </button>
 
         <section className="app-stat-grid">
           <div className="app-stat-card">
