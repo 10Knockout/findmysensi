@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BrowserApiClient } from "@findmysensi/api-client";
@@ -13,6 +13,31 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // An unexpired session cookie means the user is already signed in. Skip the
+  // form and send them straight on rather than asking for credentials again.
+  const [checkingSession, setCheckingSession] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    void new BrowserApiClient()
+      .getSession()
+      .then((session) => {
+        if (!active) return;
+        if (session?.user) {
+          router.replace(
+            resolveSafeLoginDestination(window.location.search),
+          );
+          return;
+        }
+        setCheckingSession(false);
+      })
+      .catch(() => {
+        if (active) setCheckingSession(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,6 +54,16 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
+  if (checkingSession) {
+    return (
+      <main className="app-shell">
+        <div className="app-card">
+          <p className="app-subtext">Signing you in…</p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="app-shell">
