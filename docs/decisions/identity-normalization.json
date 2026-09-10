@@ -12,7 +12,7 @@
     "username": {
       "case": "preserve_display_case",
       "normalized_column": "lowercase",
-      "allowed_characters": "^[a-zA-Z0-9_]+$",
+      "allowed_characters": "^[a-zA-Z0-9_@!#$.+%&*-]+$",
       "length": {
         "min": 3,
         "max": 20

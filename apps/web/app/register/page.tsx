@@ -8,9 +8,9 @@ import { RegisterRequestSchema } from "@findmysensi/protocol";
 import { BackLink } from "../../src/components/BackLink.js";
 
 const USERNAME_HELP =
-  "3-24 characters. Use letters, numbers, underscores, or hyphens only.";
+  "3-24 characters. Letters, numbers, and allowed symbols (- _ @ ! # $ . + % & *) only.";
 const PASSWORD_HELP =
-  "At least 8 characters with one uppercase letter, one lowercase letter, and one symbol.";
+  "At least 8 characters with one uppercase letter, one lowercase letter, and one symbol (- _ @ ! # $ . + % & *).";
 const AGE_HELP = "You must confirm that you are 18 years of age or older.";
 
 export default function RegisterPage() {
@@ -265,7 +265,8 @@ export default function RegisterPage() {
               value={form.username}
               onChange={(value) => update("username", value)}
               autoComplete="username"
-              pattern="(?:[A-Za-z0-9_]|-)+"
+              pattern="[A-Za-z0-9_@!#$.+%&*-]+"
+              title={USERNAME_HELP}
               help={USERNAME_HELP}
             />
             <Field
@@ -350,6 +351,7 @@ interface FieldProps {
   type?: string;
   autoComplete?: string;
   pattern?: string;
+  title?: string;
   help?: string;
 }
 
@@ -361,6 +363,7 @@ function Field({
   type = "text",
   autoComplete,
   pattern,
+  title,
   help,
 }: FieldProps) {
   return (
@@ -377,6 +380,7 @@ function Field({
         onChange={(event) => onChange(event.target.value)}
         autoComplete={autoComplete}
         pattern={pattern}
+        title={title ?? help}
         minLength={id === "username" ? 3 : undefined}
         maxLength={id === "username" ? 24 : 100}
         className="app-input"

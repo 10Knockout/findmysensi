@@ -8,7 +8,7 @@ import { BackLink } from "../../src/components/BackLink.js";
 
 const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,100}$/;
 const PASSWORD_HELP =
-  "At least 8 characters with one uppercase letter, one lowercase letter, and one symbol.";
+  "At least 8 characters with one uppercase letter, one lowercase letter, and one symbol (- _ @ ! # $ . + % & *).";
 
 function ResetPasswordForm() {
   const router = useRouter();
