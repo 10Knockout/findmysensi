@@ -262,6 +262,13 @@ test("authenticated Grid Rush shell initializes the real trainer canvas", async 
   await page.screenshot({ path: testInfo.outputPath("gridshot-arena.png") });
 
   const canvas = page.getByLabel(GRID_MODE_CANVAS_LABEL);
+  const waitForRenderedFrame = () =>
+    canvas.evaluate(
+      () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+        ),
+    );
   const locateTarget = () =>
     canvas.evaluate((element) => {
       const canvasElement = element as HTMLCanvasElement;
@@ -322,7 +329,7 @@ test("authenticated Grid Rush shell initializes the real trainer canvas", async 
   // Pointer-lock movement differs slightly between desktop backends. Re-read
   // rendered target position after each move instead of trusting one open-loop
   // estimate. This still proves real camera movement and a real scored hit.
-  for (let correction = 0; correction < 3; correction++) {
+  for (let correction = 0; correction < 6; correction++) {
     const targetPoint = await locateTarget();
     expect(targetPoint).not.toBeNull();
     if (!targetPoint) {
@@ -345,7 +352,13 @@ test("authenticated Grid Rush shell initializes the real trainer canvas", async 
     mouseX += dx;
     mouseY += dy;
     await page.mouse.move(mouseX, mouseY);
+    // The Linux CI compositor can present the previous canvas frame for a
+    // short interval after pointer movement. Wait for the renderer before
+    // sampling the next correction, otherwise every correction can repeat the
+    // same stale movement and overshoot the target.
+    await waitForRenderedFrame();
   }
+  await waitForRenderedFrame();
   await page.mouse.down();
   await page.mouse.up();
   await expect(page.getByText("1 / 0", { exact: true })).toBeVisible();
