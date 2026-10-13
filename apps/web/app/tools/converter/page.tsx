@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { BackLink } from "../../../src/components/BackLink.js";
 import {
   DEFAULT_BROWSER_INPUT_CALIBRATION_SCALE,
   SENSITIVITY_PROFILES,
@@ -57,41 +58,30 @@ export default function SensitivityConverterPage() {
       : null;
 
   return (
-    <main className="min-h-screen bg-zinc-950 px-6 py-10 text-zinc-100">
-      <div className="mx-auto max-w-4xl">
-        <header className="mb-10 flex flex-wrap items-center justify-between gap-4">
+    <main className="app-page">
+      <div className="app-page-inner converter-tool">
+        <header className="app-page-header converter-header">
           <div>
-            <Link
-              href="/"
-              className="text-sm font-semibold text-emerald-400 hover:underline"
-            >
-              ← FindMySensi
-            </Link>
-            <h1 className="mt-2 text-3xl font-black text-white sm:text-4xl">
-              FindMySensi Converter
-            </h1>
-            <p className="mt-2 text-sm text-zinc-400">
+            <BackLink href="/app" label="Back to trainer home" />
+            <p className="app-kicker">Sensitivity tools</p>
+            <h1 className="app-section-title">Match your sensitivity</h1>
+            <p className="app-subtext">
               Switched mouse or DPI?{" "}
-              <Link
-                href="/tools/mouse-swap"
-                className="font-semibold text-emerald-400 hover:underline"
-              >
+              <Link href="/tools/mouse-swap" className="app-link">
                 Mouse Swap →
               </Link>
             </p>
           </div>
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 font-mono text-xs text-zinc-400">
-            HIPFIRE • SAME DPI
-          </div>
+          <div className="converter-badge">HIPFIRE • SAME DPI</div>
         </header>
 
-        <div className="mb-6 rounded-xl border border-amber-900/60 bg-amber-950/20 p-4 text-sm leading-6 text-amber-100">
+        <p className="app-help converter-intro">
           Trainer has one Aim Sensitivity. Game choices below only convert your
           existing setting into that value. FOV changes view, never mouse
           rotation.
-        </div>
+        </p>
 
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="converter-layout">
           <ConverterPanel title="Your current game">
             <Field label="Game">
               <select
@@ -101,7 +91,7 @@ export default function SensitivityConverterPage() {
                     event.target.value as VerifiedSensitivityProfileId,
                   )
                 }
-                className={inputClass}
+                className="app-input"
               >
                 {PUBLIC_GAME_IDS.map((id) => (
                   <option key={id} value={id}>
@@ -118,7 +108,7 @@ export default function SensitivityConverterPage() {
                 min="0.001"
                 step="0.001"
                 inputMode="decimal"
-                className={inputClass}
+                className="app-input"
               />
             </Field>
             <Field label="DPI / CPI">
@@ -128,21 +118,19 @@ export default function SensitivityConverterPage() {
                 type="number"
                 min="1"
                 step="1"
-                className={inputClass}
+                className="app-input"
               />
             </Field>
           </ConverterPanel>
 
           <section
             aria-live="polite"
-            className="rounded-2xl border border-emerald-500/30 bg-zinc-900 p-6"
+            className="app-card converter-panel converter-result"
           >
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-zinc-500">
-              Your Aim Sensitivity
-            </p>
+            <p className="settings-label">Your Aim Sensitivity</p>
             <div
               data-testid="fms-sensitivity-result"
-              className="mt-3 font-mono text-5xl font-black text-emerald-400 sm:text-6xl"
+              className="converter-value"
             >
               {calibratedSensitivity !== null
                 ? formatSensitivity(calibratedSensitivity)
@@ -151,34 +139,53 @@ export default function SensitivityConverterPage() {
             {canonicalSensitivity !== null ? (
               <div
                 data-testid="fms-sensitivity-canonical"
-                className="mt-2 font-mono text-xs text-zinc-500"
+                className="app-help converter-canonical"
               >
                 cm/360 match {formatSensitivity(canonicalSensitivity)} ×{" "}
                 {DEFAULT_BROWSER_INPUT_CALIBRATION_SCALE} browser calibration
               </div>
             ) : null}
-            <p className="mt-4 text-sm leading-6 text-zinc-300">
+            <p className="app-help converter-explanation">
               Enter this number once in FindMySensi. Every training game uses
-              it. It already includes this browser&apos;s input calibration, so
-              your on-screen turn matches your game even though a browser
-              reports mouse movement differently from a native client. No
-              source-game profile stays active during training.
+              it. It includes the current browser calibration estimate. Measure
+              a physical turn to verify the match on your device. No source-game
+              profile stays active during training.
             </p>
-            <div className="mt-6 rounded-xl border border-zinc-800 bg-black/30 p-4">
-              <div className="text-xs text-zinc-500">Required example</div>
-              <div className="mt-1 font-mono font-bold text-white">
-                Valorant 0.125 = FindMySensi 0.245
+            <div className="converter-presets">
+              <p className="settings-label">Quick starting values</p>
+              <div className="converter-preset-buttons">
+                <button
+                  type="button"
+                  className="settings-chip"
+                  onClick={() => {
+                    setSourceGame("valorant");
+                    setSourceSensitivity("0.125");
+                  }}
+                >
+                  Valorant 0.125
+                </button>
+                <button
+                  type="button"
+                  className="settings-chip"
+                  onClick={() => {
+                    setSourceGame("cs2");
+                    setSourceSensitivity("0.398");
+                  }}
+                >
+                  CS2 0.398
+                </button>
               </div>
-              <div className="mt-1 font-mono text-xs text-zinc-500">
-                0.175 cm/360 match × {DEFAULT_BROWSER_INPUT_CALIBRATION_SCALE}
-              </div>
+              <p className="app-help">
+                CS2 0.398 is the rounded equivalent of Valorant 0.125 at the
+                same DPI.
+              </p>
             </div>
           </section>
         </div>
 
         {result ? (
-          <section className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-900 p-6 sm:p-8">
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <section className="app-card converter-panel converter-metrics">
+            <div className="converter-metric-grid">
               <Metric
                 label="cm / 360"
                 value={`${result.formattedCmPer360} cm`}
@@ -197,17 +204,14 @@ export default function SensitivityConverterPage() {
               />
             </div>
 
-            <p className="mt-5 text-xs leading-5 text-zinc-500">
+            <p className="app-help converter-explanation">
               Same-DPI conversion preserves physical cm/360. eDPI is only
               meaningful inside its source game. ADS and scoped sensitivity are
               separate systems.
             </p>
           </section>
         ) : (
-          <div
-            role="alert"
-            className="mt-6 rounded-xl border border-red-900 bg-red-950/30 p-5 text-sm text-red-200"
-          >
+          <div role="alert" className="app-alert">
             Enter positive sensitivity and DPI values.
           </div>
         )}
@@ -224,8 +228,8 @@ function ConverterPanel({
   children: React.ReactNode;
 }) {
   return (
-    <section className="space-y-4 rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-      <h2 className="text-lg font-black text-white">{title}</h2>
+    <section className="app-card converter-panel converter-inputs">
+      <h2 className="app-heading">{title}</h2>
       {children}
     </section>
   );
@@ -239,10 +243,8 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <label className="block">
-      <span className="mb-2 block text-xs font-semibold uppercase tracking-wider text-zinc-400">
-        {label}
-      </span>
+    <label className="app-field">
+      <span className="settings-label">{label}</span>
       {children}
     </label>
   );
@@ -250,15 +252,12 @@ function Field({
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-zinc-800 bg-black/30 p-4">
-      <div className="text-xs text-zinc-500">{label}</div>
-      <div className="mt-1 font-mono text-lg font-bold text-white">{value}</div>
+    <div className="converter-metric">
+      <div className="settings-label">{label}</div>
+      <div className="converter-metric-value">{value}</div>
     </div>
   );
 }
-
-const inputClass =
-  "w-full rounded-lg border border-zinc-700 bg-black/50 px-4 py-3 text-white outline-none focus:border-emerald-400";
 
 function formatSensitivity(value: number): string {
   return Number(value.toFixed(6)).toString();

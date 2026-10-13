@@ -83,7 +83,9 @@ export default function ConverterLayout({ children }: { children: ReactNode }) {
   return (
     <>
       {children}
-      <FaqSection items={FAQ} />
+      <div className="converter-faq">
+        <FaqSection items={FAQ} />
+      </div>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}

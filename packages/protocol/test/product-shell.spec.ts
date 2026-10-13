@@ -6,6 +6,33 @@ import {
 } from "../src/index.js";
 
 describe("phase 1 product shell protocol", () => {
+  it.each(["0", "0.0", "101", "9999999999999999999999999999999999999999"])(
+    "rejects sensitivity %s that cannot initialize a training run",
+    (fmsSensitivity) => {
+      expect(TrainerSettingsSchema.safeParse({ fmsSensitivity }).success).toBe(
+        false,
+      );
+    },
+  );
+
+  it("requires both dimensions when saving a custom resolution", () => {
+    expect(
+      TrainerSettingsSchema.safeParse({ resolution: "custom" }).success,
+    ).toBe(false);
+    expect(
+      TrainerSettingsSchema.safeParse({
+        resolution: "custom",
+        customResolutionWidth: 1920,
+      }).success,
+    ).toBe(false);
+    expect(
+      TrainerSettingsSchema.safeParse({
+        resolution: "custom",
+        customResolutionWidth: 1920,
+        customResolutionHeight: 1080,
+      }).success,
+    ).toBe(true);
+  });
   it("registers with credentials and explicit 18+ attestation", () => {
     const parsed = RegisterRequestSchema.safeParse({
       username: "Knockout",

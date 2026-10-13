@@ -8,13 +8,31 @@ import {
   resolveBrowserInputCalibration,
   gameSensitivityToFms,
   runtimeFmsToGameSensitivity,
+  runtimeFmsToCmPer360,
 } from "../src/index.js";
 
 describe("Browser input calibration (@findmysensi/sensitivity)", () => {
-  it("uses the measured Chrome + Windows default of 1.4", () => {
+  it("uses the current assumed browser calibration default of 1.4", () => {
     expect(DEFAULT_BROWSER_INPUT_CALIBRATION_SCALE).toBe(1.4);
     expect(DEFAULT_BROWSER_INPUT_CALIBRATION.scale).toBe(1.4);
     expect(DEFAULT_BROWSER_INPUT_CALIBRATION.source).toBe("default");
+  });
+
+  it("preserves the user's converter-save-runtime-display round trip", () => {
+    const saved = applyBrowserInputCalibration(0.485179);
+    expect(saved).toBe(0.679251);
+    const equivalent = runtimeFmsToGameSensitivity(
+      "aimlab-default",
+      saved,
+      1600,
+    );
+    expect(equivalent.canonicalFmsSensitivity).toBe(0.485179);
+    expect(equivalent.conversion.cmPer360).toBeCloseTo(23.5583, 4);
+    expect(runtimeFmsToCmPer360(0.67925, 1600)).toBeCloseTo(23.5583, 4);
+    expect(runtimeFmsToCmPer360(0.67925, null)).toBeNull();
+    expect(
+      runtimeFmsToCmPer360(0.485179, 1600, IDENTITY_BROWSER_INPUT_CALIBRATION),
+    ).toBeCloseTo(23.5583, 4);
   });
 
   it("maps the canonical Valorant 0.125 result (0.175) onto typed 0.245", () => {

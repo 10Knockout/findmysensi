@@ -265,7 +265,7 @@ export default function RegisterPage() {
               value={form.username}
               onChange={(value) => update("username", value)}
               autoComplete="username"
-              pattern="[A-Za-z0-9_@!#$.+%&*-]+"
+              pattern={"[A-Za-z0-9_@!#$.+%&*\\-]+"}
               title={USERNAME_HELP}
               help={USERNAME_HELP}
             />

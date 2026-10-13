@@ -21,7 +21,7 @@ import {
 } from "@findmysensi/render-canvas";
 import {
   resolveBrowserInputGain,
-  sensitivityToCmPer360,
+  runtimeFmsToCmPer360,
 } from "@findmysensi/sensitivity";
 import type {
   RuntimeMetrics,
@@ -1230,7 +1230,8 @@ function getRuntimeHudItems(
 }
 
 /**
- * Canonical physical turn distance for the run's sensitivity, which is the
+ * Estimated physical turn distance under the current browser calibration,
+ * which is the
  * only figure comparable across different DPI and different games. Null when
  * DPI is unknown, because guessing one would make every downstream
  * sensitivity comparison quietly wrong.
@@ -1241,7 +1242,7 @@ function resolveCmPer360(
 ): number | null {
   if (!nominalDpi) return null;
   try {
-    return sensitivityToCmPer360("aimlab-default", fmsSensitivity, nominalDpi);
+    return runtimeFmsToCmPer360(Number(fmsSensitivity), nominalDpi);
   } catch {
     return null;
   }
@@ -1341,7 +1342,7 @@ function InputVerificationOverlay({
   browserDetails: Readonly<{ platform: string; userAgent: string }>;
 }) {
   const rows: readonly (readonly [string, string])[] = [
-    ["FMS / Aimlabs Default", sensitivity],
+    ["FindMySensi browser sensitivity", sensitivity],
     ["Degrees / input unit", snapshot.degreesPerInputUnit.toFixed(8)],
     ["Input source", `${inputSource} (Pointer Lock contract)`],
     ["Movement events", snapshot.movementEventCount.toLocaleString()],

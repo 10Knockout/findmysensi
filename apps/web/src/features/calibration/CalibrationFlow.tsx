@@ -16,6 +16,8 @@ import {
 } from "@findmysensi/trainer-runtime";
 import {
   SENSITIVITY_PROFILES,
+  applyBrowserInputCalibration,
+  gameSensitivityToFms,
   runtimeFmsToGameSensitivity,
   type VerifiedSensitivityProfileId,
 } from "@findmysensi/sensitivity";
@@ -108,8 +110,22 @@ export function CalibrationFlow() {
   const currentBlock = blocks[blockIndex] ?? null;
   const title = "Find My Sensi";
 
+  const useStartingPreset = (game: "valorant" | "cs2", sensitivity: string) => {
+    if (!settings) return;
+    const runtime = applyBrowserInputCalibration(
+      Number(gameSensitivityToFms(game, sensitivity)),
+    );
+    setSettings({ ...settings, fmsSensitivity: formatSensitivity(runtime) });
+    setTargetGame(game);
+    setError(null);
+  };
+
   const start = () => {
     if (!settings) return;
+    if (!settings.nominalDpi) {
+      setError("Enter your mouse DPI before starting the sensitivity test.");
+      return;
+    }
     const seed = makeSeed();
     const base = Number(settings.fmsSensitivity ?? "1");
     const candidates = generateSensitivityCandidates(base);
@@ -182,12 +198,12 @@ export function CalibrationFlow() {
 
   const selectedSensitivity = recommendation?.sensitivity ?? null;
   const displayedRecommendation = useMemo(() => {
-    if (selectedSensitivity === null || !settings) return null;
+    if (selectedSensitivity === null || !settings?.nominalDpi) return null;
     try {
       return runtimeFmsToGameSensitivity(
         targetGame,
         selectedSensitivity,
-        settings.nominalDpi ?? 800,
+        settings.nominalDpi,
       );
     } catch {
       return null;
@@ -296,10 +312,11 @@ export function CalibrationFlow() {
               }}
             >
               <span>
+                Estimated turn distance:{" "}
                 {displayedRecommendation.conversion.formattedCmPer360} cm / 360°
               </span>
               <span>
-                FindMySensi native:{" "}
+                FindMySensi browser sensitivity:{" "}
                 {formatSensitivity(
                   displayedRecommendation.runtimeFmsSensitivity,
                 )}
@@ -385,11 +402,60 @@ export function CalibrationFlow() {
           half -- most players track moving targets poorly at any sensitivity.
         </p>
         <div style={{ marginTop: 22 }}>
+          <label htmlFor="calibration-dpi" className="settings-label">
+            Mouse DPI
+          </label>
+          <input
+            id="calibration-dpi"
+            className="app-input"
+            type="number"
+            min={1}
+            max={100000}
+            step={1}
+            value={settings.nominalDpi ?? ""}
+            onChange={(event) => {
+              const value = Number(event.target.value);
+              setSettings({
+                ...settings,
+                nominalDpi:
+                  Number.isInteger(value) && value > 0 && value <= 100000
+                    ? value
+                    : null,
+              });
+            }}
+          />
           <SensitivityGamePicker
             legend="What game do you want to use this sensitivity in?"
             selected={targetGame}
             onSelect={setTargetGame}
           />
+          <p className="settings-label" style={{ marginTop: 20 }}>
+            Starting sensitivity presets
+          </p>
+          <div className="converter-preset-buttons">
+            <button
+              type="button"
+              className="settings-chip"
+              onClick={() => useStartingPreset("valorant", "0.125")}
+            >
+              Valorant 0.125
+            </button>
+            <button
+              type="button"
+              className="settings-chip"
+              onClick={() => useStartingPreset("cs2", "0.398")}
+            >
+              CS2 0.398
+            </button>
+          </div>
+          <p className="app-help" style={{ marginTop: 10 }}>
+            Starting FindMySensi browser sensitivity:{" "}
+            <span data-testid="calibration-starting-sensitivity">
+              {formatSensitivity(Number(settings.fmsSensitivity ?? "1"))}
+            </span>
+            . Presets set the starting value for this test. Your saved settings
+            change only when you use the final recommendation.
+          </p>
         </div>
         {error ? (
           <p className="app-alert" style={{ marginTop: 16 }}>

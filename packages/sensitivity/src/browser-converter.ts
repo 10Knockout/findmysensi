@@ -11,6 +11,21 @@ export interface RuntimeFmsConversion {
   readonly conversion: SensitivityConversionResult;
 }
 
+/** Estimated native turn distance under the active browser calibration model. */
+export function runtimeFmsToCmPer360(
+  runtimeFmsSensitivity: number,
+  dpi: number | null,
+  calibration?: BrowserInputCalibrationInput,
+): number | null {
+  if (dpi === null) return null;
+  return runtimeFmsToGameSensitivity(
+    FMS_NATIVE_PROFILE_ID,
+    runtimeFmsSensitivity,
+    dpi,
+    calibration,
+  ).conversion.cmPer360;
+}
+
 /** Removes browser calibration before converting a result to a native game. */
 export function runtimeFmsToGameSensitivity(
   gameId: SupportedGameId,

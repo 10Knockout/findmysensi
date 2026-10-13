@@ -18,9 +18,10 @@
  * never changes cm/360 physics. It only scales the final "type this into
  * FindMySensi" number.
  *
- * The default 1.4 is 0.245 / 0.175: measured on Chrome + Windows by matching a
- * physical 360 turn in Valorant 0.125 (= Aimlabs Default 0.175) against
- * FindMySensi. Set the scale to 1 to disable it, and canonical == typed value.
+ * The default 1.4 is the current assumed 0.245 / 0.175 browser scale.
+ * It has not been independently verified across devices; see the physical
+ * verification caveat in docs/evidence/sensitivity-verification.md.
+ * Set the scale to 1 to disable it, and canonical == typed value.
  */
 
 export interface BrowserInputCalibration {
@@ -29,7 +30,7 @@ export interface BrowserInputCalibration {
   readonly source: "default" | "measured" | "verified-native";
 }
 
-/** 0.245 / 0.175, measured on Chrome + Windows. */
+/** Current assumed scale, 0.245 / 0.175; physical device parity is unverified. */
 export const DEFAULT_BROWSER_INPUT_CALIBRATION_SCALE = 1.4;
 
 /** Lowest and highest factor we will accept before treating input as corrupt. */

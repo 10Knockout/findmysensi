@@ -34,12 +34,18 @@ const HexColorField = z.preprocess(
 
 export const TrainerSettingsSchema = z
   .object({
-    // One global Aimlabs Default numeric value. Every trainer mode uses it.
+    // One global browser runtime value, including any browser calibration.
+    // Native game equivalents must remove calibration before conversion.
     // Source-game profiles belong to converter input and are never persisted.
     fmsSensitivity: z
       .string()
       .trim()
+      .max(32)
       .regex(/^\d+(?:\.\d+)?$/)
+      .refine(
+        (value) => Number(value) > 0 && Number(value) <= 100,
+        "must be greater than 0 and at most 100",
+      )
       .nullable()
       .default(null),
     nominalDpi: z
@@ -108,7 +114,17 @@ export const TrainerSettingsSchema = z
       ])
       .default("automatic"),
   })
-  .strict();
+  .strict()
+  .refine(
+    (settings) =>
+      settings.resolution !== "custom" ||
+      (settings.customResolutionWidth !== null &&
+        settings.customResolutionHeight !== null),
+    {
+      message: "Custom resolution requires both width and height",
+      path: ["customResolutionWidth"],
+    },
+  );
 
 export type TrainerSettings = z.infer<typeof TrainerSettingsSchema>;
 

@@ -1139,6 +1139,156 @@ html {
   width: min(720px, 100%);
 }
 
+.app-page-inner.converter-tool {
+  max-width: 1040px;
+}
+
+.converter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.converter-header .app-kicker {
+  margin-top: 24px;
+}
+
+.converter-badge {
+  padding: 10px 14px;
+  border: 1px solid var(--fms-line-dark);
+  color: var(--fms-acid);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+}
+
+.converter-intro {
+  margin: 0 0 24px;
+  max-width: 720px;
+}
+
+.converter-layout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.converter-panel {
+  width: 100%;
+  min-width: 0;
+}
+
+.converter-inputs .app-heading {
+  margin-bottom: 24px;
+  font-size: 20px;
+}
+
+.converter-inputs .app-field {
+  display: block;
+}
+
+.converter-inputs .app-field:last-child {
+  margin-bottom: 0;
+}
+
+.converter-result {
+  border-color: var(--fms-acid);
+}
+
+.converter-value {
+  color: var(--fms-acid);
+  margin: 14px 0;
+  font-size: clamp(32px, 4.5vw, 56px);
+  font-weight: 800;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.converter-canonical,
+.converter-metric-value {
+  font-family: var(--font-turret-road), monospace;
+}
+
+.converter-faq {
+  background: var(--fms-black);
+  color: white;
+  padding: 0 clamp(20px, 4vw, 48px) 48px;
+  font-family: var(--font-turret-road), sans-serif;
+}
+
+.converter-faq section {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 0;
+}
+
+.converter-faq h2 {
+  font-size: 24px;
+  text-transform: uppercase;
+  margin-bottom: 24px;
+}
+
+.converter-faq dl > div {
+  border: 1px solid var(--fms-line-dark);
+  border-radius: 0;
+  background: var(--fms-panel);
+  padding: 24px;
+}
+
+.converter-faq dt {
+  color: var(--fms-acid);
+  font-size: 15px;
+  text-transform: uppercase;
+}
+
+.converter-faq dd {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 13px;
+}
+
+.converter-explanation {
+  margin-top: 20px;
+}
+
+.converter-presets {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--fms-line-dark);
+}
+
+.converter-preset-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.converter-metrics {
+  margin-top: 24px;
+}
+
+.converter-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.converter-metric-value {
+  font-weight: 700;
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 767px) {
+  .converter-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .converter-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .app-card-header {
   margin-bottom: 28px;
   text-align: center;

@@ -7,6 +7,17 @@ const GRID_MODE_TITLE = "Grid Rush";
 const GRID_MODE_START_LABEL = `START ${GRID_MODE_TITLE.toUpperCase()}`;
 const GRID_MODE_CANVAS_LABEL = `FindMySensi ${GRID_MODE_TITLE} simulation`;
 
+test.beforeEach(async ({ page }) => {
+  // Every request stays inside the harness. Each test overrides the endpoints
+  // it needs; unrelated services get an explicit unavailable response.
+  await page.route("**/api/**", (route) =>
+    route.fulfill({
+      status: 503,
+      json: { error: "Service unavailable in browser smoke" },
+    }),
+  );
+});
+
 function captureBrowserErrors(page: Page): string[] {
   const errors: string[] = [];
 
@@ -80,6 +91,16 @@ test("converter maps Valorant into the single FindMySensi sensitivity scale", as
 
   await page.getByLabel("SENSITIVITY").fill("0.25");
   await expect(page.getByTestId("fms-sensitivity-result")).toHaveText("0.49");
+  await page.getByRole("button", { name: "CS2 0.398", exact: true }).click();
+  await expect(page.getByLabel("Game")).toHaveValue("cs2");
+  await expect(page.getByLabel("Sensitivity")).toHaveValue("0.398");
+  await expect(page.getByTestId("fms-sensitivity-result")).toHaveText(
+    "0.245168",
+  );
+  await page
+    .getByRole("button", { name: "Valorant 0.125", exact: true })
+    .click();
+  await expect(page.getByTestId("fms-sensitivity-result")).toHaveText("0.245");
   expect(browserErrors).toEqual([]);
 });
 
@@ -108,7 +129,20 @@ test("registration requires and submits the 18+ attestation without DOB", async 
   await expect(ageAttestation).not.toBeChecked();
   await expect(ageAttestation).toHaveAttribute("required", "");
 
-  await page.getByLabel("Username").fill("BrowserAudit");
+  const username = page.getByLabel("Username");
+  await username.fill("Browser/Audit");
+  expect(
+    await username.evaluate(
+      (element) => (element as HTMLInputElement).validity.patternMismatch,
+    ),
+  ).toBe(true);
+  await username.fill("Browser-Audit");
+  expect(
+    await username.evaluate(
+      (element) => (element as HTMLInputElement).validity.patternMismatch,
+    ),
+  ).toBe(false);
+  await username.fill("BrowserAudit");
   await page.getByLabel("Email").fill("browser-audit@example.com");
   await page.getByLabel("Password", { exact: true }).fill("Valid!Password1");
   await page
@@ -137,6 +171,9 @@ test("registration requires and submits the 18+ attestation without DOB", async 
 });
 
 test("login continuation route renders safely", async ({ page }) => {
+  await page.route("**/api/auth/get-session", (route) =>
+    route.fulfill({ status: 200, json: null }),
+  );
   const response = await page.goto(
     "/login?next=%2Fapp%2Ftrain%2Fgrid%2Fresults",
   );
@@ -520,9 +557,9 @@ test("authenticated Settings page renders profile, aim, video, and input section
 
   await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Aim" })).toBeVisible();
-  await expect(
-    page.getByLabel("Aim Sensitivity (Aimlabs Default)"),
-  ).toHaveValue("1");
+  await expect(page.getByLabel("FindMySensi Browser Sensitivity")).toHaveValue(
+    "1",
+  );
   await expect(
     page.getByRole("link", { name: "Convert your game sensitivity" }),
   ).toBeVisible();

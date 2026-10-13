@@ -4,6 +4,10 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   resolve: {
     alias: {
+      "@findmysensi/sensitivity": resolve(
+        __dirname,
+        "packages/sensitivity/src/index.ts",
+      ),
       "@findmysensi/protocol": resolve(
         __dirname,
         "packages/protocol/src/index.ts",

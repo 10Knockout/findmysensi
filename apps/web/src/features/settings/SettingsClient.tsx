@@ -18,7 +18,7 @@ import {
   encodeCrosshairShareCode,
   type CrosshairConfig,
 } from "@findmysensi/crosshair";
-import { sensitivityToCmPer360 } from "@findmysensi/sensitivity";
+import { SensitivityEquivalents } from "../../components/SensitivityEquivalents.js";
 import { InteractiveCrosshairEditor } from "../crosshair/InteractiveCrosshairEditor.js";
 import {
   ASPECT_OPTIONS,
@@ -101,16 +101,6 @@ export function SettingsClient() {
     if (!Number.isFinite(value) || value <= 0) return;
     updateTrainer("fmsSensitivity", String(value));
   };
-
-  let calcCmPer360 = "N/A";
-  try {
-    const effDpi = trainer?.nominalDpi ?? 800;
-    if (fmsSensitivity > 0 && effDpi > 0) {
-      calcCmPer360 = `${sensitivityToCmPer360("aimlab-default", fmsSensitivity, effDpi).toFixed(1)} cm / 360°`;
-    }
-  } catch {
-    // ignore
-  }
 
   const saveAll = async () => {
     if (!profile || !trainer) return;
@@ -300,7 +290,7 @@ export function SettingsClient() {
 
           <SettingsSection
             title="Aim & Sensitivity"
-            description="One Aim Sensitivity controls every training game. It uses the Aimlabs Default numeric scale."
+            description="One FindMySensi browser sensitivity controls every training game."
           >
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               <div className="settings-panel" style={{ margin: 0 }}>
@@ -343,7 +333,7 @@ export function SettingsClient() {
                       className="settings-label"
                       style={{ margin: 0 }}
                     >
-                      Aim Sensitivity (Aimlabs Default)
+                      FindMySensi Browser Sensitivity
                     </label>
                     <input
                       id="fms-sensitivity-number"
@@ -409,18 +399,10 @@ export function SettingsClient() {
                     textAlign: "center",
                   }}
                 >
-                  <div>
-                    <span className="settings-label">Turn Distance</span>
-                    <span
-                      style={{
-                        fontFamily: "monospace",
-                        fontWeight: 800,
-                        color: "var(--fms-acid)",
-                      }}
-                    >
-                      {calcCmPer360}
-                    </span>
-                  </div>
+                  <SensitivityEquivalents
+                    sensitivity={fmsSensitivity}
+                    dpi={trainer.nominalDpi}
+                  />
                 </div>
 
                 <p
@@ -434,9 +416,8 @@ export function SettingsClient() {
                     textAlign: "center",
                   }}
                 >
-                  In Aimlabs, use this same number only with the Aimlabs Default
-                  profile. Its Valorant profile expects your original Valorant
-                  sensitivity instead.
+                  Keep the browser sensitivity in FindMySensi. Use the separate
+                  equivalent above when configuring Aimlabs Default.
                 </p>
               </div>
 

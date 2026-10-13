@@ -14,7 +14,7 @@ import {
   encodeCrosshairShareCode,
   type CrosshairConfig,
 } from "@findmysensi/crosshair";
-import { sensitivityToCmPer360 } from "@findmysensi/sensitivity";
+import { SensitivityEquivalents } from "../components/SensitivityEquivalents.js";
 import { InteractiveCrosshairEditor } from "../features/crosshair/InteractiveCrosshairEditor";
 
 interface InGameSettingsModalProps {
@@ -45,7 +45,6 @@ export function InGameSettingsModal({
 }: InGameSettingsModalProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>("sensitivity");
   const [settings, setSettings] = useState<TrainerSettings>(currentSettings);
-  const [dpi, setDpi] = useState<number>(currentSettings.nominalDpi ?? 800);
   const [crosshair, setCrosshair] = useState<CrosshairConfig>(
     CROSSHAIR_PRESETS[0]!.config,
   );
@@ -55,10 +54,6 @@ export function InGameSettingsModal({
   // Initialize sensitivity & crosshair from incoming settings
   useEffect(() => {
     setSettings(currentSettings);
-    if (currentSettings.nominalDpi) {
-      setDpi(currentSettings.nominalDpi);
-    }
-
     if (currentSettings.crosshairCode) {
       try {
         setCrosshair(decodeCrosshairShareCode(currentSettings.crosshairCode));
@@ -86,24 +81,16 @@ export function InGameSettingsModal({
   };
 
   const handleDpiChange = (rawValue: string) => {
+    if (rawValue === "") {
+      updateSetting("nominalDpi", null);
+      return;
+    }
     const newDpi = Number(rawValue);
     if (!Number.isInteger(newDpi) || newDpi < 100 || newDpi > 100_000) {
       return;
     }
-    setDpi(newDpi);
     updateSetting("nominalDpi", newDpi);
   };
-
-  // Calculate physical metrics (cm/360, eDPI)
-  let cmPer360 = "N/A";
-  try {
-    if (fmsSensitivity > 0 && dpi > 0) {
-      const cm = sensitivityToCmPer360("aimlab-default", fmsSensitivity, dpi);
-      cmPer360 = `${cm.toFixed(1)} cm / 360°`;
-    }
-  } catch {
-    // ignore
-  }
 
   const handleSave = async () => {
     setSaving(true);
@@ -114,7 +101,6 @@ export function InGameSettingsModal({
       // with a bare "Invalid trainer settings." that names no field.
       const candidate = TrainerSettingsSchema.safeParse({
         ...settings,
-        nominalDpi: dpi,
         crosshairCode,
       });
       if (!candidate.success) {
@@ -175,7 +161,8 @@ export function InGameSettingsModal({
               <div className="settings-panel">
                 <h3>Aim Sensitivity</h3>
                 <p>
-                  One Aimlabs Default sensitivity controls every training game.
+                  One FindMySensi browser sensitivity controls every training
+                  game.
                 </p>
 
                 <div
@@ -197,9 +184,9 @@ export function InGameSettingsModal({
                       id="in-game-mouse-dpi"
                       type="number"
                       min={100}
-                      max={32000}
+                      max={100000}
                       step={50}
-                      value={dpi}
+                      value={settings.nominalDpi ?? ""}
                       onChange={(event) => handleDpiChange(event.target.value)}
                       className="app-input"
                     />
@@ -219,7 +206,7 @@ export function InGameSettingsModal({
                       className="settings-label"
                       style={{ margin: 0 }}
                     >
-                      Aim Sensitivity (Aimlabs Default)
+                      FindMySensi Browser Sensitivity
                     </label>
                     <input
                       id="in-game-fms-sensitivity"
@@ -278,18 +265,10 @@ export function InGameSettingsModal({
                     textAlign: "center",
                   }}
                 >
-                  <div>
-                    <span className="settings-label">Turn Distance</span>
-                    <span
-                      style={{
-                        fontFamily: "monospace",
-                        fontWeight: 800,
-                        color: "var(--fms-acid)",
-                      }}
-                    >
-                      {cmPer360}
-                    </span>
-                  </div>
+                  <SensitivityEquivalents
+                    sensitivity={fmsSensitivity}
+                    dpi={settings.nominalDpi}
+                  />
                 </div>
 
                 <p
@@ -303,9 +282,8 @@ export function InGameSettingsModal({
                     textAlign: "center",
                   }}
                 >
-                  In Aimlabs, use this same number only with the Aimlabs Default
-                  profile. Its Valorant profile expects your original Valorant
-                  sensitivity instead.
+                  Keep the browser sensitivity in FindMySensi. Use the separate
+                  equivalent above when configuring Aimlabs Default.
                 </p>
               </div>
 

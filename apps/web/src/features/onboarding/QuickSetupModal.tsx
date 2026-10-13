@@ -45,7 +45,7 @@ export function QuickSetupModal({
   const [sourceGame, setSourceGame] =
     useState<VerifiedSensitivityProfileId>("valorant");
   const [sourceSensitivity, setSourceSensitivity] = useState("0.125");
-  const [dpi, setDpi] = useState("800");
+  const [dpi, setDpi] = useState(String(currentSettings.nominalDpi ?? ""));
   const [fov, setFov] = useState(String(currentSettings.fovDegrees));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -338,7 +338,7 @@ export function QuickSetupModal({
               </span>
             </div>
             <div>
-              <span className="settings-label">Turn Distance</span>
+              <span className="settings-label">Estimated Turn Distance</span>
               <span style={{ fontFamily: "monospace", fontWeight: 800 }}>
                 {conversion
                   ? `${conversion.formattedCmPer360} cm / 360°`
@@ -350,7 +350,8 @@ export function QuickSetupModal({
             Example: Valorant 0.125 becomes FindMySensi 0.245 at the same DPI.
             That is the 0.175 cm/360 match ×{" "}
             {DEFAULT_BROWSER_INPUT_CALIBRATION_SCALE} browser input calibration,
-            so the on-screen turn matches your game.
+            as the current browser calibration estimate. Measure a physical turn
+            to verify the match on your device.
           </p>
         </div>
 
