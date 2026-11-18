@@ -4,7 +4,7 @@ import { CalibrationFlow } from "../../../src/features/calibration/CalibrationFl
 export const metadata: Metadata = {
   title: "Find My Sensi — Free Sensitivity Test",
   description:
-    "Compare aim sensitivities across five exercises, then test 0.01 steps. Play for free without an account.",
+    "Convert your in-game sensitivity or estimate it with a short blind A/B aim test. Free to use without an account.",
 };
 
 export default function PublicFindMySensiPage() {

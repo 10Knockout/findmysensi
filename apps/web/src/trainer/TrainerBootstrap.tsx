@@ -50,6 +50,8 @@ import {
 interface TrainerBootstrapProps {
   mode: string;
   durationTicks?: number;
+  countdownSeconds?: number;
+  runSeed?: readonly [number, number, number, number];
   sensitivityOverride?: string;
   settingsOverride?: TrainerSettings;
   runLabel?: string;
@@ -153,6 +155,8 @@ const UNKNOWN_BROWSER_DETAILS = {
 export function TrainerBootstrap({
   mode,
   durationTicks,
+  countdownSeconds = 3,
+  runSeed,
   sensitivityOverride,
   settingsOverride,
   runLabel,
@@ -906,8 +910,8 @@ export function TrainerBootstrap({
     if (countdownIntervalRef.current !== null) return;
     prepareHitVoice();
     if (!(await acquireControls(canvas, controller, "Start"))) return;
-    setCountdown(3);
-    let remaining = 3;
+    setCountdown(countdownSeconds);
+    let remaining = countdownSeconds;
     countdownIntervalRef.current = window.setInterval(() => {
       remaining -= 1;
       if (remaining <= 0) {
@@ -920,7 +924,7 @@ export function TrainerBootstrap({
         const started = startRunIfPointerLocked(
           canvas,
           document.pointerLockElement,
-          () => controller.start(),
+          () => controller.start(runSeed),
         );
         if (!started) {
           setLockError(

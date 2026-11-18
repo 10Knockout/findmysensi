@@ -1,18 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BrowserApiClient } from "@findmysensi/api-client";
-import type { TrainerSettings } from "@findmysensi/protocol";
-import { TrainerSettingsSchema } from "@findmysensi/protocol";
 import {
-  buildCandidateOrder,
-  recommendSensitivityAcrossModes,
-  type ModeCandidateScore,
-  type MultiModeRecommendation,
-  type RuntimeScoreResult,
-} from "@findmysensi/trainer-runtime";
+  TrainerSettingsSchema,
+  type TrainerSettings,
+} from "@findmysensi/protocol";
+import type { RuntimeScoreResult } from "@findmysensi/trainer-runtime";
 import {
   SENSITIVITY_PROFILES,
   applyBrowserInputCalibration,
@@ -22,53 +17,28 @@ import {
 } from "@findmysensi/sensitivity";
 import { BackLink } from "../../components/BackLink.js";
 import { SensitivityGamePicker } from "../../components/SensitivityGamePicker.js";
-import { TrainerBootstrap } from "../../trainer/TrainerBootstrap.js";
 import { useBrowserCalibrationScale } from "../../lib/browser-calibration.js";
 import {
   loadGuestTrainerSettings,
   saveGuestTrainerSettings,
 } from "../../trainer/guest-settings.js";
+import { TrainerBootstrap } from "../../trainer/TrainerBootstrap.js";
+import { generateRunSeed } from "../training/seed.js";
 import {
-  discoveryCandidates,
-  parseCalibrationSensitivity,
-  refinementCandidates,
-} from "./calibration-candidates.js";
-
-const FIND_BLOCK_DURATION_TICKS = 12 * 128;
-
-// Five families that stress different parts of aim: flicking, target
-// selection, moving targets, smooth tracking, and reaction acquisition. A
-// sensitivity that only wins at Gridshot is not the one to keep.
-const FIND_MODES = [
-  "grid",
-  "multi",
-  "strafe",
-  "smooth-track",
-  "reaction",
-] as const;
-type FindModeId = (typeof FIND_MODES)[number];
-const FIND_MODE_LABELS: Record<FindModeId, string> = {
-  grid: "Grid Rush",
-  multi: "Multi Burst",
-  strafe: "Strafe Track",
-  "smooth-track": "Sphere Track",
-  reaction: "Reflex Rush",
-};
-
-// Most players track moving targets poorly at every sensitivity, so a
-// tracking block says more about raw skill than about fit. Both no-click
-// tracking modes still count, at half weight, so they can break a tie
-// without dominating the result.
-const FIND_MODE_WEIGHTS: Partial<Record<FindModeId, number>> = {
-  "smooth-track": 0.5,
-  strafe: 0.5,
-};
-
-interface CalibrationBlock {
-  readonly id: string;
-  readonly sensitivity: number;
-  readonly modeId: FindModeId;
-}
+  ACTIVE_SECONDS,
+  COMPARISONS,
+  COUNTDOWN_SECONDS,
+  STRAFE_TARGET_PERCENT,
+  TRIAL_SECONDS,
+  buildPair,
+  comparePair,
+  formatSensitivity,
+  isBrowserSensitivity,
+  parseSensitivityInput,
+  recordTrial,
+  type CalibrationPair,
+  type PairOutcome,
+} from "./adaptive-calibration.js";
 
 export function CalibrationFlow({
   publicPractice = false,
@@ -77,549 +47,421 @@ export function CalibrationFlow({
 }) {
   const router = useRouter();
   const calibrationScale = useBrowserCalibrationScale();
+  const dpiId = useId();
   const [settings, setSettings] = useState<TrainerSettings | null>(null);
-  const [startingText, setStartingText] = useState<string | null>(null);
-  const [stage, setStage] = useState<"discovery" | "refinement">("discovery");
-  const [phaseBaseline, setPhaseBaseline] = useState(1);
+  const [path, setPath] = useState<"convert" | "test">("convert");
+  const [game, setGame] = useState<VerifiedSensitivityProfileId>("valorant");
+  const [gameValue, setGameValue] = useState("");
+  const [startingValue, setStartingValue] = useState<string | null>(null);
+  const [pair, setPair] = useState<CalibrationPair | null>(null);
+  const [outcomes, setOutcomes] = useState<readonly PairOutcome[]>([]);
+  const completedTrial = useRef(-1);
   const [error, setError] = useState<string | null>(null);
-  const [blocks, setBlocks] = useState<readonly CalibrationBlock[]>([]);
-  const [blockIndex, setBlockIndex] = useState(0);
-  const [modeScores, setModeScores] = useState<readonly ModeCandidateScore[]>(
-    [],
-  );
-  const [recommendation, setRecommendation] =
-    useState<MultiModeRecommendation | null>(null);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [targetGame, setTargetGame] =
-    useState<VerifiedSensitivityProfileId>("valorant");
+  const [savedValue, setSavedValue] = useState<string | null>(null);
+  const homeHref = publicPractice ? "/#guest-play" : "/app";
+  const homeLabel = publicPractice ? "Play as guest" : "Back to trainer home";
 
   useEffect(() => {
     if (publicPractice) {
       setSettings(loadGuestTrainerSettings());
       return;
     }
+    let active = true;
     const client = new BrowserApiClient();
     void (async () => {
-      try {
-        const session = await client.getSession();
-        if (!session?.user) {
-          router.replace(`/login?next=${encodeURIComponent("/app/calibrate")}`);
-          return;
-        }
-        const response = await client.getTrainerSettings();
-        if (!response.ok || !response.data) {
-          setError(response.error ?? "Could not load trainer settings.");
-          return;
-        }
-        const parsed = TrainerSettingsSchema.safeParse(response.data);
-        if (!parsed.success) {
-          console.warn(
-            "[calibrate] saved settings rejected",
-            parsed.error.issues,
-          );
-          setError("Saved trainer settings are invalid.");
-          return;
-        }
-        setSettings(parsed.data);
-      } catch {
-        setError("Could not connect to the account service.");
+      const session = await client.getSession();
+      if (!active) return;
+      if (!session?.user) {
+        router.replace("/login?next=/app/calibrate");
+        return;
       }
-    })();
+      const response = await client.getTrainerSettings();
+      if (!active) return;
+      const parsed = TrainerSettingsSchema.safeParse(response.data);
+      if (!response.ok || !parsed.success) {
+        setError(response.error ?? "Could not load trainer settings.");
+        return;
+      }
+      setSettings(parsed.data);
+    })().catch(() => {
+      if (active) setError("Could not connect to the account service.");
+    });
+    return () => {
+      active = false;
+    };
   }, [publicPractice, router]);
 
-  const currentBlock = blocks[blockIndex] ?? null;
-  const title = "Find My Sensi";
-  const homeHref = publicPractice ? "/#guest-play" : "/app";
-  const homeLabel = publicPractice ? "Play as guest" : "Back to trainer home";
-  const startingSensitivityText =
-    startingText ?? settings?.fmsSensitivity ?? "1";
+  const converted = convertGameSetting(game, gameValue, calibrationScale);
+  const validConversion = converted !== null && isBrowserSensitivity(converted);
+  const defaultStartingValue = validConversion
+    ? formatSensitivity(converted)
+    : (settings?.fmsSensitivity ?? "1");
+  const startingSensitivity = startingValue ?? defaultStartingValue;
+  const result =
+    outcomes.length === COMPARISONS.length ? outcomes.at(-1)! : null;
+  const hasScore = outcomes.some((entry) => entry.hasScore);
+  const strafeBest = outcomes.find(
+    (entry) => entry.strafeOnTarget !== null,
+  )?.strafeOnTarget;
+  const selectedSensitivity = result
+    ? hasScore
+      ? result.preferred
+      : null
+    : path === "convert" && validConversion
+      ? converted
+      : null;
+  const comparison = pair ? COMPARISONS[pair.index]! : null;
+  const trialNumber = pair ? pair.index * 2 + (pair.first ? 1 : 0) : 0;
 
-  const useStartingPreset = (game: "valorant" | "cs2", sensitivity: string) => {
-    if (!settings) return;
-    const runtime = applyBrowserInputCalibration(
-      Number(gameSensitivityToFms(game, sensitivity)),
-      calibrationScale,
-    );
-    setStartingText(formatSensitivity(runtime));
-    setTargetGame(game);
+  function reset() {
+    setPair(null);
+    setOutcomes([]);
     setError(null);
-  };
+  }
 
-  const startPhase = (nextStage: "discovery" | "refinement", base: number) => {
-    const seed = makeSeed();
-    const candidates =
-      nextStage === "refinement"
-        ? refinementCandidates(base)
-        : discoveryCandidates(base);
-    if (candidates.length < 2) {
-      setError(
-        "Choose a higher starting sensitivity to compare distinct values.",
-      );
-      return;
-    }
-    const built: CalibrationBlock[] = [];
-    FIND_MODES.forEach((modeId, modeIndex) => {
-      // Shuffle candidates independently for each mode.
-      const modeSeed: readonly [number, number, number, number] = [
-        (seed[0] ^ (modeIndex * 0x9e3779b1)) >>> 0,
-        (seed[1] + modeIndex * 0x85ebca6b) >>> 0,
-        (seed[2] ^ ((modeIndex + 1) * 0xc2b2ae35)) >>> 0,
-        (seed[3] + modeIndex + 1) >>> 0,
-      ];
-      buildCandidateOrder(candidates.length, modeSeed).forEach(
-        (candidateIndex, candidateBlockIndex) => {
-          built.push({
-            id: `${nextStage}-${modeId}-${candidateBlockIndex + 1}`,
-            sensitivity: candidates[candidateIndex]!,
-            modeId,
-          });
-        },
-      );
-    });
-    setStage(nextStage);
-    setPhaseBaseline(base);
-    setBlocks(built);
-    setError(null);
-    setBlockIndex(0);
-    setModeScores([]);
-    setRecommendation(null);
-    setSaved(false);
-  };
-
-  const start = (nextStage: "discovery" | "refinement") => {
-    if (!publicPractice && !settings?.nominalDpi) {
-      setError("Enter your mouse DPI before starting the sensitivity test.");
-      return;
-    }
-    const base = parseCalibrationSensitivity(startingSensitivityText);
-    if (base === null) {
+  function start() {
+    const startValue = parseSensitivityInput(startingSensitivity);
+    if (startValue === null || !isBrowserSensitivity(startValue)) {
       setError("Enter a starting sensitivity from 0.000001 to 100.");
       return;
     }
-    startPhase(nextStage, base);
-  };
+    const seed = generateRunSeed();
+    completedTrial.current = -1;
+    setError(null);
+    setOutcomes([]);
+    setPair(buildPair(0, startValue, 1, (seed[0] & 1) === 0, seed));
+  }
 
-  const completeBlock = useCallback(
+  const completeTrial = useCallback(
     (score: RuntimeScoreResult) => {
-      if (!currentBlock) return;
-
-      // score.score is the one number every mode adapter reports; raw ranges
-      // differ per mode and are normalized later.
-      const nextScores = [
-        ...modeScores,
-        {
-          modeId: currentBlock.modeId,
-          sensitivity: currentBlock.sensitivity,
-          score: score.score,
-        },
-      ];
-      setModeScores(nextScores);
-      if (blockIndex + 1 < blocks.length) {
-        setBlockIndex(blockIndex + 1);
+      if (!pair || !comparison || completedTrial.current >= trialNumber) return;
+      completedTrial.current = trialNumber;
+      const outcome = recordTrial(
+        comparison.mode,
+        pair.candidates[pair.first ? 1 : 0],
+        score,
+      );
+      if (!pair.first) {
+        setPair({ ...pair, first: outcome });
         return;
       }
-      setRecommendation(
-        recommendSensitivityAcrossModes(nextScores, {
-          startingSensitivity: phaseBaseline,
-          weights: FIND_MODE_WEIGHTS,
-        }),
+      const comparisonResult = comparePair(pair, pair.first, outcome);
+      setOutcomes((previous) => [...previous, comparisonResult]);
+      const nextIndex = pair.index + 1;
+      setPair(
+        nextIndex < COMPARISONS.length
+          ? buildPair(
+              nextIndex,
+              comparisonResult.preferred,
+              comparisonResult.direction,
+              !pair.lowerFirst,
+              generateRunSeed(),
+            )
+          : null,
       );
     },
-    [blockIndex, blocks.length, currentBlock, modeScores, phaseBaseline],
+    [comparison, pair, trialNumber],
   );
 
-  const selectedSensitivity = recommendation?.sensitivity ?? null;
-  const displayedRecommendation = useMemo(() => {
-    if (selectedSensitivity === null || !settings?.nominalDpi) return null;
-    try {
-      return runtimeFmsToGameSensitivity(
-        targetGame,
-        selectedSensitivity,
-        settings.nominalDpi,
-        calibrationScale,
-      );
-    } catch {
-      return null;
-    }
-  }, [selectedSensitivity, settings, targetGame, calibrationScale]);
-
-  const saveSelected = async () => {
+  async function saveSensitivity() {
     if (!settings || selectedSensitivity === null) return;
+    const value = formatSensitivity(selectedSensitivity);
+    const next = { ...settings, fmsSensitivity: value };
     setSaving(true);
-    const nextSettings = {
-      ...settings,
-      fmsSensitivity: formatSensitivity(selectedSensitivity),
-    };
-    if (publicPractice) {
-      saveGuestTrainerSettings(nextSettings);
-      setSettings(nextSettings);
-      setStartingText(null);
-      setSaved(true);
-      setSaving(false);
-      return;
-    }
+    setError(null);
     try {
-      const response = await new BrowserApiClient().saveTrainerSettings(
-        nextSettings,
-      );
-      if (!response.ok) {
-        setError(response.error ?? "Could not save sensitivity.");
-        return;
+      if (publicPractice) saveGuestTrainerSettings(next);
+      else {
+        const response = await new BrowserApiClient().saveTrainerSettings(next);
+        if (!response.ok) {
+          setError(response.error ?? "Could not save sensitivity.");
+          return;
+        }
       }
-      setSettings(nextSettings);
-      setStartingText(null);
-      setSaved(true);
+      setSettings(next);
+      setSavedValue(value);
     } catch {
-      setError("Could not connect to the account service.");
+      setError("Could not save sensitivity. Try again.");
     } finally {
       setSaving(false);
     }
-  };
+  }
 
-  const reset = () => {
-    setBlocks([]);
-    setBlockIndex(0);
-    setModeScores([]);
-    setRecommendation(null);
-    setError(null);
-    setSaved(false);
-  };
-
-  if (error && !settings) return <Status message={error} />;
-  if (!settings) return <Status message="Loading trainer settings…" />;
-
-  if (currentBlock && !recommendation) {
+  if (settings && pair && comparison) {
+    const trackingHint =
+      comparison.mode === "strafe"
+        ? ` Aim to stay on target at least ${STRAFE_TARGET_PERCENT}% of the time.`
+        : "";
     return (
       <TrainerBootstrap
-        key={currentBlock.id}
-        mode={currentBlock.modeId}
-        durationTicks={FIND_BLOCK_DURATION_TICKS}
-        sensitivityOverride={formatSensitivity(currentBlock.sensitivity)}
+        key={trialNumber}
+        mode={comparison.mode}
+        durationTicks={TRIAL_SECONDS * 128}
+        countdownSeconds={COUNTDOWN_SECONDS}
+        runSeed={pair.seed}
+        sensitivityOverride={formatSensitivity(
+          pair.candidates[pair.first ? 1 : 0],
+        )}
         settingsOverride={settings}
-        runLabel={`${stage === "refinement" ? "Fine comparison" : "Discovery"}: ${
-          FIND_MODE_LABELS[currentBlock.modeId]
-        }, block ${blockIndex + 1} of ${blocks.length}`}
-        onRunComplete={completeBlock}
+        runLabel={`${comparison.label}: trial ${pair.first ? "B" : "A"} · ${trialNumber + 1} of ${COMPARISONS.length * 2}.${trackingHint}`}
+        onRunComplete={completeTrial}
         lockedConfiguration
         guest={publicPractice}
       />
     );
   }
 
-  if (recommendation) {
+  if (!settings) {
     return (
       <main className="app-shell">
-        <section className="app-card app-card-wide">
-          <BackLink href={homeHref} label={homeLabel} />
-          <p className="app-kicker" style={{ marginBottom: 8 }}>
-            {stage === "discovery"
-              ? "Discovery results"
-              : "Fine comparison results"}
-          </p>
-          <h1 className="app-heading">Your sensitivity recommendation</h1>
-          <p
-            className="app-subtext"
-            data-testid="recommended-browser-sensitivity"
-          >
-            FindMySensi browser sensitivity:{" "}
-            {formatSensitivity(recommendation.sensitivity)}
-          </p>
-          <div style={{ marginTop: 18 }}>
-            <p className="settings-label">
-              {SENSITIVITY_PROFILES[targetGame].name}
-            </p>
-            <p
-              data-testid="recommended-game-sensitivity"
-              style={{
-                marginTop: 4,
-                color: "var(--fms-acid)",
-                fontFamily: "monospace",
-                fontSize: "clamp(42px, 9vw, 68px)",
-                fontWeight: 900,
-                lineHeight: 1,
-              }}
-            >
-              {displayedRecommendation
-                ? formatSensitivity(
-                    displayedRecommendation.conversion.targetSensitivity,
-                  )
-                : "Add DPI below"}
-            </p>
-          </div>
-          <p className="app-subtext">
-            {recommendation.confidence === "LOW"
-              ? "Scores were close across the drills, so this round kept its starting value."
-              : "This value had the strongest combined result across the drills tested in this round."}
-          </p>
-          <p
-            style={{
-              marginTop: 8,
-              fontFamily: "monospace",
-              fontSize: 13,
-              color: "rgba(255,255,255,0.5)",
-            }}
-          >
-            Score separation: {recommendation.confidence.toLowerCase()}. Short
-            runs vary, so repeat the comparison before switching if scores are
-            close.
-          </p>
-          {displayedRecommendation ? (
-            <div
-              style={{
-                display: "grid",
-                gap: 8,
-                marginTop: 18,
-                fontFamily: "monospace",
-                fontSize: 13,
-                color: "rgba(255,255,255,0.65)",
-              }}
-            >
-              <span>
-                Estimated turn distance:{" "}
-                {displayedRecommendation.conversion.formattedCmPer360} cm / 360°
-              </span>
-              <span>
-                Canonical Aimlabs Default:{" "}
-                {formatSensitivity(
-                  displayedRecommendation.canonicalFmsSensitivity,
-                )}
-              </span>
-              <span>
-                Adapter v{SENSITIVITY_PROFILES[targetGame].version} ·{" "}
-                {SENSITIVITY_PROFILES[targetGame].verificationLevel}
-              </span>
-            </div>
-          ) : null}
-          <div style={{ marginTop: 24 }}>
-            <DpiField settings={settings} onChange={setSettings} />
-            <SensitivityGamePicker
-              legend="View equivalents"
-              selected={targetGame}
-              onSelect={setTargetGame}
-            />
-          </div>
-          {error ? (
-            <p className="app-alert" style={{ marginTop: 16 }}>
-              {error}
-            </p>
-          ) : null}
-          <div
-            style={{
-              marginTop: 24,
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 12,
-            }}
-          >
-            {stage === "discovery" && (
-              <button
-                onClick={() =>
-                  startPhase("refinement", recommendation.sensitivity)
-                }
-                className="app-button"
-                style={{ width: "auto", padding: "0 22px" }}
-              >
-                Compare in 0.01 steps
-              </button>
-            )}
-            {selectedSensitivity !== null ? (
-              <button
-                onClick={saveSelected}
-                disabled={saving || saved}
-                className="app-button"
-                style={{ width: "auto", padding: "0 22px" }}
-              >
-                {saving
-                  ? "Saving…"
-                  : saved
-                    ? "Sensitivity saved"
-                    : publicPractice
-                      ? "Save for guest drills"
-                      : "Use this sensitivity"}
-              </button>
-            ) : null}
-            <button
-              onClick={reset}
-              className="app-button app-button-ghost"
-              style={{ width: "auto", padding: "0 22px" }}
-            >
-              Run again
-            </button>
-            <Link
-              href={homeHref}
-              className="app-link"
-              style={{ alignSelf: "center" }}
-            >
-              {publicPractice ? "Play a guest drill" : "Dashboard"}
-            </Link>
-          </div>
-        </section>
+        <p className="app-subtext" role={error ? "alert" : "status"}>
+          {error ?? "Loading trainer settings…"}
+        </p>
       </main>
     );
   }
+
+  const equivalent =
+    result && selectedSensitivity !== null
+      ? runtimeFmsToGameSensitivity(
+          game,
+          selectedSensitivity,
+          settings.nominalDpi ?? 800,
+          calibrationScale,
+        ).conversion
+      : null;
 
   return (
     <main className="app-shell">
       <section className="app-card app-card-wide">
         <BackLink href={homeHref} label={homeLabel} />
-        <p className="app-kicker" style={{ marginBottom: 8 }}>
-          Performance test
-        </p>
-        <h1 className="app-heading">{title}</h1>
-        <p className="app-subtext">
-          Compare up to five hidden sensitivity values across Grid Rush, Multi
-          Burst, Strafe Track, Sphere Track, and Reflex Rush. Each run takes 12
-          seconds. Compare the strongest result against values 0.01 apart in a
-          second round.
-        </p>
-        {publicPractice && (
-          <p className="app-help">
-            Free to try. Your results stay in this browser and off the
-            leaderboard.
-          </p>
+        <h1 className="app-heading">
+          {result ? "Your sensitivity estimate" : "Find My Sensi"}
+        </h1>
+        {result ? (
+          <>
+            {hasScore ? (
+              <>
+                <p
+                  className="app-subtext"
+                  data-testid="recommended-browser-sensitivity"
+                >
+                  Recommended FindMySensi sensitivity:{" "}
+                  <strong>{formatSensitivity(result.preferred)}</strong>
+                </p>
+                <p className="app-subtext">
+                  Approximate range: {formatSensitivity(result.low)}–
+                  {formatSensitivity(result.high)}
+                </p>
+                <p className="app-help">
+                  {result.decisive
+                    ? "This setting scored higher in the final comparison."
+                    : "The final scores were close, so the test kept the previous best setting."}
+                </p>
+                {strafeBest != null && (
+                  <p className="app-help">
+                    Best Strafe Track time on target: {strafeBest.toFixed(1)}% ·
+                    Goal: {STRAFE_TARGET_PERCENT}%
+                  </p>
+                )}
+                <SensitivityGamePicker
+                  legend="View an in-game equivalent"
+                  selected={game}
+                  onSelect={setGame}
+                />
+                {equivalent && (
+                  <p className="app-subtext">
+                    {SENSITIVITY_PROFILES[game].name}:{" "}
+                    {formatSensitivity(equivalent.targetSensitivity)}
+                    {settings.nominalDpi
+                      ? ` · ${equivalent.formattedCmPer360} cm/360 estimated`
+                      : ""}
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="app-subtext">
+                No hits or tracking time were recorded. Try again to get an
+                estimate.
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={reset}
+              className="app-chip"
+              style={{ marginBlock: 12 }}
+            >
+              Run again
+            </button>
+          </>
+        ) : (
+          <>
+            <div
+              className="converter-preset-buttons"
+              style={{ marginBlock: 20 }}
+            >
+              <button
+                type="button"
+                aria-pressed={path === "convert"}
+                className="app-chip"
+                onClick={() => {
+                  reset();
+                  setPath("convert");
+                }}
+              >
+                I know my in-game sensitivity
+              </button>
+              <button
+                type="button"
+                aria-pressed={path === "test"}
+                className="app-chip"
+                onClick={() => {
+                  reset();
+                  setPath("test");
+                }}
+              >
+                I don’t know my sensitivity
+              </button>
+            </div>
+            {path === "convert" ? (
+              <>
+                <SensitivityGamePicker
+                  legend="Which game do you use?"
+                  selected={game}
+                  onSelect={setGame}
+                />
+                <label className="app-field">
+                  <span className="settings-label">In-game sensitivity</span>
+                  <input
+                    className="app-input"
+                    type="text"
+                    inputMode="decimal"
+                    value={gameValue}
+                    onChange={(event) => setGameValue(event.target.value)}
+                  />
+                </label>
+                <div className="app-subtext">
+                  FindMySensi browser sensitivity:{" "}
+                  <output data-testid="calibration-conversion">
+                    {validConversion ? formatSensitivity(converted) : "—"}
+                  </output>
+                </div>
+                <p className="app-help">
+                  {converted !== null && !validConversion
+                    ? "That setting converts outside the supported FindMySensi range."
+                    : "Uses the active browser calibration estimate. Use the same DPI in-game and in the trainer."}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="app-subtext">
+                  Compare two hidden settings at a time in Grid Rush, Headshot
+                  Lane, Strafe Track, Multi Burst, Reflex Rush, and Micro Flick.
+                  Play {TRIAL_SECONDS}-second trials with{" "}
+                  {Math.floor(ACTIVE_SECONDS / 60)} minutes{" "}
+                  {ACTIVE_SECONDS % 60} seconds of active training.
+                </p>
+                <p className="app-help">
+                  Aim for {STRAFE_TARGET_PERCENT}% time on target in Strafe
+                  Track. The last comparison fine-tunes the result in steps of
+                  0.01 or smaller.
+                </p>
+                <label className="app-field">
+                  <span className="settings-label">
+                    Starting browser sensitivity
+                  </span>
+                  <input
+                    className="app-input"
+                    type="text"
+                    inputMode="decimal"
+                    value={startingSensitivity}
+                    onChange={(event) => setStartingValue(event.target.value)}
+                  />
+                </label>
+                <p className="app-help">
+                  Starting value:{" "}
+                  <output data-testid="calibration-starting-sensitivity">
+                    {startingSensitivity || "—"}
+                  </output>
+                </p>
+                <button type="button" className="app-button" onClick={start}>
+                  Start Find My Sensi
+                </button>
+              </>
+            )}
+          </>
         )}
-        <div style={{ marginTop: 22 }}>
-          <label className="app-field">
-            <span className="settings-label">Starting browser sensitivity</span>
+        {!pair && (path === "test" || result) && (
+          <div className="app-field" style={{ marginTop: 16 }}>
+            <label className="settings-label" htmlFor={dpiId}>
+              Mouse DPI (optional)
+            </label>
             <input
+              id={dpiId}
               className="app-input"
-              type="text"
-              inputMode="decimal"
-              value={startingSensitivityText}
-              onChange={(event) => setStartingText(event.target.value)}
+              type="number"
+              min={1}
+              max={100000}
+              value={settings.nominalDpi ?? ""}
+              onChange={(event) => {
+                const number = Number(event.target.value);
+                setSettings({
+                  ...settings,
+                  nominalDpi:
+                    Number.isInteger(number) && number > 0 && number <= 100000
+                      ? number
+                      : null,
+                });
+              }}
             />
-          </label>
-          {!publicPractice && (
-            <p className="app-help">
-              Starting value:{" "}
-              <output data-testid="calibration-starting-sensitivity">
-                {startingSensitivityText || "—"}
-              </output>
-            </p>
-          )}
-          <DpiField settings={settings} onChange={setSettings} />
-          {publicPractice && (
-            <p className="app-help">
-              DPI is optional. It lets you see estimated equivalents in other
-              games.
-            </p>
-          )}
-          <SensitivityGamePicker
-            legend="What game do you want to use this sensitivity in?"
-            selected={targetGame}
-            onSelect={setTargetGame}
-          />
-          <p className="settings-label" style={{ marginTop: 20 }}>
-            Starting sensitivity presets
-          </p>
-          <div className="converter-preset-buttons">
-            <button
-              type="button"
-              className="settings-chip"
-              onClick={() => useStartingPreset("valorant", "0.125")}
-            >
-              Valorant 0.125
-            </button>
-            <button
-              type="button"
-              className="settings-chip"
-              onClick={() => useStartingPreset("cs2", "0.398")}
-            >
-              CS2 0.398
-            </button>
           </div>
-          <p className="app-help" style={{ marginTop: 10 }}>
-            Presets use your active browser multiplier. Your saved settings
-            change only when you use the final recommendation.
-          </p>
-          {publicPractice && (
-            <Link href="/tools/converter" className="app-link">
-              Convert a sensitivity to FindMySensi
-            </Link>
-          )}
-        </div>
-        {error ? (
-          <p className="app-alert" style={{ marginTop: 16 }}>
+        )}
+        {error && (
+          <p className="app-alert" role="alert">
             {error}
           </p>
-        ) : null}
-        <button
-          onClick={() => start("discovery")}
-          className="app-button"
-          style={{ marginTop: 24 }}
-        >
-          Start {title}
-        </button>
-        {publicPractice && (
+        )}
+        {(path === "convert" || result) && selectedSensitivity !== null && (
           <button
             type="button"
-            onClick={() => start("refinement")}
-            className="app-button app-button-ghost"
-            style={{ marginTop: 12 }}
+            className="app-button"
+            onClick={saveSensitivity}
+            disabled={
+              saving || savedValue === formatSensitivity(selectedSensitivity)
+            }
+            style={{ marginTop: 16 }}
           >
-            Compare in 0.01 steps
+            {saving
+              ? "Saving…"
+              : savedValue === formatSensitivity(selectedSensitivity)
+                ? "Sensitivity saved"
+                : publicPractice
+                  ? "Save for guest drills"
+                  : "Use this sensitivity"}
           </button>
         )}
+        <p className="app-help">
+          Calibration trials stay off the leaderboards.
+        </p>
       </section>
     </main>
   );
 }
 
-function Status({ message }: { message: string }) {
-  return (
-    <main className="app-shell">
-      <p
-        style={{
-          fontFamily: "monospace",
-          fontSize: 13,
-          color: "rgba(255,255,255,0.5)",
-        }}
-      >
-        {message}
-      </p>
-    </main>
-  );
-}
-
-function DpiField({
-  settings,
-  onChange,
-}: {
-  settings: TrainerSettings;
-  onChange: (settings: TrainerSettings) => void;
-}) {
-  return (
-    <label className="app-field">
-      <span className="settings-label">Mouse DPI</span>
-      <input
-        className="app-input"
-        type="number"
-        min={1}
-        max={100000}
-        step={1}
-        value={settings.nominalDpi ?? ""}
-        onChange={(event) => {
-          const value = Number(event.target.value);
-          onChange({
-            ...settings,
-            nominalDpi:
-              Number.isInteger(value) && value > 0 && value <= 100000
-                ? value
-                : null,
-          });
-        }}
-      />
-    </label>
-  );
-}
-
-function formatSensitivity(value: number): string {
-  return Number(value.toFixed(6)).toString();
-}
-
-function makeSeed(): readonly [number, number, number, number] {
-  const values = new Uint32Array(4);
-  crypto.getRandomValues(values);
-  return [values[0]!, values[1]!, values[2]!, values[3]!];
+function convertGameSetting(
+  game: VerifiedSensitivityProfileId,
+  text: string,
+  calibrationScale: Parameters<typeof applyBrowserInputCalibration>[1],
+): number | null {
+  const raw = text.trim();
+  if (!parseSensitivityInput(raw) || raw.length > 40) return null;
+  try {
+    return applyBrowserInputCalibration(
+      Number(gameSensitivityToFms(game, raw)),
+      calibrationScale,
+    );
+  } catch {
+    return null;
+  }
 }

@@ -85,7 +85,8 @@ export default function HomePage() {
             <span>
               <strong>Find my sensitivity</strong>
               <small>
-                Compare settings across five drills in a blind test.
+                Convert your in-game setting or compare hidden values in six
+                drills.
               </small>
             </span>
             <ArrowRight aria-hidden="true" size={18} strokeWidth={1.65} />
