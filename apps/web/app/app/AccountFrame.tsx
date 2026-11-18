@@ -82,13 +82,16 @@ function AccountNavigation({ pathname }: { pathname: string }) {
 
 export function AccountFrame({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const finishingSignup = pathname === "/app/finish-google-signup";
 
   return (
     <div className={`account-frame ${styles.frame}`}>
       <header className={styles.header}>
         <div className={styles.bar}>
-          <SiteBrand href="/app" />
-          <AccountNavigation key={pathname} pathname={pathname} />
+          <SiteBrand href={finishingSignup ? "/" : "/app"} />
+          {!finishingSignup && (
+            <AccountNavigation key={pathname} pathname={pathname} />
+          )}
         </div>
       </header>
       {children}

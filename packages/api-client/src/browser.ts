@@ -250,8 +250,29 @@ export class BrowserApiClient {
     return this.requestJson<{ url: string }>("/api/v1/auth/google/start", {
       method: "POST",
       cache: "no-store",
-      body: JSON.stringify({ ageAttested: true, next }),
+      body: JSON.stringify({ flow: "post-signup", next }),
     });
+  }
+
+  async getGoogleSignup() {
+    return this.requestJson<
+      { pending: true; username: string } | { pending: false }
+    >("/api/v1/auth/google/finish", {
+      cache: "no-store",
+    });
+  }
+
+  async confirmGoogleSignup(
+    username: string,
+  ): Promise<ApiResult<{ pending: boolean }>> {
+    return this.requestJson<{ pending: boolean }>(
+      "/api/v1/auth/google/finish",
+      {
+        method: "POST",
+        cache: "no-store",
+        body: JSON.stringify({ ageAttested: true, username }),
+      },
+    );
   }
 
   async register(

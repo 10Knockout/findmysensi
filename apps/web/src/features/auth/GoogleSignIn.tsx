@@ -1,15 +1,12 @@
 "use client";
 
-import { useEffect, useId, useState, type FormEvent } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { BrowserApiClient } from "@findmysensi/api-client";
 import { resolveSafeLoginDestination } from "./login-next.js";
 
 export function GoogleSignIn() {
-  const id = useId();
   const [enabled, setEnabled] = useState(false);
-  const [expanded, setExpanded] = useState(false);
-  const [attested, setAttested] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,9 +26,8 @@ export function GoogleSignIn() {
     };
   }, []);
 
-  async function proceed(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!attested || pending) return;
+  async function proceed() {
+    if (pending) return;
     setPending(true);
     setError(null);
     const destination = resolveSafeLoginDestination(window.location.search);
@@ -72,9 +68,7 @@ export function GoogleSignIn() {
           <button
             className="app-google-button"
             type="button"
-            aria-expanded={expanded}
-            aria-controls={`${id}-google-confirm`}
-            onClick={() => setExpanded(!expanded)}
+            onClick={proceed}
             disabled={pending}
           >
             <Image
@@ -84,33 +78,8 @@ export function GoogleSignIn() {
               height={18}
               unoptimized
             />
-            Continue with Google
+            {pending ? "Opening Google…" : "Continue with Google"}
           </button>
-          <form
-            className="app-google-confirm"
-            id={`${id}-google-confirm`}
-            onSubmit={proceed}
-            hidden={!expanded}
-          >
-            <label htmlFor={`${id}-google-age`}>
-              <input
-                id={`${id}-google-age`}
-                type="checkbox"
-                required
-                checked={attested}
-                onChange={(event) => setAttested(event.target.checked)}
-                disabled={pending}
-              />{" "}
-              I confirm I am 18 or older.
-            </label>
-            <button
-              className="app-button"
-              type="submit"
-              disabled={pending || !attested}
-            >
-              {pending ? "Opening Google…" : "Open Google sign-in"}
-            </button>
-          </form>
           <p className="app-google-divider">Or continue with email</p>
         </>
       )}
