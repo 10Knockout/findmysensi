@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { BrowserApiClient } from "@findmysensi/api-client";
 import { RegisterRequestSchema } from "@findmysensi/protocol";
 import { BackLink } from "../../src/components/BackLink.js";
+import { PasswordInput } from "../../src/components/PasswordInput.js";
 
 const USERNAME_HELP =
   "3-24 characters. Letters, numbers, and allowed symbols (- _ @ ! # $ . + % & *) only.";
@@ -160,20 +161,13 @@ export default function RegisterPage() {
       <div className="app-card">
         <BackLink href="/" label="Back to home" />
         <div className="app-card-header">
-          <Link
-            href="/"
-            className="landing-wordmark"
-            style={{ justifyContent: "center", marginBottom: 22 }}
-          >
-            <span>FMS</span>FindMySensi
-          </Link>
           <h1 className="app-heading">
             {verificationEmail ? "Verify your email" : "Create your account"}
           </h1>
           <p className="app-subtext">
             {verificationEmail
               ? `Enter the six-digit code sent to ${verificationEmail}`
-              : "Create your account, verify your email, then start Gridshot."}
+              : "Save your training progress and submit eligible scores."}
           </p>
         </div>
 
@@ -366,15 +360,16 @@ function Field({
   title,
   help,
 }: FieldProps) {
+  const Input = type === "password" ? PasswordInput : "input";
   return (
     <div className="app-field">
       <label htmlFor={id} className="app-label">
         {label}
       </label>
-      <input
+      <Input
         id={id}
         name={id}
-        type={type}
+        {...(type === "password" ? { label: label.toLowerCase() } : { type })}
         required
         value={value}
         onChange={(event) => onChange(event.target.value)}

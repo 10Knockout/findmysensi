@@ -4,7 +4,10 @@ test("homepage lets guests open every drill", async ({ page }) => {
   test.setTimeout(60_000);
   await page.route("**/api/**", (route) => route.fulfill({ status: 503 }));
   await page.goto("/");
-  await page.getByRole("link", { name: "Play as guest", exact: true }).click();
+  await page
+    .getByRole("link", { name: /^start training$/i })
+    .first()
+    .click();
   await expect(page).toHaveURL(/#guest-play$/);
   await expect(page.locator(":target")).toContainText("Play as guest");
   const links = await page

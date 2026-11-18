@@ -1,0 +1,152 @@
+.frame {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  min-width: 0;
+  background: var(--site-paper);
+  color: var(--site-ink);
+  font-family: var(--site-font);
+}
+
+.frame > main {
+  flex: 1;
+  min-height: 0;
+}
+
+.header {
+  position: relative;
+  z-index: 5;
+  flex: none;
+  border-bottom: 1px solid var(--site-rule);
+  background: var(--site-paper);
+}
+
+/* Keep pointer lock and fullscreen surfaces clear, including calibration trials. */
+.frame:has(:global(#simulation-canvas)) > .header {
+  display: none;
+}
+
+.bar {
+  display: flex;
+  width: min(100%, 80rem);
+  min-height: 68px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  margin-inline: auto;
+  padding-inline: var(--site-gutter);
+}
+
+.links {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.75rem, 2vw, 1.8rem);
+}
+
+.links a,
+.signOut,
+.menu {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--site-muted);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 560;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 160ms ease;
+}
+
+.links a:hover,
+.links a[aria-current="page"],
+.signOut:hover,
+.menu:hover {
+  color: var(--site-accent);
+}
+
+.links a[aria-current="page"] {
+  text-decoration: underline;
+  text-underline-offset: 0.35em;
+  text-decoration-thickness: 1px;
+}
+
+.signOut,
+.menu {
+  cursor: pointer;
+}
+
+.menu {
+  display: none;
+}
+
+.dashboardHeader h1 {
+  max-width: 100%;
+  margin-bottom: 0;
+}
+
+.dashboardHeader p {
+  margin: 0.5rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.dashboardHeader > div {
+  min-width: 0;
+}
+
+.frame .modeGrid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+}
+
+.modeGrid h3 {
+  text-transform: none;
+}
+
+.modeLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+@media (max-width: 820px) {
+  .bar {
+    flex-wrap: wrap;
+    gap: 0;
+  }
+
+  .menu {
+    display: inline-flex;
+    gap: 0.4rem;
+  }
+
+  .menu[aria-expanded="true"] svg {
+    transform: rotate(180deg);
+  }
+
+  .links {
+    display: none;
+    flex-basis: 100%;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0 1rem;
+    border-top: 1px solid var(--site-rule);
+    padding-block: 0.5rem;
+  }
+
+  .links[data-open="true"] {
+    display: grid;
+  }
+
+  .links :is(a, button) {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .links a,
+  .signOut,
+  .menu {
+    transition: none;
+  }
+}

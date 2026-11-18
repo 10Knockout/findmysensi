@@ -991,7 +991,7 @@ export function TrainerBootstrap({
   return (
     <div
       ref={containerRef}
-      className="relative flex h-screen w-full select-none items-center justify-center overflow-hidden bg-zinc-950 font-sans touch-none"
+      className="relative flex h-dvh w-full select-none items-center justify-center overflow-hidden bg-zinc-950 font-sans touch-none"
     >
       <canvas
         ref={canvasRef}
@@ -1049,10 +1049,7 @@ export function TrainerBootstrap({
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/80 p-6 backdrop-blur-md">
           <div className="app-card" style={{ textAlign: "center" }}>
             <div>
-              <span className="trainer-badge">{modeTitle}</span>
-              <h1 className="app-heading" style={{ marginTop: 14 }}>
-                {modeTitle}
-              </h1>
+              <h1 className="app-heading">{modeTitle}</h1>
               <p className="app-subtext">
                 {runLabel ? `${runLabel}. ` : null}
                 {modeDescription} Click start to capture the mouse and begin the{" "}

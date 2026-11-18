@@ -60,13 +60,7 @@ export default function WorkoutsPage() {
   if (!user) {
     return (
       <main className="app-shell">
-        <p
-          style={{
-            fontFamily: "monospace",
-            fontSize: 13,
-            color: "rgba(255,255,255,0.5)",
-          }}
-        >
+        <p className="app-help" role="status">
           Checking your session…
         </p>
       </main>
@@ -86,8 +80,7 @@ export default function WorkoutsPage() {
           Workouts
         </h1>
         <p className="app-section-copy">
-          Curated sequences from the 9 exercise catalog. Play each exercise in
-          order; there is no auto-advance yet.
+          Choose a workout and open each drill in order.
         </p>
 
         {WORKOUT_DEFINITIONS.map((workout) => (

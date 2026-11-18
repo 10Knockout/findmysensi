@@ -32,13 +32,15 @@ describe("results terminology integrity", () => {
     expect(normalizedSource).toContain("View leaderboard");
   });
 
-  it("login page describes access as aim training rather than a single mode", () => {
+  it("login page describes the account features", () => {
     const loginSource = readFileSync(
       new URL("../../../app/login/page.tsx", import.meta.url),
       "utf8",
     );
 
     expect(loginSource).not.toContain("Sign in to access Gridshot");
-    expect(loginSource).toContain("Sign in to access aim training");
+    expect(loginSource).toContain(
+      "Save your progress and compete on leaderboards.",
+    );
   });
 });

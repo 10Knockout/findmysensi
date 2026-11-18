@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BrowserApiClient } from "@findmysensi/api-client";
@@ -13,6 +14,7 @@ import {
 } from "@findmysensi/trainer-runtime";
 import { localPracticeHistory } from "../../src/features/training/local-history.js";
 import { QuickSetupModal } from "../../src/features/onboarding/QuickSetupModal.js";
+import styles from "./AccountFrame.module.css";
 
 const TRAINING_MODES = [
   ["grid", "Grid Rush", "Three targets for fast flicks and rapid acquisition."],
@@ -136,11 +138,6 @@ export default function AppDashboardPage() {
     };
   }, [router]);
 
-  const logout = async () => {
-    await new BrowserApiClient().logout();
-    router.replace("/login");
-  };
-
   if (error) {
     return (
       <main className="app-shell">
@@ -154,13 +151,7 @@ export default function AppDashboardPage() {
   if (!user) {
     return (
       <main className="app-shell">
-        <p
-          style={{
-            fontFamily: "monospace",
-            fontSize: 13,
-            color: "rgba(255,255,255,0.5)",
-          }}
-        >
+        <p className="app-help" role="status">
           Checking your session…
         </p>
       </main>
@@ -170,43 +161,23 @@ export default function AppDashboardPage() {
   return (
     <main className="app-page">
       <div className="app-page-inner">
-        <header className="app-page-header">
+        <header className={`app-page-header ${styles.dashboardHeader}`}>
           <div>
-            <p className="app-kicker" style={{ marginBottom: 4 }}>
-              Signed in as
+            <h1 className="app-section-title">Aim training</h1>
+            <p className="app-section-copy">
+              Signed in as {user.username ?? user.email}
             </p>
-            <h1 className="app-section-title" style={{ marginBottom: 0 }}>
-              {user.username ?? user.email}
-            </h1>
           </div>
           <div className="app-page-actions">
             <button
               onClick={() => setShowQuickSetup(true)}
-              className="app-chip"
+              className="app-chip app-chip-acid"
             >
               Calibrate Aim
             </button>
-            <Link href="/app/calibrate" className="app-chip app-chip-acid">
-              Find My Sensi
-            </Link>
             <Link href="/tools/mouse-swap" className="app-chip">
               Mouse Swap
             </Link>
-            <Link href="/app/workouts" className="app-chip">
-              Workouts
-            </Link>
-            <Link href="/app/leaderboards" className="app-chip">
-              Leaderboards
-            </Link>
-            <Link href="/app/profile" className="app-chip">
-              Profile
-            </Link>
-            <Link href="/app/settings" className="app-chip">
-              Settings
-            </Link>
-            <button onClick={logout} className="app-chip">
-              Sign out
-            </button>
           </div>
         </header>
 
@@ -250,14 +221,15 @@ export default function AppDashboardPage() {
           </div>
         ) : null}
 
-        <section>
-          <p className="app-section-label">Training</p>
-          <h2 className="app-section-title">Aim Training</h2>
+        <section aria-labelledby="training-drills">
+          <h2 id="training-drills" className="app-section-title">
+            Drills
+          </h2>
           <p className="app-section-copy">
             Train with {TRAINING_MODES.length} drills. Pathline scores stay on
             this device.
           </p>
-          <div className="app-mode-grid">
+          <div className={`app-mode-grid ${styles.modeGrid}`}>
             {TRAINING_MODES.map(([modeId, title, description]) => {
               const score = latestScores.get(modeId);
               return (
@@ -274,7 +246,10 @@ export default function AppDashboardPage() {
                       <strong>{score.toLocaleString()}</strong>
                     </p>
                   ) : null}
-                  <span className="app-mode-card-cta">PLAY →</span>
+                  <span className={`app-mode-card-cta ${styles.modeLink}`}>
+                    Play{" "}
+                    <ArrowUpRight size={13} strokeWidth={1.7} aria-hidden />
+                  </span>
                 </Link>
               );
             })}

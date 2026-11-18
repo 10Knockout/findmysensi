@@ -1,10 +1,10 @@
 "use client";
 
 import React, { Suspense, useState } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BrowserApiClient } from "@findmysensi/api-client";
 import { BackLink } from "../../src/components/BackLink.js";
+import { PasswordInput } from "../../src/components/PasswordInput.js";
 
 const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,100}$/;
 const PASSWORD_HELP =
@@ -58,13 +58,6 @@ function ResetPasswordForm() {
     <div className="app-card">
       <BackLink href="/login" label="Back to sign in" />
       <div className="app-card-header">
-        <Link
-          href="/"
-          className="landing-wordmark"
-          style={{ justifyContent: "center", marginBottom: 22 }}
-        >
-          <span>FMS</span>FindMySensi
-        </Link>
         <h1 className="app-heading">Set New Password</h1>
         <p className="app-subtext">Enter your new secure password</p>
       </div>
@@ -76,9 +69,9 @@ function ResetPasswordForm() {
           <label htmlFor="new-password" className="app-label">
             New Password
           </label>
-          <input
+          <PasswordInput
             id="new-password"
-            type="password"
+            label="new password"
             required
             minLength={8}
             maxLength={100}
@@ -98,9 +91,9 @@ function ResetPasswordForm() {
           <label htmlFor="confirm-new-password" className="app-label">
             Confirm New Password
           </label>
-          <input
+          <PasswordInput
             id="confirm-new-password"
-            type="password"
+            label="password confirmation"
             required
             minLength={8}
             maxLength={100}

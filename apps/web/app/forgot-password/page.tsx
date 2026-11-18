@@ -24,13 +24,6 @@ export default function ForgotPasswordPage() {
     <main className="app-shell">
       <div className="app-card">
         <div className="app-card-header">
-          <Link
-            href="/"
-            className="landing-wordmark"
-            style={{ justifyContent: "center", marginBottom: 22 }}
-          >
-            <span>FMS</span>FindMySensi
-          </Link>
           <h1 className="app-heading">Reset Password</h1>
           <p className="app-subtext">
             We will send a password reset link to your email

@@ -47,12 +47,11 @@ test("public home renders and shows a real-data error state when leaderboard is 
   const response = await page.goto("/");
   const hero = page.getByRole("heading", {
     level: 1,
-    name: "Find your sensi.",
+    name: /find your\s+sensitivity/i,
   });
-  const startTraining = page.getByRole("link", {
-    name: "Play as guest",
-    exact: true,
-  });
+  const startTraining = page
+    .getByRole("link", { name: /^start training$/i })
+    .first();
   const leaderboardError = page
     .getByRole("alert")
     .filter({ hasText: "Could not load Grid Rush" });
@@ -490,7 +489,7 @@ test("unknown routes render a branded 404 with no stack detail", async ({
   await expect(page.locator("body")).not.toContainText("node_modules");
 });
 
-test("authenticated Trainer Home renders user greeting, Gridshot play link, and Settings link", async ({
+test("authenticated Training shows the signed-in user, Grid Rush, and Settings", async ({
   page,
 }) => {
   const browserErrors = captureBrowserErrors(page);
@@ -543,12 +542,22 @@ test("authenticated Trainer Home renders user greeting, Gridshot play link, and 
   expect(response?.ok()).toBe(true);
 
   await expect(
-    page.getByRole("heading", { name: "BrowserAudit" }),
+    page.getByRole("heading", { name: "Aim training" }),
   ).toBeVisible();
+  await expect(page.getByText("Signed in as BrowserAudit")).toBeVisible();
+  await expect(page.getByRole("link", { name: /^Grid Rush/ })).toHaveAttribute(
+    "href",
+    "/app/train/grid",
+  );
   await expect(
-    page.getByRole("link", { name: "PLAY →" }).first(),
+    page
+      .getByRole("navigation", { name: "Training navigation" })
+      .getByRole("link", { name: "Settings" }),
   ).toBeVisible();
-  await expect(page.getByRole("link", { name: "Settings" })).toBeVisible();
+  await expect(page.locator(".account-frame")).toHaveCSS(
+    "background-color",
+    /^oklch\(0\.2 /,
+  );
   expect(browserErrors).toEqual([]);
 });
 
@@ -619,7 +628,7 @@ test("authenticated Settings page renders profile, aim, video, and input section
   await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Aim" })).toBeVisible();
   await expect(page.getByLabel("FindMySensi Browser Sensitivity")).toHaveValue(
-    "1",
+    trainerSettings.fmsSensitivity,
   );
   await expect(
     page.getByRole("link", { name: "Convert your game sensitivity" }),
