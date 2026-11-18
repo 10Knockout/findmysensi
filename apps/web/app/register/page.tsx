@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { BrowserApiClient } from "@findmysensi/api-client";
 import { RegisterRequestSchema } from "@findmysensi/protocol";
 import { BackLink } from "../../src/components/BackLink.js";
+import { PasswordInput } from "../../src/components/PasswordInput.js";
 
 const USERNAME_HELP =
   "3-24 characters. Letters, numbers, and allowed symbols (- _ @ ! # $ . + % & *) only.";
@@ -366,15 +367,16 @@ function Field({
   title,
   help,
 }: FieldProps) {
+  const Input = type === "password" ? PasswordInput : "input";
   return (
     <div className="app-field">
       <label htmlFor={id} className="app-label">
         {label}
       </label>
-      <input
+      <Input
         id={id}
         name={id}
-        type={type}
+        {...(type === "password" ? { label: label.toLowerCase() } : { type })}
         required
         value={value}
         onChange={(event) => onChange(event.target.value)}
