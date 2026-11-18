@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { BrowserApiClient } from "@findmysensi/api-client";
 import { resolveSafeLoginDestination } from "../../src/features/auth/login-next.js";
 import { BackLink } from "../../src/components/BackLink.js";
+import { PasswordInput } from "../../src/components/PasswordInput.js";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -109,10 +110,10 @@ export default function LoginPage() {
                 Forgot password?
               </Link>
             </label>
-            <input
+            <PasswordInput
               id="login-password"
               name="password"
-              type="password"
+              autoComplete="current-password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
