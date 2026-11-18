@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { BrowserApiClient } from "@findmysensi/api-client";
 import { RegisterRequestSchema } from "@findmysensi/protocol";
 import { BackLink } from "../../src/components/BackLink.js";
+import { GoogleSignIn } from "../../src/features/auth/GoogleSignIn.js";
 import { PasswordInput } from "../../src/components/PasswordInput.js";
 
 const USERNAME_HELP =
@@ -183,6 +184,8 @@ export default function RegisterPage() {
             {error}
           </div>
         ) : null}
+
+        {!verificationEmail && <GoogleSignIn />}
 
         {verificationEmail ? (
           <form onSubmit={handleVerify}>

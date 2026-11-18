@@ -47,8 +47,11 @@ export default function PrivacyPolicyPage() {
       <LegalSection heading="What we collect">
         <p>
           <strong>Account data.</strong> When you create an account we store
-          your username, email address, a hashed password, and your confirmation
-          that you are 18 or older. Email verification uses a one-time code.
+          your username, email address, and your confirmation that you are 18 or
+          older. If you register with email and password, we store a hashed
+          password and verify your email with a one-time code. If you continue
+          with Google, we use your verified email address and Google account
+          identifier for sign-in. Your Google name and email are private.
         </p>
         <p>
           <strong>Training and score data.</strong> When you sync a practice run
@@ -105,11 +108,12 @@ export default function PrivacyPolicyPage() {
 
       <LegalSection heading="Cookies and similar technology">
         <p>
-          We use a single essential cookie to keep you signed in. It is not used
-          for advertising or profiling. Local storage and session storage are
-          used as described above for features you trigger. Because we use only
-          strictly necessary storage, no consent banner is required for it; this
-          will change if analytics is added.
+          An essential cookie keeps you signed in. Google sign-in may use
+          additional short-lived cookies to complete the sign-in securely. Local
+          storage and session storage are used as described above for features
+          you trigger. Because we use only strictly necessary storage, no
+          consent banner is required for it; this will change if analytics is
+          added.
         </p>
       </LegalSection>
 
@@ -121,6 +125,7 @@ export default function PrivacyPolicyPage() {
         <ul className="list-disc space-y-1 pl-5">
           <li>A cloud hosting and edge platform (application hosting).</li>
           <li>A managed database provider (account and score storage).</li>
+          <li>Google, when you choose to sign in using a Google account.</li>
           <li>
             A transactional email provider (verification and reset email).
           </li>

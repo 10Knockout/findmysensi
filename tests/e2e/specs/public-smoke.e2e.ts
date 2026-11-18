@@ -16,6 +16,9 @@ test.beforeEach(async ({ page }) => {
       json: { error: "Service unavailable in browser smoke" },
     }),
   );
+  await page.route("**/api/v1/auth/providers", (route) =>
+    route.fulfill({ json: { google: false } }),
+  );
 });
 
 function captureBrowserErrors(page: Page): string[] {
