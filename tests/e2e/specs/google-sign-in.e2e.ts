@@ -1,9 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 for (const route of ["/login?next=/app/train/grid", "/register"] as const) {
-  test(`Google sign-in starts from ${route} with age confirmation`, async ({
-    page,
-  }) => {
+  test(`Google sign-in opens immediately from ${route}`, async ({ page }) => {
     const expectedNext = route.startsWith("/login")
       ? "/app/train/grid"
       : "/app";
@@ -25,17 +23,58 @@ for (const route of ["/login?next=/app/train/grid", "/register"] as const) {
     );
 
     await page.goto(route);
+    await expect(page.getByLabel("I confirm I am 18 or older.")).toHaveCount(0);
     await page.getByRole("button", { name: "Continue with Google" }).click();
-    const submit = page.getByRole("button", { name: "Open Google sign-in" });
-    await expect(submit).toBeDisabled();
-    expect(started).toEqual([]);
-
-    await page
-      .getByLabel("I confirm I am 18 or older.", { exact: true })
-      .check();
-    await submit.click();
     await expect(page).toHaveURL(authorizationURL);
-    expect(started).toEqual([{ ageAttested: true, next: expectedNext }]);
+    expect(started).toEqual([{ flow: "post-signup", next: expectedNext }]);
+  });
+}
+
+for (const rename of [false, true]) {
+  test(`first-time Google users can ${rename ? "choose a new" : "keep the suggested"} username`, async ({
+    page,
+  }) => {
+    const suggested = "aim_0123456789abcdefabcd";
+    const username = rename ? "CustomAim" : suggested;
+    const requests: unknown[] = [];
+    await page.route("**/api/v1/auth/google/finish", async (route) => {
+      if (route.request().method() === "GET")
+        return route.fulfill({ json: { pending: true, username: suggested } });
+      const body = route.request().postDataJSON();
+      requests.push(body);
+      if (body.username === "TakenAim")
+        return route.fulfill({ status: 409, json: { message: "Taken" } });
+      return route.fulfill({ json: { pending: false } });
+    });
+    await page.route("**/api/auth/get-session", (route) =>
+      route.fulfill({
+        json: { user: { id: "test", username }, session: null },
+      }),
+    );
+    await page.route("**/api/v1/me/settings", (route) =>
+      route.fulfill({ status: 503 }),
+    );
+    await page.goto("/app/finish-google-signup?next=/app/settings");
+    const finish = page.getByRole("button", { name: "Finish sign-up" });
+    const input = page.getByLabel("Username", { exact: true });
+    await expect(input).toHaveValue(suggested);
+    await expect(finish).toBeDisabled();
+    await page.getByLabel("I confirm I am 18 or older.").check();
+    if (rename) {
+      await input.fill("TakenAim");
+      await finish.click();
+      const notice = page
+        .getByRole("alert")
+        .filter({ hasText: "That username is already taken" });
+      await expect(notice).toBeVisible();
+      await input.fill(username);
+    }
+    await finish.click();
+    await expect(page).toHaveURL(/\/app\/settings$/);
+    expect(requests).toEqual([
+      ...(rename ? [{ ageAttested: true, username: "TakenAim" }] : []),
+      { ageAttested: true, username },
+    ]);
   });
 }
 
