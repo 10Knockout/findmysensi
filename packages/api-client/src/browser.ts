@@ -238,6 +238,22 @@ export class BrowserApiClient {
     return { ok: result.ok, ...(result.error ? { error: result.error } : {}) };
   }
 
+  async supportsGoogleSignIn(): Promise<boolean> {
+    const result = await this.requestJson<{ google: boolean }>(
+      "/api/v1/auth/providers",
+      { cache: "no-store" },
+    );
+    return result.ok && result.data?.google === true;
+  }
+
+  async startGoogleSignIn(next: string): Promise<ApiResult<{ url: string }>> {
+    return this.requestJson<{ url: string }>("/api/v1/auth/google/start", {
+      method: "POST",
+      cache: "no-store",
+      body: JSON.stringify({ ageAttested: true, next }),
+    });
+  }
+
   async register(
     data: RegisterRequest,
   ): Promise<{ ok: boolean; error?: string }> {

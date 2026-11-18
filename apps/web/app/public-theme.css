@@ -269,6 +269,53 @@
   border-color: var(--fms-line-dark);
   border-radius: 8px;
 }
+
+.app-google-signin {
+  margin-block: 18px;
+}
+
+.app-google-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding-inline: 12px;
+  border: 1px solid #747775;
+  border-radius: 4px;
+  background: #fff;
+  color: #1f1f1f;
+  font:
+    500 14px / 20px "Google Sans",
+    Roboto,
+    Arial,
+    sans-serif;
+  cursor: pointer;
+}
+
+.app-google-button:hover {
+  background: #f2f5fa;
+}
+
+.app-google-button:focus-visible {
+  outline: 2px solid var(--fms-acid);
+  outline-offset: 3px;
+}
+
+.app-google-confirm:not([hidden]) {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+.app-google-divider {
+  margin-top: 18px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--public-muted);
+}
 .public-page-frame .text-emerald-400 {
   color: var(--fms-acid);
 }

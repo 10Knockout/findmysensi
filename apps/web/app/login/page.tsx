@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { BrowserApiClient } from "@findmysensi/api-client";
 import { resolveSafeLoginDestination } from "../../src/features/auth/login-next.js";
 import { BackLink } from "../../src/components/BackLink.js";
+import { GoogleSignIn } from "../../src/features/auth/GoogleSignIn.js";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -80,6 +81,8 @@ export default function LoginPage() {
         </div>
 
         {error && <div className="app-alert">{error}</div>}
+
+        <GoogleSignIn />
 
         <form onSubmit={handleSubmit}>
           <div className="app-field">
