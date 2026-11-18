@@ -77,6 +77,8 @@ export default function AppDashboardPage() {
     useState<TrainerSettings | null>(null);
   const [showQuickSetup, setShowQuickSetup] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
+  const [signingOut, setSigningOut] = useState(false);
   const [recommendation, setRecommendation] = useState<{
     modeId: string;
     reason: string;
@@ -137,8 +139,15 @@ export default function AppDashboardPage() {
   }, [router]);
 
   const logout = async () => {
-    await new BrowserApiClient().logout();
-    router.replace("/login");
+    setSigningOut(true);
+    setLogoutError(null);
+    const result = await new BrowserApiClient().logout();
+    if (result.ok) {
+      router.replace("/login");
+      return;
+    }
+    setLogoutError(result.error || "Could not sign out. Please try again.");
+    setSigningOut(false);
   };
 
   if (error) {
@@ -204,11 +213,16 @@ export default function AppDashboardPage() {
             <Link href="/app/settings" className="app-chip">
               Settings
             </Link>
-            <button onClick={logout} className="app-chip">
-              Sign out
+            <button onClick={logout} className="app-chip" disabled={signingOut}>
+              {signingOut ? "Signing out…" : "Sign out"}
             </button>
           </div>
         </header>
+        {logoutError && (
+          <p className="app-alert" role="alert">
+            {logoutError}
+          </p>
+        )}
 
         {recommendation ? (
           <div className="app-callout">

@@ -292,9 +292,16 @@ export class BrowserApiClient {
     return { ok: result.ok, ...(result.error ? { error: result.error } : {}) };
   }
 
-  async logout(): Promise<void> {
-    clearStoredSession();
-    await this.requestJson<unknown>("/api/auth/sign-out", { method: "POST" });
+  async logout(): Promise<{ ok: boolean; error?: string }> {
+    const { ok, error } = await this.requestJson<unknown>(
+      "/api/auth/sign-out",
+      {
+        method: "POST",
+        body: JSON.stringify({}),
+      },
+    );
+    if (ok) clearStoredSession();
+    return { ok, ...(error ? { error } : {}) };
   }
 
   async forgotPassword(
