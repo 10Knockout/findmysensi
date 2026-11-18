@@ -1,5 +1,26 @@
 import { expect, test } from "@playwright/test";
 
+test("a personal browser match persists and can be reset", async ({ page }) => {
+  await page.goto("/tools/converter");
+  await page.getByLabel("DPI / CPI").fill("2400");
+  const result = page.getByTestId("fms-sensitivity-result");
+  await expect(result).toHaveText("0.245");
+
+  await page.getByText("Calibrate to this browser", { exact: true }).click();
+  await page.getByLabel("Matching FindMySensi sensitivity").fill("0.265");
+  await page.getByRole("button", { name: "Use this match" }).click();
+  await expect(result).toHaveText("0.265");
+  await expect(page.getByTestId("fms-sensitivity-canonical")).toContainText(
+    "1.514286 personal browser multiplier",
+  );
+
+  await page.reload();
+  await expect(result).toHaveText("0.265");
+  await page.getByText("Calibrate to this browser", { exact: true }).click();
+  await page.getByRole("button", { name: "Restore default" }).click();
+  await expect(result).toHaveText("0.245");
+});
+
 test("converted sensitivity survives saving, Settings, and in-game Settings", async ({
   page,
 }, testInfo) => {

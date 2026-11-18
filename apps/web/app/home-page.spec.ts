@@ -12,7 +12,7 @@ describe("marketing home page", () => {
     expect(page).toContain('id="training"');
     expect(page).toContain('id="calibration"');
     expect(page).toContain('id="leaderboard"');
-    expect(page).toContain('fetchPriority="high"');
+    expect(page).toContain("<LandingOrb />");
     expect(styles).toContain("content-visibility: auto");
     expect(styles).toContain("prefers-reduced-motion");
     expect(styles).not.toContain("backdrop-filter");

@@ -1,5 +1,6 @@
 import { FULL_TURN_UNITS } from "@findmysensi/aim-core";
 import type { LeaderboardContextV2 } from "@findmysensi/protocol";
+import { seasonRank } from "../leaderboard/season-rank.js";
 import {
   findPersonalBest,
   isLeaderboardComparable,
@@ -77,7 +78,9 @@ export function buildResultsOverview(
       },
       getAccuracyMetric(summary),
       getPrimaryMetric(current),
-      ...getLeaderboardMetrics(leaderboard),
+      ...(summary.modeId === "pathline"
+        ? []
+        : getLeaderboardMetrics(leaderboard)),
     ],
     detailMetrics: getDetailMetrics(current),
   };
@@ -92,23 +95,28 @@ function getLeaderboardMetrics(
       {
         label: "Leaderboard Rank",
         value: "—",
-        note: "Sync your run to see your rank",
+        note: leaderboard
+          ? "No eligible score this season"
+          : "Available after account sync",
         tone: "muted",
       },
       {
         label: "Percentile",
         value: "—",
-        note: "Awaiting sync",
+        note: leaderboard
+          ? "No eligible score this season"
+          : "Available after account sync",
         tone: "muted",
       },
     ];
   }
 
+  const tier = seasonRank(standing.rank, standing.totalPlayers);
   return [
     {
       label: "Leaderboard Rank",
       value: `#${standing.rank.toLocaleString()}`,
-      note: `Best of ${standing.totalPlayers.toLocaleString()} on this board`,
+      note: `${tier ? `${tier.name} · ` : ""}Best of ${standing.totalPlayers.toLocaleString()} on this board`,
     },
     standing.percentile === null
       ? {
@@ -120,7 +128,7 @@ function getLeaderboardMetrics(
       : {
           label: "Percentile",
           value: `${formatDecimal(standing.percentile, 1)}%`,
-          note: `Top of ${leaderboard.totalPlayers.toLocaleString()} ranked players`,
+          note: `${leaderboard.totalPlayers.toLocaleString()} ranked players`,
         },
   ];
 }
@@ -145,6 +153,12 @@ function getAccuracyMetric(summary: PracticeSummaryRecord): OverviewMetric {
 
 function getPrimaryMetric(current: RunRecord): OverviewMetric {
   const summary = current.summary;
+  if (summary.modeId === "pathline") {
+    return {
+      label: "Paths Completed",
+      value: formatInteger(summary.segmentsCompleted),
+    };
+  }
   if (summary.modeId === "smooth-track" || summary.modeId === "strafe") {
     return {
       label: "Score / Min",
@@ -190,6 +204,21 @@ function getDetailMetrics(current: RunRecord): readonly OverviewMetric[] {
     },
     ...timing,
   ] satisfies readonly OverviewMetric[];
+
+  if (summary.modeId === "pathline") {
+    return [
+      { label: "Clean Paths", value: formatInteger(summary.cleanSegments) },
+      {
+        label: "Time Inside Corridor",
+        value:
+          summary.pathTicks > 0
+            ? formatPercent((100 * summary.corridorTicks) / summary.pathTicks)
+            : "—",
+      },
+      { label: "Missed Shots", value: formatInteger(summary.misses) },
+      ...timing,
+    ];
+  }
 
   if (summary.modeId === "smooth-track" || summary.modeId === "strafe") {
     return [
@@ -244,10 +273,15 @@ function getDetailMetrics(current: RunRecord): readonly OverviewMetric[] {
     ];
   }
 
+  const missedShots = summary.shots - summary.hits;
+  const expiredTargets = summary.misses - missedShots;
   return [
     { label: "Targets Hit", value: formatInteger(summary.hits) },
     { label: "Total Shots", value: formatInteger(summary.shots) },
-    { label: "Misses", value: formatInteger(summary.misses) },
+    { label: "Missed Shots", value: formatInteger(missedShots) },
+    ...(expiredTargets > 0
+      ? [{ label: "Expired Targets", value: formatInteger(expiredTargets) }]
+      : []),
     {
       label: "Average Acquisition",
       value:
@@ -268,10 +302,12 @@ function getScoreDeltaNote(
   previousPersonalBest: RunRecord | null,
   delta: number | null,
 ): string | undefined {
+  const countsAsBest =
+    current.leaderboardEligible || current.modeId === "pathline";
   if (!previousPersonalBest || delta === null) {
-    return current.leaderboardEligible ? "First run" : "Run not counted";
+    return countsAsBest ? "First run" : "Run not counted";
   }
-  if (!current.leaderboardEligible) return "Run not counted for best";
+  if (!countsAsBest) return "Run not counted for best";
   if (delta > 0 && current.runId === personalBest?.runId) {
     return "New personal best";
   }

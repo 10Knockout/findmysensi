@@ -18,7 +18,7 @@ describe("results terminology integrity", () => {
     expect(normalizedSource).not.toContain("No recent practice run recorded.");
     expect(normalizedSource).toContain("Local Result · Not Submitted");
     expect(normalizedSource).toContain(
-      "Run complete. This result is stored locally; official leaderboard verification is not enabled yet.",
+      "This result is available on this device.",
     );
     expect(normalizedSource).toContain(
       "No recent local {resolvedTaskName} result found.",
@@ -26,9 +26,8 @@ describe("results terminology integrity", () => {
     expect(normalizedSource).toContain("Not leaderboard eligible");
     expect(normalizedSource).toContain("submitPracticeRunV2");
     expect(normalizedSource).toContain("Saved to Account");
-    expect(normalizedSource).toContain(
-      "Your best score for this mode is now on the public leaderboard.",
-    );
+    expect(normalizedSource).toContain("Saved to Account · Practice Only");
+    expect(normalizedSource).toContain("Retry sync");
     expect(normalizedSource).not.toContain("authoritative Ranked verification");
     expect(normalizedSource).toContain("View leaderboard");
   });

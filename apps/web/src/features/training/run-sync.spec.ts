@@ -1,5 +1,18 @@
 import { describe, expect, it } from "vitest";
-import type { RunRecord } from "@findmysensi/trainer-runtime";
+import {
+  createAngleUnits,
+  createPitchUnits,
+  createPrngV1,
+} from "@findmysensi/aim-core";
+import {
+  createTick,
+  PracticeRunSubmissionV2Schema,
+} from "@findmysensi/protocol";
+import { PINPOINT_TARGET_LIFETIME_TICKS } from "@findmysensi/scenarios";
+import {
+  createPinpointModeAdapter,
+  type RunRecord,
+} from "@findmysensi/trainer-runtime";
 import { toPracticeRunSubmissionV2 } from "./run-sync.js";
 
 function run(): RunRecord {
@@ -58,6 +71,53 @@ function run(): RunRecord {
 }
 
 describe("toPracticeRunSubmissionV2", () => {
+  it("submits Precision Six scores after target expiration", () => {
+    const adapter = createPinpointModeAdapter();
+    const prng = createPrngV1([1, 2, 3, 4]);
+    adapter.initialize(prng);
+    const target = adapter.getRenderTargets()[0]!;
+    adapter.onShot(
+      createTick(5),
+      createAngleUnits(target.xAngleUnits),
+      createPitchUnits(target.yAngleUnits),
+      prng,
+    );
+    adapter.onSimulationTick(
+      createTick(PINPOINT_TARGET_LIFETIME_TICKS + 1),
+      createAngleUnits(0),
+      createPitchUnits(0),
+    );
+    const metrics = adapter.computeMetrics(adapter.definition.durationTicks);
+    const finalScore = adapter.computeScore(metrics).score;
+    const baseline = run();
+    const { summary } = baseline;
+    if (!("shots" in summary)) throw new Error("Expected a click summary");
+    const localRun: RunRecord = {
+      ...baseline,
+      modeId: "pinpoint",
+      finalScore,
+      summary: {
+        ...summary,
+        modeId: "pinpoint",
+        score: finalScore,
+        hits: metrics.hits,
+        shots: metrics.shots,
+        misses: metrics.misses,
+        accuracyPercentage: metrics.accuracyPercentage,
+        killsPerSecond: metrics.killsPerSecond,
+      },
+    };
+
+    expect(metrics.shots).toBe(1);
+    expect(metrics.misses).toBeGreaterThan(0);
+    const submission = PracticeRunSubmissionV2Schema.parse(
+      toPracticeRunSubmissionV2(localRun),
+    );
+    expect(submission.finalScore).toBe(finalScore);
+    expect(submission.summary).toMatchObject({ hits: 1, shots: 1, misses: 0 });
+    expect(localRun.summary).toMatchObject({ misses: metrics.misses });
+  });
+
   it("keeps local eligibility explicitly client-scoped", () => {
     const submission = toPracticeRunSubmissionV2(run());
     expect(submission).toMatchObject({

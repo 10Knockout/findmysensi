@@ -182,9 +182,8 @@ export function isAnalyticsComparable(a: RunRecord, b: RunRecord): boolean {
 }
 
 /**
- * The player's best eligible run for a mode, or null when they have none.
- * Only leaderboard-eligible runs can be a personal best -- a paused run that
- * happened to score well is not a record.
+ * The player's best eligible score. Pathline is local practice, so its best
+ * score includes all completed runs.
  */
 export function findPersonalBest(
   runs: readonly RunRecord[],
@@ -192,7 +191,11 @@ export function findPersonalBest(
 ): RunRecord | null {
   let best: RunRecord | null = null;
   for (const run of runs) {
-    if (run.modeId !== modeId || !run.leaderboardEligible) continue;
+    if (
+      run.modeId !== modeId ||
+      (modeId !== "pathline" && !run.leaderboardEligible)
+    )
+      continue;
     if (
       best === null ||
       run.finalScore > best.finalScore ||

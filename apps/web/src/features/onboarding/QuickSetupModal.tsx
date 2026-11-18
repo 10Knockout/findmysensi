@@ -14,6 +14,7 @@ import {
   convertSensitivity,
   type VerifiedSensitivityProfileId,
 } from "@findmysensi/sensitivity";
+import { useBrowserCalibrationScale } from "../../lib/browser-calibration.js";
 
 interface QuickSetupModalProps {
   isOpen: boolean;
@@ -49,6 +50,7 @@ export function QuickSetupModal({
   const [fov, setFov] = useState(String(currentSettings.fovDegrees));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const savedScale = useBrowserCalibrationScale();
 
   const conversion = useMemo(() => {
     const sensitivity = Number(sourceSensitivity);
@@ -80,8 +82,8 @@ export function QuickSetupModal({
     ? Number(conversion.formattedTargetSensitivity)
     : null;
   const calibratedSensitivity =
-    canonicalSensitivity !== null && Number.isFinite(canonicalSensitivity)
-      ? applyBrowserInputCalibration(canonicalSensitivity)
+    canonicalSensitivity !== null && canonicalSensitivity > 0
+      ? applyBrowserInputCalibration(canonicalSensitivity, savedScale)
       : null;
   const calibratedSensitivityText =
     calibratedSensitivity !== null
@@ -347,11 +349,15 @@ export function QuickSetupModal({
             </div>
           </div>
           <p className="app-help" style={{ marginTop: 10 }}>
-            Example: Valorant 0.125 becomes FindMySensi 0.245 at the same DPI.
             That is the 0.175 cm/360 match ×{" "}
-            {DEFAULT_BROWSER_INPUT_CALIBRATION_SCALE} browser input calibration,
-            as the current browser calibration estimate. Measure a physical turn
-            to verify the match on your device.
+            {Number(
+              (savedScale ?? DEFAULT_BROWSER_INPUT_CALIBRATION_SCALE).toFixed(
+                6,
+              ),
+            )}{" "}
+            browser input calibration, as the current browser calibration
+            estimate. Measure a physical turn to verify the match on your
+            device.
           </p>
         </div>
 

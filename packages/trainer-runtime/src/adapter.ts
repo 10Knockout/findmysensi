@@ -1,4 +1,10 @@
-import type { AngleUnits, PitchUnits, PrngV1 } from "@findmysensi/aim-core";
+import type {
+  AimCorridorView,
+  AngleUnits,
+  PitchUnits,
+  PrngV1,
+} from "@findmysensi/aim-core";
+import type { PathlineMetrics } from "./pathline-adapter.js";
 import type {
   GridMetrics,
   MissDirection,
@@ -13,7 +19,7 @@ import type {
 
 export type ClickMetrics = GridMetrics;
 export type RuntimeMetrics =
-  ClickMetrics | TrackingMetrics | SwitchTrackMetrics;
+  ClickMetrics | TrackingMetrics | SwitchTrackMetrics | PathlineMetrics;
 
 export interface RuntimeScoreResult<
   TMetrics extends RuntimeMetrics = RuntimeMetrics,
@@ -46,6 +52,8 @@ export interface ModeRuntimeAdapter<
   ): void;
 
   getRenderTargets(): readonly TargetSpawnSpec[];
+  onAimMove?(yaw: AngleUnits, pitch: PitchUnits): void;
+  getAimCorridor?(): AimCorridorView | null;
 
   computeMetrics(elapsedTicks: number): TMetrics;
 

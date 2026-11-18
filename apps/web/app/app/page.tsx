@@ -63,6 +63,11 @@ const TRAINING_MODES = [
     "Flick out and intercept a moving target with one shot.",
   ],
   ["turn180", "180 Flick", "Turn roughly all the way around and reacquire."],
+  [
+    "pathline",
+    "Pathline",
+    "Follow the corridor between targets. Scores stay on this device.",
+  ],
 ] as const;
 
 export default function AppDashboardPage() {
@@ -77,12 +82,20 @@ export default function AppDashboardPage() {
     reason: string;
   } | null>(null);
   const [benchmarks, setBenchmarks] = useState<SkillBenchmarks | null>(null);
+  const [latestScores, setLatestScores] = useState<ReadonlyMap<string, number>>(
+    () => new Map(),
+  );
 
   useEffect(() => {
     // Local-only, per-device data from real practice history.
     const history = localPracticeHistory.getAll();
     setRecommendation(recommendNextExercise(history));
     setBenchmarks(computeSkillBenchmarks(history));
+    const scores = new Map<string, number>();
+    for (const run of history) {
+      if (!scores.has(run.modeId)) scores.set(run.modeId, run.score);
+    }
+    setLatestScores(scores);
   }, []);
 
   useEffect(() => {
@@ -241,20 +254,30 @@ export default function AppDashboardPage() {
           <p className="app-section-label">Training</p>
           <h2 className="app-section-title">Aim Training</h2>
           <p className="app-section-copy">
-            Twelve focused exercises. Each has its own public leaderboard.
+            Train with {TRAINING_MODES.length} drills. Pathline scores stay on
+            this device.
           </p>
           <div className="app-mode-grid">
-            {TRAINING_MODES.map(([modeId, title, description]) => (
-              <Link
-                key={modeId}
-                href={`/app/train/${modeId}`}
-                className="app-mode-card"
-              >
-                <h3>{title}</h3>
-                <p>{description}</p>
-                <span className="app-mode-card-cta">PLAY →</span>
-              </Link>
-            ))}
+            {TRAINING_MODES.map(([modeId, title, description]) => {
+              const score = latestScores.get(modeId);
+              return (
+                <Link
+                  key={modeId}
+                  href={`/app/train/${modeId}`}
+                  className="app-mode-card"
+                >
+                  <h3>{title}</h3>
+                  <p>{description}</p>
+                  {score !== undefined ? (
+                    <p>
+                      Latest on this device:{" "}
+                      <strong>{score.toLocaleString()}</strong>
+                    </p>
+                  ) : null}
+                  <span className="app-mode-card-cta">PLAY →</span>
+                </Link>
+              );
+            })}
           </div>
         </section>
       </div>

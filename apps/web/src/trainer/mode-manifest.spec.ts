@@ -16,6 +16,7 @@ describe("Trainer mode manifest", () => {
       "anchor-flick",
       "motion-flick",
       "turn180",
+      "pathline",
     ];
     for (const id of ids) {
       expect(trainerModeManifest.has(id)).toBe(true);
@@ -35,6 +36,7 @@ describe("Trainer mode manifest", () => {
     expect(isTrainerModeEnabled("anchor-flick")).toBe(true);
     expect(isTrainerModeEnabled("motion-flick")).toBe(true);
     expect(isTrainerModeEnabled("turn180")).toBe(true);
+    expect(isTrainerModeEnabled("pathline")).toBe(true);
   });
 
   it("returns false for an unknown mode id rather than throwing", () => {
@@ -46,6 +48,10 @@ describe("Trainer mode manifest", () => {
       trainerModeManifest.get("switch-track")?.scenarioEntry.definition
         .scoringVersion,
     ).toBe(1);
+  });
+
+  it("offers Pathline only as local practice", () => {
+    expect(trainerModeManifest.get("pathline")?.leaderboardEnabled).toBe(false);
   });
 
   it.each([
@@ -61,6 +67,7 @@ describe("Trainer mode manifest", () => {
     "anchor-flick",
     "motion-flick",
     "turn180",
+    "pathline",
   ])("%s carries an adapter factory", (modeId) => {
     expect(typeof trainerModeManifest.get(modeId)?.createAdapter).toBe(
       "function",

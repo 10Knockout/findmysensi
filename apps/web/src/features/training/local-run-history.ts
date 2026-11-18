@@ -6,7 +6,10 @@ import {
   type RunInvalidationReason,
   type RunRecord,
 } from "@findmysensi/trainer-runtime";
-import { isPracticeSummaryRecord } from "./local-history.js";
+import {
+  getPracticeStorage,
+  isPracticeSummaryRecord,
+} from "./local-history.js";
 
 const STORAGE_KEY = "fms_run_records_v1";
 
@@ -31,14 +34,7 @@ const MAX_RUNS_STORED = 200;
  * is what keeps trends and personal bests complete while bounding storage.
  */
 export class LocalRunHistory {
-  private memoryFallback: RunRecord[] = [];
-
-  private isLocalStorageAvailable(): boolean {
-    return (
-      typeof window !== "undefined" &&
-      typeof window.localStorage !== "undefined"
-    );
-  }
+  private memoryFallback: RunRecord[] | null = null;
 
   public getAll(modeId?: PracticeSummaryRecord["modeId"]): RunRecord[] {
     const all = this.read();
@@ -61,9 +57,11 @@ export class LocalRunHistory {
 
   public clear(): void {
     this.memoryFallback = [];
-    if (!this.isLocalStorageAvailable()) return;
+    const storage = getPracticeStorage();
+    if (!storage) return;
     try {
-      window.localStorage.removeItem(STORAGE_KEY);
+      storage.removeItem(STORAGE_KEY);
+      this.memoryFallback = null;
     } catch {
       // Nothing more to do; the in-memory copy is already cleared.
     }
@@ -90,9 +88,9 @@ export class LocalRunHistory {
   }
 
   private read(): RunRecord[] {
-    if (!this.isLocalStorageAvailable()) return [...this.memoryFallback];
+    if (this.memoryFallback) return [...this.memoryFallback];
     try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
+      const raw = getPracticeStorage()?.getItem(STORAGE_KEY);
       if (!raw) return [];
       const parsed = JSON.parse(raw) as unknown;
       if (!Array.isArray(parsed)) return [];
@@ -100,14 +98,16 @@ export class LocalRunHistory {
     } catch {
       // Corrupt or unreadable storage is treated as empty rather than
       // crashing the results screen.
-      return [...this.memoryFallback];
+      return [];
     }
   }
 
   private write(runs: RunRecord[]): void {
-    if (this.isLocalStorageAvailable()) {
+    const storage = getPracticeStorage();
+    if (storage) {
       try {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(runs));
+        storage.setItem(STORAGE_KEY, JSON.stringify(runs));
+        this.memoryFallback = null;
         return;
       } catch {
         // Quota or private-mode failure: fall through to memory.

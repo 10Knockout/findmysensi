@@ -72,6 +72,23 @@ function stubStored(value: unknown): void {
 }
 
 describe("LocalRunHistory validation", () => {
+  it("returns the just-finished run when an existing storage entry makes writes exceed quota", () => {
+    const initial = run();
+    const finished = { ...initial, runId: "run-2", completedAt: 121_000 };
+    vi.stubGlobal("window", {
+      localStorage: {
+        getItem: () => JSON.stringify([initial]),
+        setItem: () => {
+          throw new DOMException("Storage quota", "QuotaExceededError");
+        },
+      },
+    });
+
+    const history = new LocalRunHistory();
+    history.save(finished);
+    expect(history.getAll("grid")).toEqual([finished, initial]);
+  });
+
   it("restores a valid record whose older click summary has no acquisition field", () => {
     stubStored([run()]);
 

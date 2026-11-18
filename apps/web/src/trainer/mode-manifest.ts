@@ -7,6 +7,7 @@ import {
   createMultiModeAdapter,
   createMicroshotModeAdapter,
   createPinpointModeAdapter,
+  createPathlineModeAdapter,
   createReactionModeAdapter,
   createSmoothTrackModeAdapter,
   createStrafeModeAdapter,
@@ -18,6 +19,7 @@ import {
 export interface TrainerModeManifestEntry {
   readonly modeId: string;
   readonly enabled: boolean;
+  readonly leaderboardEnabled: boolean;
   readonly scenarioEntry: ScenarioEntry;
   readonly createAdapter?: () => ModeRuntimeAdapter;
 }
@@ -26,6 +28,7 @@ function buildEntry(
   modeId: string,
   enabled: boolean,
   createAdapter?: () => ModeRuntimeAdapter,
+  leaderboardEnabled = true,
 ): TrainerModeManifestEntry {
   const scenarioEntry = defaultScenarioRegistry.get(modeId, 0);
   if (!scenarioEntry) {
@@ -36,6 +39,7 @@ function buildEntry(
   return {
     modeId,
     enabled,
+    leaderboardEnabled,
     scenarioEntry,
     ...(createAdapter ? { createAdapter } : {}),
   };
@@ -69,6 +73,7 @@ export const trainerModeManifest: ReadonlyMap<
     buildEntry("motion-flick", true, createMotionFlickModeAdapter),
   ],
   ["turn180", buildEntry("turn180", true, createTurn180ModeAdapter)],
+  ["pathline", buildEntry("pathline", true, createPathlineModeAdapter, false)],
 ]);
 
 export function isTrainerModeEnabled(modeId: string): boolean {

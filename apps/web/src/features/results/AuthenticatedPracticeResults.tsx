@@ -9,9 +9,11 @@ import { getPracticeResultsRoutes } from "./routes.js";
 export function AuthenticatedPracticeResults({
   mode,
   taskName,
+  leaderboardEnabled,
 }: {
   mode: string;
   taskName: string;
+  leaderboardEnabled: boolean;
 }) {
   const router = useRouter();
   const [authorized, setAuthorized] = useState(false);
@@ -34,7 +36,12 @@ export function AuthenticatedPracticeResults({
   }, [mode, router]);
 
   return authorized ? (
-    <PracticeResults mode={mode} taskName={taskName} syncEnabled />
+    <PracticeResults
+      mode={mode}
+      taskName={taskName}
+      syncEnabled={leaderboardEnabled}
+      leaderboardEnabled={leaderboardEnabled}
+    />
   ) : (
     <main className="min-h-screen bg-zinc-950 text-zinc-300 grid place-items-center">
       <p className="font-mono text-sm">Checking your session...</p>

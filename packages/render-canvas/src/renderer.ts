@@ -1,4 +1,5 @@
 import {
+  type AimCorridorView,
   createAngleUnits,
   FULL_TURN_UNITS,
   QUARTER_TURN_UNITS,
@@ -14,6 +15,7 @@ import {
   TargetRenderConfig,
 } from "./types.js";
 import { ViewportTransform } from "./viewport-transform.js";
+import { drawTargetFragments } from "./target-fragments.js";
 
 const DEFAULT_CROSSHAIR: CrosshairConfig = {
   style: "cross",
@@ -444,6 +446,16 @@ export class Canvas2DPotatoRenderer implements AimRenderer {
   private playArea: PlayAreaRenderConfig | null = null;
   private graphicsPreset: RendererGraphicsPreset = "automatic";
   private weaponHand: "right" | "left" = "right";
+  private readonly hit = { yaw: 0, pitch: 0, radius: 0, at: -Infinity };
+
+  public showTargetHit(yaw: number, pitch: number, radius: number): void {
+    if (this.graphicsPreset === "potato" || this.graphicsPreset === "low")
+      return;
+    this.hit.yaw = yaw;
+    this.hit.pitch = pitch;
+    this.hit.radius = radius;
+    this.hit.at = performance.now();
+  }
 
   public initialize(
     canvas: HTMLCanvasElement,
@@ -474,7 +486,10 @@ export class Canvas2DPotatoRenderer implements AimRenderer {
       : null;
   }
 
-  public render(snapshot: RenderSnapshotView): void {
+  public render(
+    snapshot: RenderSnapshotView,
+    corridor?: AimCorridorView | null,
+  ): void {
     const ctx = this.ctx;
     const vp = this.viewport;
     const canvas = this.canvas;
@@ -508,6 +523,7 @@ export class Canvas2DPotatoRenderer implements AimRenderer {
 
     this.renderArena(ctx, vp, playerYaw, playerPitch);
     this.renderPlayArea(ctx, vp, playerYaw, playerPitch);
+    if (corridor) this.renderAimCorridor(ctx, vp, snapshot, corridor);
 
     for (let i = 0; i < targetCount; i++) {
       const rawTargetX = snapshot.targetX[i] ?? 0;
@@ -539,9 +555,101 @@ export class Canvas2DPotatoRenderer implements AimRenderer {
       this.renderTargetSphere(ctx, screenPos.x, screenPos.y, radiusPx);
     }
 
+    const hit = this.hit;
+    if (hit.at !== -Infinity) {
+      const progress = (performance.now() - hit.at) / 180;
+      if (progress >= 1) {
+        hit.at = -Infinity;
+      } else {
+        const yaw = shortestSignedAngleDelta(
+          playerYaw,
+          createAngleUnits(hit.yaw),
+        );
+        const pitch = hit.pitch - playerPitch;
+        if (
+          Math.abs(yaw) < QUARTER_TURN_UNITS &&
+          Math.abs(pitch) < QUARTER_TURN_UNITS
+        ) {
+          const position = vp.simToDisplay(yaw, pitch);
+          ctx.fillStyle = this.target.bodyColor;
+          drawTargetFragments(
+            ctx,
+            position.x,
+            position.y,
+            vp.angleRadiusToPixels(hit.radius),
+            progress,
+          );
+        }
+      }
+    }
+
     this.renderViewModel(ctx, vp, playerPitch);
     this.renderCrosshair(ctx, rectX + rectW / 2, rectY + rectH / 2);
     if (typeof ctx.restore === "function") ctx.restore();
+  }
+
+  private renderAimCorridor(
+    ctx: CanvasRenderingContext2D,
+    vp: ViewportTransform,
+    snapshot: RenderSnapshotView,
+    corridor: AimCorridorView,
+  ): void {
+    const fromYaw = shortestSignedAngleDelta(
+      snapshot.playerYaw,
+      createAngleUnits(corridor.startYaw),
+    );
+    const toYaw = shortestSignedAngleDelta(
+      snapshot.playerYaw,
+      createAngleUnits(corridor.endYaw),
+    );
+    const fromPitch = corridor.startPitch - snapshot.playerPitch;
+    const toPitch = corridor.endPitch - snapshot.playerPitch;
+    if (
+      Math.max(
+        Math.abs(fromYaw),
+        Math.abs(toYaw),
+        Math.abs(fromPitch),
+        Math.abs(toPitch),
+      ) >= QUARTER_TURN_UNITS
+    )
+      return;
+
+    const start = vp.simToDisplay(fromYaw, fromPitch);
+    const end = vp.simToDisplay(toYaw, toPitch);
+    const ghost = vp.simToDisplay(
+      shortestSignedAngleDelta(
+        snapshot.playerYaw,
+        createAngleUnits(corridor.unlitEndpointYaw),
+      ),
+      corridor.unlitEndpointPitch - snapshot.playerPitch,
+    );
+
+    ctx.save();
+    ctx.strokeStyle = corridor.leftCorridor ? "#ffb076" : "#a9edff";
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(start.x, start.y);
+    ctx.lineTo(end.x, end.y);
+    ctx.globalAlpha = 0.32;
+    ctx.lineWidth = Math.max(
+      4,
+      vp.angleRadiusToPixels(corridor.radiusUnits) * 2,
+    );
+    ctx.stroke();
+    ctx.globalAlpha = 0.68;
+    ctx.lineWidth = Math.max(1, vp.dpr);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(
+      ghost.x,
+      ghost.y,
+      Math.max(2, vp.angleRadiusToPixels(corridor.targetRadiusUnits)),
+      0,
+      Math.PI * 2,
+    );
+    ctx.stroke();
+    ctx.restore();
   }
 
   private renderArena(

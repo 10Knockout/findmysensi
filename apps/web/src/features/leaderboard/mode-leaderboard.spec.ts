@@ -106,7 +106,8 @@ describe("buildLeaderboardView", () => {
       }),
       "ace",
     );
-    expect(withPct.percentileLabel).toBe("Top 7.5%");
+    expect(withPct.percentileLabel).toBe("Top 8.3%");
+    expect(withPct.seasonRankLabel).toBeNull();
   });
 
   it("handles an anonymous viewer", () => {

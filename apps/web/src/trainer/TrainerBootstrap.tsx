@@ -35,8 +35,13 @@ import {
   type SensitivityInputVerificationSnapshot,
 } from "../features/training/PracticeRunController.js";
 import { InGameSettingsModal } from "./InGameSettingsModal.js";
+import {
+  loadGuestTrainerSettings,
+  saveGuestTrainerSettings,
+} from "./guest-settings.js";
 import { trainerModeManifest } from "./mode-manifest.js";
 import { startRunIfPointerLocked } from "./pointer-lock-guard.js";
+import { getBrowserCalibrationScale } from "../lib/browser-calibration.js";
 import {
   TrainerRuntimeConfig,
   resolveTrainerRuntimeConfig,
@@ -50,6 +55,7 @@ interface TrainerBootstrapProps {
   runLabel?: string;
   onRunComplete?: (result: RuntimeScoreResult) => void;
   lockedConfiguration?: boolean;
+  guest?: boolean;
 }
 
 const MAX_PAUSE_MS = 10 * 60 * 1000;
@@ -152,8 +158,11 @@ export function TrainerBootstrap({
   runLabel,
   onRunComplete,
   lockedConfiguration = false,
+  guest = false,
 }: TrainerBootstrapProps) {
   const router = useRouter();
+  const homeHref = guest ? "/#training" : "/app";
+  const homeLabel = guest ? "Choose another drill" : "Back to trainer home";
   const modeEntry = trainerModeManifest.get(mode);
   const modeTitle =
     modeEntry?.scenarioEntry.presentation.title.replace(/ \(Dev v0\)$/, "") ??
@@ -175,6 +184,7 @@ export function TrainerBootstrap({
   const handleResizeRef = useRef<(() => void) | null>(null);
   const pauseDeadlineRef = useRef<number | null>(null);
   const countdownIntervalRef = useRef<number | null>(null);
+  const controlsPendingRef = useRef(false);
   const completionNavigationRef = useRef<number | null>(null);
   // Mirrors of state the run-start snapshot needs. The snapshot callback is
   // created once, inside the setup effect, so reading the state variables
@@ -185,6 +195,18 @@ export function TrainerBootstrap({
 
   const [rawSettings, setRawSettings] = useState<TrainerSettings | null>(null);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const hitVoiceEnabled = useRef(false);
+  const hitVoice = useRef<HTMLAudioElement | null>(null);
+  const lastVoiceAt = useRef(-Infinity);
+
+  useEffect(() => {
+    try {
+      hitVoiceEnabled.current = localStorage.getItem("fms.hit-voice") === "on";
+    } catch {
+      // Browsers can disable access to local storage.
+    }
+    return () => hitVoice.current?.pause();
+  }, []);
   const [initialConfigLoaded, setInitialConfigLoaded] = useState(false);
   const [runtimeConfig, setRuntimeConfig] =
     useState<TrainerRuntimeConfig | null>(null);
@@ -197,6 +219,7 @@ export function TrainerBootstrap({
     null,
   );
   const [countdown, setCountdown] = useState<number | null>(null);
+  const [controlsPending, setControlsPending] = useState(false);
   const [lockError, setLockError] = useState<string | null>(null);
   const [pauseSecondsLeft, setPauseSecondsLeft] = useState(MAX_PAUSE_MS / 1000);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -304,39 +327,18 @@ export function TrainerBootstrap({
     }
   };
 
-  /**
-   * Windowed Pointer Lock on Windows/Chromium does not reliably confine the
-   * real OS cursor: on a multi-monitor desktop it can travel to, and get
-   * physically pinned at, an actual monitor edge. Once pinned, every
-   * movementX/Y the OS reports is 0 (both the previous and current cursor
-   * position are the same clamped point), so the browser stops firing
-   * mousemove entirely -- input looks "blocked" until the player reverses
-   * far enough to leave the clamped edge. Fullscreen puts the browser in
-   * exclusive control of one monitor, which is the standard, browser-vendor
-   * -documented mitigation for this class of bug. Best-effort: a user or
-   * browser that denies fullscreen still gets Pointer Lock, just without
-   * this protection.
-   */
-  const ensureFullscreenBeforeLock = async (): Promise<void> => {
-    if (document.fullscreenElement) return;
-    try {
-      await containerRef.current?.requestFullscreen();
-    } catch {
-      // ignore -- Pointer Lock is still attempted without fullscreen.
-    }
-  };
-
   useEffect(() => {
     let active = true;
-    const client = new BrowserApiClient();
 
     void (async () => {
       setSettingsError(null);
       setRuntimeConfig(null);
 
-      if (settingsOverride) {
+      if (guest || settingsOverride) {
         try {
-          const settings = TrainerSettingsSchema.parse(settingsOverride);
+          const settings = guest
+            ? loadGuestTrainerSettings()
+            : TrainerSettingsSchema.parse(settingsOverride);
           const resolved = resolveTrainerRuntimeConfig(settings);
           savedCrosshairRef.current = resolveSavedCrosshair(
             resolved.crosshairCode,
@@ -352,6 +354,7 @@ export function TrainerBootstrap({
         return;
       }
 
+      const client = new BrowserApiClient();
       const session = await client.getSession();
       if (!active) return;
       if (!session?.user) {
@@ -390,7 +393,7 @@ export function TrainerBootstrap({
     return () => {
       active = false;
     };
-  }, [mode, modeTitle, router, settingsAttempt, settingsOverride]);
+  }, [guest, mode, modeTitle, router, settingsAttempt, settingsOverride]);
 
   useEffect(() => {
     if (
@@ -410,6 +413,16 @@ export function TrainerBootstrap({
     const canvas = canvasRef.current;
     const container = containerRef.current;
     const renderer = createAimRenderer();
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const hitFragmentsEnabled = () => {
+      const preset = runtimeConfigRef.current?.graphicsPreset;
+      return (
+        !lockedConfiguration &&
+        preset !== "potato" &&
+        preset !== "low" &&
+        !reducedMotion.matches
+      );
+    };
     rendererRef.current = renderer;
     let animationFrameId: number | null = null;
     let rendererInitialized = false;
@@ -475,11 +488,29 @@ export function TrainerBootstrap({
     resizeObserver.observe(container);
     setRemainingSeconds(modeDurationSeconds);
     setGameState("ready");
+    setCountdown(null);
     setScore(0);
     setRuntimeMetrics(null);
 
     const controller = new PracticeRunController(
       {
+        hitFeedbackEnabled: () =>
+          !lockedConfiguration &&
+          (hitVoiceEnabled.current || hitFragmentsEnabled()),
+        hitFragmentsEnabled,
+        onTargetHit: () => {
+          const audio = hitVoice.current;
+          const now = performance.now();
+          if (
+            !hitVoiceEnabled.current ||
+            !audio ||
+            now - lastVoiceAt.current < 850
+          )
+            return;
+          lastVoiceAt.current = now;
+          audio.currentTime = 0;
+          void audio.play().catch(() => undefined);
+        },
         onStateChange: (newState) => {
           setGameState(newState);
           if (newState === "paused") {
@@ -508,12 +539,13 @@ export function TrainerBootstrap({
         onComplete: (result, trace) => {
           // Hand the ephemeral per-run trace to the results screen we are
           // about to navigate to. In-memory only; gone on reload.
-          stashRunTrace(trace);
+          if (!guest) stashRunTrace(trace);
 
           if (onRunComplete) {
             onRunComplete(result);
             return;
           }
+          if (guest) return;
 
           // Scheduled from onComplete rather than from the "completed" state
           // change because onComplete fires only after the run has been written
@@ -531,6 +563,7 @@ export function TrainerBootstrap({
         durationTicks: modeDurationTicks,
         inputGain,
         inputBufferCapacity: runtimeConfig.inputBufferCapacity,
+        persistHistory: !guest,
         // Evaluated when the run actually starts, so it reflects the
         // configuration and pointer-lock outcome the player really played
         // under rather than whatever was true at setup time.
@@ -700,6 +733,9 @@ export function TrainerBootstrap({
       resizeObserver.disconnect();
       detachInput();
       document.removeEventListener("pointerlockchange", onPointerLockChange);
+      if (document.pointerLockElement === canvas) {
+        document.exitPointerLock();
+      }
       if (animationFrameId !== null) cancelAnimationFrame(animationFrameId);
       if (countdownIntervalRef.current !== null) {
         window.clearInterval(countdownIntervalRef.current);
@@ -717,6 +753,7 @@ export function TrainerBootstrap({
         handleResizeRef.current = null;
     };
   }, [
+    guest,
     mode,
     modeDurationSeconds,
     modeDurationTicks,
@@ -734,12 +771,12 @@ export function TrainerBootstrap({
       if (deadline === null) return;
       const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
       setPauseSecondsLeft(remaining);
-      if (remaining === 0) router.replace("/app");
+      if (remaining === 0) router.replace(homeHref);
     };
     update();
     const interval = window.setInterval(update, 1000);
     return () => window.clearInterval(interval);
-  }, [gameState, router]);
+  }, [gameState, homeHref, router]);
 
   if (!modeEntry?.enabled || !modeEntry.createAdapter) {
     return (
@@ -750,7 +787,7 @@ export function TrainerBootstrap({
             This training mode is not enabled in the current release.
           </p>
           <button
-            onClick={() => router.replace("/app")}
+            onClick={() => router.replace(homeHref)}
             className="app-button"
             style={{ marginTop: 22 }}
           >
@@ -779,16 +816,18 @@ export function TrainerBootstrap({
             >
               Retry
             </button>
-            <button
-              onClick={() => router.replace("/app/settings")}
-              className="app-button app-button-ghost"
-              style={{ flex: 1 }}
-            >
-              Settings
-            </button>
+            {!guest ? (
+              <button
+                onClick={() => router.replace("/app/settings")}
+                className="app-button app-button-ghost"
+                style={{ flex: 1 }}
+              >
+                Settings
+              </button>
+            ) : null}
           </div>
           <div style={{ marginTop: 18, textAlign: "center" }}>
-            <BackLink href="/app" label="Back to trainer home" />
+            <BackLink href={homeHref} label={homeLabel} />
           </div>
         </div>
       </main>
@@ -811,36 +850,62 @@ export function TrainerBootstrap({
     );
   }
 
+  const acquireControls = async (
+    canvas: HTMLCanvasElement,
+    controller: PracticeRunController,
+    action: "Start" | "Resume",
+  ) => {
+    const container = containerRef.current;
+    if (controlsPendingRef.current || !container) return false;
+    controlsPendingRef.current = true;
+    setControlsPending(true);
+    setLockError(null);
+    try {
+      // Fullscreen consumes the activation from the click. Request pointer
+      // lock first, including its adjusted-input fallback if raw is refused.
+      const acquisition = await acquirePointerLock(canvas);
+      if (controller === controllerRef.current && acquisition.locked) {
+        try {
+          if (!document.fullscreenElement) await container.requestFullscreen();
+        } catch {
+          // Fullscreen is best effort. Pointer lock works in a window, too.
+        }
+      }
+      if (controller !== controllerRef.current) {
+        if (document.pointerLockElement === canvas) document.exitPointerLock();
+        return false;
+      }
+      if (!acquisition.locked || document.pointerLockElement !== canvas) {
+        setLockError(
+          `Mouse capture is unavailable. Click ${action} when the game tab is active.`,
+        );
+        return false;
+      }
+      pointerLockResultRef.current = acquisition;
+      setPointerLockResult(acquisition);
+      return true;
+    } finally {
+      controlsPendingRef.current = false;
+      setControlsPending(false);
+    }
+  };
+
+  const prepareHitVoice = () => {
+    if (!hitVoiceEnabled.current || lockedConfiguration || hitVoice.current)
+      return;
+    const audio = new Audio("/target-hit.mp3");
+    audio.preload = "auto";
+    audio.volume = 0.55;
+    hitVoice.current = audio;
+  };
+
   const startCountdownAndLock = async () => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    if (countdownIntervalRef.current !== null) {
-      window.clearInterval(countdownIntervalRef.current);
-      countdownIntervalRef.current = null;
-    }
-
-    setLockError(null);
-    await ensureFullscreenBeforeLock();
-    const acquisition = await acquirePointerLock(canvas);
-    pointerLockResultRef.current = acquisition;
-    setPointerLockResult(acquisition);
-    if (!acquisition.locked) {
-      // Named as a wait rather than a permission problem: browsers refuse
-      // Pointer Lock for a short cooldown after the player released it with
-      // Esc, and the old copy sent people hunting for a setting to change
-      // when the fix was to click again a second later.
-      setLockError(
-        "Mouse lock was not granted. Wait a moment, then click Start again.",
-      );
-      return;
-    }
-    if (!acquisition.rawGranted) {
-      setLockError(
-        "Raw mouse input could not be confirmed in this browser; training will continue on adjusted input.",
-      );
-    }
-
+    const controller = controllerRef.current;
+    if (!canvas || !controller || controller.getState() !== "ready") return;
+    if (countdownIntervalRef.current !== null) return;
+    prepareHitVoice();
+    if (!(await acquireControls(canvas, controller, "Start"))) return;
     setCountdown(3);
     let remaining = 3;
     countdownIntervalRef.current = window.setInterval(() => {
@@ -855,7 +920,7 @@ export function TrainerBootstrap({
         const started = startRunIfPointerLocked(
           canvas,
           document.pointerLockElement,
-          () => controllerRef.current?.start(),
+          () => controller.start(),
         );
         if (!started) {
           setLockError(
@@ -870,24 +935,12 @@ export function TrainerBootstrap({
   };
 
   const handleResume = async () => {
-    if (!canvasRef.current) return;
-    setLockError(null);
-    await ensureFullscreenBeforeLock();
-    const acquisition = await acquirePointerLock(canvasRef.current);
-    pointerLockResultRef.current = acquisition;
-    setPointerLockResult(acquisition);
-    if (!acquisition.locked) {
-      setLockError(
-        "Mouse lock was not granted. Wait a moment, then click Resume again.",
-      );
-      return;
-    }
-    if (!acquisition.rawGranted) {
-      setLockError(
-        "Raw mouse input could not be confirmed in this browser; training will continue on adjusted input.",
-      );
-    }
-    controllerRef.current?.resume();
+    const canvas = canvasRef.current;
+    const controller = controllerRef.current;
+    if (!canvas || !controller || controller.getState() !== "paused") return;
+    prepareHitVoice();
+    if (await acquireControls(canvas, controller, "Resume"))
+      controller.resume();
   };
 
   const openSettings = () => {
@@ -897,13 +950,25 @@ export function TrainerBootstrap({
   const handleSaveAndApply = async (
     newSettings: TrainerSettings,
     newCrosshair: SavedCrosshairConfig,
+    voiceEnabled: boolean,
   ) => {
-    const client = new BrowserApiClient();
-    const saveRes = await client.saveTrainerSettings(newSettings);
-    if (!saveRes.ok) {
-      throw new Error(saveRes.error ?? "Failed to save settings");
+    if (guest) {
+      saveGuestTrainerSettings(newSettings);
+    } else {
+      const client = new BrowserApiClient();
+      const saveRes = await client.saveTrainerSettings(newSettings);
+      if (!saveRes.ok) {
+        throw new Error(saveRes.error ?? "Failed to save settings");
+      }
     }
 
+    hitVoiceEnabled.current = voiceEnabled;
+    try {
+      if (voiceEnabled) localStorage.setItem("fms.hit-voice", "on");
+      else localStorage.removeItem("fms.hit-voice");
+    } catch {
+      // Keep the preference for this trainer session.
+    }
     setRawSettings(newSettings);
     const resolved = resolveTrainerRuntimeConfig(newSettings);
     setRuntimeConfig(resolved);
@@ -920,7 +985,7 @@ export function TrainerBootstrap({
   };
 
   const restartWithLatestSettings = () => {
-    window.location.assign(`/app/train/${mode}`);
+    window.location.assign(guest ? `/play/${mode}` : `/app/train/${mode}`);
   };
 
   return (
@@ -993,10 +1058,14 @@ export function TrainerBootstrap({
                 {modeDescription} Click start to capture the mouse and begin the{" "}
                 {modeDurationSeconds}-second run.
               </p>
+              {guest ? (
+                <p className="app-help">Guest runs are unranked.</p>
+              ) : null}
             </div>
             <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
               <button
                 onClick={startCountdownAndLock}
+                disabled={controlsPending}
                 className="app-button"
                 style={{ flex: 1 }}
               >
@@ -1005,6 +1074,7 @@ export function TrainerBootstrap({
               <button
                 type="button"
                 onClick={toggleFullscreen}
+                disabled={controlsPending}
                 className="app-button app-button-ghost"
                 style={{ flex: "none", width: "auto", padding: "0 18px" }}
                 title="Toggle Fullscreen"
@@ -1012,6 +1082,17 @@ export function TrainerBootstrap({
                 {isFullscreen ? "EXIT FS" : "⛶ FULLSCREEN"}
               </button>
             </div>
+            {guest ? (
+              <button
+                type="button"
+                className="app-button app-button-ghost"
+                disabled={controlsPending}
+                onClick={openSettings}
+                style={{ marginTop: 10 }}
+              >
+                Settings
+              </button>
+            ) : null}
             {lockError ? (
               <p role="alert" className="app-alert" style={{ marginTop: 20 }}>
                 {lockError}
@@ -1021,7 +1102,7 @@ export function TrainerBootstrap({
               Esc releases mouse capture and pauses the run. Raw input is used
               when supported; ordinary Pointer Lock remains available.
             </p>
-            <BackLink href="/app" label="Back to trainer home" />
+            <BackLink href={homeHref} label={homeLabel} />
           </div>
         </div>
       ) : null}
@@ -1065,7 +1146,11 @@ export function TrainerBootstrap({
                 gap: 10,
               }}
             >
-              <button onClick={handleResume} className="app-button">
+              <button
+                onClick={handleResume}
+                disabled={controlsPending}
+                className="app-button"
+              >
                 Resume
               </button>
               {!lockedConfiguration ? (
@@ -1079,6 +1164,7 @@ export function TrainerBootstrap({
               <button
                 type="button"
                 onClick={toggleFullscreen}
+                disabled={controlsPending}
                 className="app-button app-button-ghost"
               >
                 {isFullscreen ? "Exit Fullscreen" : "Toggle Fullscreen"}
@@ -1092,7 +1178,7 @@ export function TrainerBootstrap({
                 </button>
               ) : null}
               <button
-                onClick={() => router.push("/app")}
+                onClick={() => router.push(homeHref)}
                 className="app-button app-button-ghost"
               >
                 Exit to Home
@@ -1116,6 +1202,7 @@ export function TrainerBootstrap({
           isOpen={isSettingsModalOpen}
           onClose={() => setIsSettingsModalOpen(false)}
           currentSettings={rawSettings}
+          hitVoiceEnabled={hitVoiceEnabled.current}
           onSaveAndApply={handleSaveAndApply}
         />
       ) : null}
@@ -1203,6 +1290,12 @@ function getRuntimeHudItems(
       ["ACCURACY", "100%"],
       ["HITS / MISS", "0 / 0"],
     ];
+  if ("segmentsCompleted" in metrics) {
+    return [
+      ["PATHS", String(metrics.segmentsCompleted)],
+      ["CLEAN PATHS", String(metrics.cleanSegments)],
+    ];
+  }
   if ("hits" in metrics) {
     return [
       ["ACCURACY", `${metrics.accuracyPercentage}%`],
@@ -1242,7 +1335,11 @@ function resolveCmPer360(
 ): number | null {
   if (!nominalDpi) return null;
   try {
-    return runtimeFmsToCmPer360(Number(fmsSensitivity), nominalDpi);
+    return runtimeFmsToCmPer360(
+      Number(fmsSensitivity),
+      nominalDpi,
+      getBrowserCalibrationScale(),
+    );
   } catch {
     return null;
   }

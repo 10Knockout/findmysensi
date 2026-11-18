@@ -141,3 +141,14 @@ export class DoubleBufferedSnapshotManager implements SnapshotBuffer {
 export function createSnapshotBuffer(maxTargets: number = 64): SnapshotBuffer {
   return new DoubleBufferedSnapshotManager(maxTargets);
 }
+export interface AimCorridorView {
+  readonly startYaw: number;
+  readonly startPitch: number;
+  readonly endYaw: number;
+  readonly endPitch: number;
+  readonly radiusUnits: number;
+  readonly unlitEndpointYaw: number;
+  readonly unlitEndpointPitch: number;
+  readonly targetRadiusUnits: number;
+  readonly leftCorridor: boolean;
+}
