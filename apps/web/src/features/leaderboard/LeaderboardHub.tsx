@@ -69,8 +69,8 @@ export function LeaderboardHub({
             </p>
           </div>
           {!requireSession ? (
-            <Link href="/register" className="app-chip app-chip-acid">
-              Play free
+            <Link href="/#guest-play" className="app-chip app-chip-acid">
+              Play as guest
             </Link>
           ) : null}
         </header>

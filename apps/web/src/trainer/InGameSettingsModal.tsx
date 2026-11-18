@@ -76,13 +76,8 @@ export function InGameSettingsModal({
     setSettings((prev) => ({ ...prev, [key]: val }));
   };
 
-  const fmsSensitivity = Number(settings.fmsSensitivity ?? "1");
-
-  const handleFindMySensiSensitivityChange = (rawValue: string) => {
-    const value = Number(rawValue);
-    if (!Number.isFinite(value) || value <= 0) return;
-    updateSetting("fmsSensitivity", String(value));
-  };
+  const sensitivityDraft = settings.fmsSensitivity ?? "1";
+  const fmsSensitivity = Number(sensitivityDraft);
 
   const handleDpiChange = (rawValue: string) => {
     if (rawValue === "") {
@@ -105,6 +100,8 @@ export function InGameSettingsModal({
       // with a bare "Invalid trainer settings." that names no field.
       const candidate = TrainerSettingsSchema.safeParse({
         ...settings,
+        fmsSensitivity:
+          settings.fmsSensitivity?.trim().replace(/^\.(?=\d)/, "0") ?? null,
         crosshairCode,
       });
       if (!candidate.success) {
@@ -214,13 +211,11 @@ export function InGameSettingsModal({
                     </label>
                     <input
                       id="in-game-fms-sensitivity"
-                      type="number"
-                      min={0.005}
-                      max={10.0}
-                      step={0.005}
-                      value={fmsSensitivity}
+                      type="text"
+                      inputMode="decimal"
+                      value={sensitivityDraft}
                       onChange={(event) =>
-                        handleFindMySensiSensitivityChange(event.target.value)
+                        updateSetting("fmsSensitivity", event.target.value)
                       }
                       className="app-input"
                       style={{
@@ -238,9 +233,13 @@ export function InGameSettingsModal({
                     min={0.005}
                     max={2}
                     step={0.005}
-                    value={Math.min(fmsSensitivity, 2)}
+                    value={
+                      Number.isFinite(fmsSensitivity)
+                        ? Math.min(fmsSensitivity, 2)
+                        : 1
+                    }
                     onChange={(event) =>
-                      handleFindMySensiSensitivityChange(event.target.value)
+                      updateSetting("fmsSensitivity", event.target.value)
                     }
                     className="accent-acid"
                     style={{ width: "100%" }}
@@ -701,7 +700,10 @@ export function InGameSettingsModal({
 
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             {saveStatus ? (
-              <span style={{ fontSize: 12, color: "var(--fms-acid)" }}>
+              <span
+                role="status"
+                style={{ fontSize: 12, color: "var(--fms-acid)" }}
+              >
                 {saveStatus}
               </span>
             ) : null}

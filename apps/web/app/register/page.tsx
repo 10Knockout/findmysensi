@@ -162,20 +162,13 @@ export default function RegisterPage() {
       <div className="app-card">
         <BackLink href="/" label="Back to home" />
         <div className="app-card-header">
-          <Link
-            href="/"
-            className="landing-wordmark"
-            style={{ justifyContent: "center", marginBottom: 22 }}
-          >
-            <span>FMS</span>FindMySensi
-          </Link>
           <h1 className="app-heading">
             {verificationEmail ? "Verify your email" : "Create your account"}
           </h1>
           <p className="app-subtext">
             {verificationEmail
               ? `Enter the six-digit code sent to ${verificationEmail}`
-              : "Create your account, verify your email, then start Gridshot."}
+              : "Save your training progress and submit eligible scores."}
           </p>
         </div>
 

@@ -31,7 +31,7 @@ export function GuestTrainer({ mode, title }: { mode: string; title: string }) {
               ? "Checking browser controls…"
               : "This drill needs a desktop browser with mouse capture and a mouse or trackpad. Touch-only play is unavailable."}
           </p>
-          <BackLink href="/#training" label="Choose another drill" />
+          <BackLink href="/#guest-play" label="Choose another drill" />
         </section>
       </main>
     );
@@ -100,7 +100,7 @@ export function GuestTrainer({ mode, title }: { mode: string; title: string }) {
         >
           Play again
         </button>
-        <BackLink href="/#training" label="Choose another drill" />
+        <BackLink href="/#guest-play" label="Choose another drill" />
       </section>
     </main>
   );

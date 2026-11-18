@@ -38,7 +38,7 @@ export const PATHLINE_DEV_V0_ENTRY: ScenarioEntry = {
     title: "Pathline",
     subtitle: "Precision Path Practice",
     description:
-      "Shoot the first orb, follow the corridor to the next orb, and shoot again. Staying inside earns full points.",
+      "Shoot the first orb, stay inside the corridor, then shoot the next orb. If you leave the corridor, return to the first orb and retry.",
     category: "precision",
     thumbnailUrl: "/thumbnails/pinpoint.webp",
     tags: ["pathline", "precision", "practice"],

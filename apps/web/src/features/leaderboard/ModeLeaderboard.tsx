@@ -219,7 +219,9 @@ function LeaderboardReadyState({
       ) : null}
 
       {view.rows.length === 0 ? (
-        <p className="app-subtext">No scores yet. Be the first.</p>
+        <p className="app-subtext">
+          No eligible scores for this drill this month.
+        </p>
       ) : (
         <LeaderboardTable rows={view.rows} />
       )}

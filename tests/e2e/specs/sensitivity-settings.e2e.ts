@@ -21,6 +21,54 @@ test("a personal browser match persists and can be reset", async ({ page }) => {
   await expect(result).toHaveText("0.245");
 });
 
+test("a guest can convert to Valorant from either a game or the browser", async ({
+  page,
+}) => {
+  await page.goto("/tools/converter");
+  await page.getByLabel("DPI / CPI").fill("2400");
+  const result = page.getByTestId("fms-sensitivity-result");
+  await expect(result).toHaveText("0.245");
+
+  const source = page.getByRole("combobox", { name: "Game", exact: true });
+  await source.selectOption("findmysensi");
+  await expect(page.getByRole("combobox", { name: "Convert to" })).toHaveValue(
+    "valorant",
+  );
+  await page.getByLabel("Sensitivity", { exact: true }).fill("0.25");
+  await expect(result).toHaveText("0.127551");
+
+  await source.selectOption("cs2");
+  await page.getByLabel("Sensitivity", { exact: true }).fill("0.398");
+  await expect(result).toHaveText("0.125086");
+});
+
+test("a guest can start blinded calibration blocks without an account or DPI", async ({
+  page,
+}) => {
+  await page.goto("/tools/calibrate");
+  await expect(
+    page.getByRole("heading", { name: "Find My Sensi" }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "I don’t know my sensitivity" })
+    .click();
+  await expect(
+    page.getByLabel("Mouse DPI (optional)", { exact: true }),
+  ).toHaveValue("");
+  await page.getByLabel("Starting browser sensitivity").fill("0.25");
+  await page
+    .getByRole("button", { name: "Start Find My Sensi", exact: true })
+    .click();
+  await expect(
+    page.getByText("Grid Rush: trial A · 1 of 14", { exact: false }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "START GRID RUSH", exact: true }),
+  ).toBeVisible();
+  expect(new URL(page.url()).pathname).toBe("/tools/calibrate");
+  await expect(page.getByText(/10-second run/)).toBeVisible();
+});
+
 test("converted sensitivity survives saving, Settings, and in-game Settings", async ({
   page,
 }, testInfo) => {
@@ -134,28 +182,32 @@ test("converted sensitivity survives saving, Settings, and in-game Settings", as
 
   saved = { ...saved, nominalDpi: null };
   await page.goto("/app/calibrate");
-  await page.getByRole("button", { name: "CS2 0.398", exact: true }).click();
-  await expect(page.getByTestId("calibration-starting-sensitivity")).toHaveText(
+  await page.getByRole("button", { name: "CS2", exact: true }).click();
+  await page.getByLabel("In-game sensitivity", { exact: true }).fill("0.398");
+  await expect(page.getByTestId("calibration-conversion")).toHaveText(
     "0.245168",
   );
   await expect(
     page.getByRole("button", { name: "CS2", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Valorant", exact: true }).click();
+  await page.getByLabel("In-game sensitivity", { exact: true }).fill("0.125");
+  await expect(page.getByTestId("calibration-conversion")).toHaveText("0.245");
+  expect(writes).toHaveLength(2);
   await page
-    .getByRole("button", { name: "Valorant 0.125", exact: true })
+    .getByRole("button", { name: "I don’t know my sensitivity" })
     .click();
   await expect(page.getByTestId("calibration-starting-sensitivity")).toHaveText(
     "0.245",
   );
-  expect(writes).toHaveLength(2);
-  await expect(page.getByLabel("Mouse DPI", { exact: true })).toHaveValue("");
+  await expect(
+    page.getByLabel("Mouse DPI (optional)", { exact: true }),
+  ).toHaveValue("");
   await page
     .getByRole("button", { name: "Start Find My Sensi", exact: true })
     .click();
   await expect(
-    page.getByText(
-      "Enter your mouse DPI before starting the sensitivity test.",
-    ),
+    page.getByText("Grid Rush: trial A · 1 of 14", { exact: false }),
   ).toBeVisible();
   await page.goto("/app/settings");
   await expect(page.getByTestId("sensitivity-turn-distance")).toHaveText(

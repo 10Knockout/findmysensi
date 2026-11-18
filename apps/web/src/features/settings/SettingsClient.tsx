@@ -94,13 +94,8 @@ export function SettingsClient() {
     setTrainer((current) => (current ? { ...current, [key]: value } : current));
   };
 
-  const fmsSensitivity = Number(trainer?.fmsSensitivity ?? "1");
-
-  const handleFindMySensiSensitivityChange = (rawValue: string) => {
-    const value = Number(rawValue);
-    if (!Number.isFinite(value) || value <= 0) return;
-    updateTrainer("fmsSensitivity", String(value));
-  };
+  const sensitivityDraft = trainer?.fmsSensitivity ?? "1";
+  const fmsSensitivity = Number(sensitivityDraft);
 
   const saveAll = async () => {
     if (!profile || !trainer) return;
@@ -120,6 +115,8 @@ export function SettingsClient() {
     const parsedProfile = ProfileSettingsSchema.safeParse(profile);
     const parsedTrainer = TrainerSettingsSchema.safeParse({
       ...trainer,
+      fmsSensitivity:
+        trainer.fmsSensitivity?.trim().replace(/^\.(?=\d)/, "0") ?? null,
       crosshairCode,
     });
     if (!parsedProfile.success) {
@@ -166,13 +163,7 @@ export function SettingsClient() {
   if (!profile || !trainer) {
     return (
       <main className="app-shell">
-        <p
-          style={{
-            fontFamily: "monospace",
-            fontSize: 13,
-            color: "rgba(255,255,255,0.5)",
-          }}
-        >
+        <p className="app-help" role="status">
           Loading settings…
         </p>
       </main>
@@ -214,9 +205,10 @@ export function SettingsClient() {
             role="status"
             className="app-alert"
             style={{
-              borderColor: "rgba(189,255,45,0.35)",
-              borderLeftColor: "var(--fms-acid)",
-              background: "rgba(189,255,45,0.07)",
+              borderColor: "var(--site-accent-rule)",
+              borderLeftColor: "var(--site-accent)",
+              background: "var(--site-accent-soft)",
+              color: "var(--site-ink)",
             }}
           >
             {status}
@@ -337,13 +329,11 @@ export function SettingsClient() {
                     </label>
                     <input
                       id="fms-sensitivity-number"
-                      type="number"
-                      min={0.005}
-                      max={10.0}
-                      step={0.005}
-                      value={fmsSensitivity}
+                      type="text"
+                      inputMode="decimal"
+                      value={sensitivityDraft}
                       onChange={(event) =>
-                        handleFindMySensiSensitivityChange(event.target.value)
+                        updateTrainer("fmsSensitivity", event.target.value)
                       }
                       className="app-input"
                       style={{
@@ -361,9 +351,13 @@ export function SettingsClient() {
                     min={0.005}
                     max={2}
                     step={0.005}
-                    value={Math.min(fmsSensitivity, 2)}
+                    value={
+                      Number.isFinite(fmsSensitivity)
+                        ? Math.min(fmsSensitivity, 2)
+                        : 1
+                    }
                     onChange={(event) =>
-                      handleFindMySensiSensitivityChange(event.target.value)
+                      updateTrainer("fmsSensitivity", event.target.value)
                     }
                     className="accent-acid"
                     style={{ width: "100%" }}
@@ -371,7 +365,7 @@ export function SettingsClient() {
                   <p
                     style={{
                       marginTop: 8,
-                      color: "rgba(255,255,255,0.5)",
+                      color: "var(--site-muted)",
                       fontSize: 11,
                       lineHeight: 1.6,
                     }}
@@ -410,7 +404,7 @@ export function SettingsClient() {
                     marginTop: 16,
                     padding: 12,
                     border: "1px solid var(--fms-line-dark)",
-                    color: "rgba(255,255,255,0.45)",
+                    color: "var(--site-muted)",
                     fontSize: 10,
                     lineHeight: 1.6,
                     textAlign: "center",
@@ -435,7 +429,8 @@ export function SettingsClient() {
                   <span
                     style={{
                       padding: "6px 12px",
-                      border: "1px solid rgba(189,255,45,0.4)",
+                      border: "1px solid var(--site-accent-rule)",
+                      borderRadius: "var(--site-control-radius)",
                       fontFamily: "monospace",
                       fontWeight: 800,
                       color: "var(--fms-acid)",
@@ -464,7 +459,7 @@ export function SettingsClient() {
                       marginTop: 4,
                       fontFamily: "monospace",
                       fontSize: 10,
-                      color: "rgba(255,255,255,0.4)",
+                      color: "var(--site-muted)",
                     }}
                   >
                     <span>80°</span>
@@ -527,7 +522,8 @@ export function SettingsClient() {
                       height: 44,
                       width: "100%",
                       border: "1px solid var(--fms-line-dark)",
-                      background: "black",
+                      background: "var(--site-surface)",
+                      borderRadius: "var(--site-control-radius)",
                       padding: 4,
                     }}
                   />
@@ -556,7 +552,8 @@ export function SettingsClient() {
                       alignItems: "center",
                       gap: 12,
                       border: "1px solid var(--fms-line-dark)",
-                      background: "rgba(255,255,255,0.04)",
+                      background: "var(--site-surface)",
+                      borderRadius: "var(--site-control-radius)",
                       padding: "0 12px",
                     }}
                   >
@@ -568,9 +565,7 @@ export function SettingsClient() {
                       type="checkbox"
                       className="accent-acid"
                     />
-                    <span
-                      style={{ fontSize: 13, color: "rgba(255,255,255,0.8)" }}
-                    >
+                    <span style={{ fontSize: 13, color: "var(--site-ink)" }}>
                       Enabled
                     </span>
                   </label>

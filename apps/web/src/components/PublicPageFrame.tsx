@@ -3,31 +3,137 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ArrowRight, Menu } from "lucide-react";
+import { SiteBrand, SiteFooter } from "./SiteChrome.js";
+import styles from "./SiteChrome.module.css";
+
+const destinations = [
+  { label: "Calibrate", href: "/tools/calibrate" },
+  { label: "Converter", href: "/tools/converter" },
+  { label: "Leaderboards", href: "/leaderboards" },
+];
+
+function TrainingLink({
+  path,
+  guest = false,
+}: {
+  path: string;
+  guest?: boolean;
+}) {
+  const anchor = guest ? "#guest-play" : "#training";
+  const contents = guest ? (
+    <>
+      <span className={styles.fullPlayLabel}>Play as guest</span>
+      <span className={styles.shortPlayLabel} aria-hidden>
+        Play
+      </span>
+      <ArrowRight
+        className={styles.playArrow}
+        size={15}
+        strokeWidth={1.8}
+        aria-hidden
+      />
+    </>
+  ) : (
+    "Train"
+  );
+  const attributes = guest
+    ? { className: styles.primary, "aria-label": "Play as guest" }
+    : {};
+
+  return path === "/" ? (
+    <a href={anchor} {...attributes}>
+      {contents}
+    </a>
+  ) : (
+    <Link href={`/${anchor}`} {...attributes}>
+      {contents}
+    </Link>
+  );
+}
+
+function PublicDestinations({ path }: { path: string }) {
+  return (
+    <>
+      <TrainingLink path={path} />
+      {destinations.map(({ href, label }) => (
+        <Link
+          key={href}
+          href={href}
+          aria-current={path === href ? "page" : undefined}
+        >
+          {label}
+        </Link>
+      ))}
+    </>
+  );
+}
+
+function PublicHeader({ path }: { path: string }) {
+  return (
+    <header className={styles.header}>
+      <div className={styles.bar}>
+        <SiteBrand />
+        <nav className={styles.links} aria-label="Main navigation">
+          <PublicDestinations path={path} />
+        </nav>
+        <div className={styles.actions}>
+          <Link
+            className={styles.login}
+            href="/login"
+            aria-current={path === "/login" ? "page" : undefined}
+          >
+            Log in
+          </Link>
+          <TrainingLink path={path} guest />
+          <details
+            className={styles.mobileMenu}
+            onKeyDown={(event) => {
+              if (event.key === "Escape" && event.currentTarget.open) {
+                event.currentTarget.open = false;
+                event.currentTarget.querySelector("summary")?.focus();
+              }
+            }}
+          >
+            <summary aria-label="Menu">
+              <Menu size={21} strokeWidth={1.7} aria-hidden />
+            </summary>
+            <nav
+              aria-label="Mobile navigation"
+              onClick={(event) => {
+                if (
+                  event.target instanceof Element &&
+                  event.target.closest("a")
+                ) {
+                  const menu = event.currentTarget.closest("details");
+                  if (menu) menu.open = false;
+                }
+              }}
+            >
+              <PublicDestinations path={path} />
+              <Link
+                href="/login"
+                aria-current={path === "/login" ? "page" : undefined}
+              >
+                Log in
+              </Link>
+            </nav>
+          </details>
+        </div>
+      </div>
+    </header>
+  );
+}
 
 export function PublicPageFrame({ children }: { children: ReactNode }) {
   const path = usePathname();
-  if (path === "/" || /^\/(?:app|play)(?:\/|$)/.test(path)) return children;
+  if (/^\/(?:app|play)(?:\/|$)/.test(path)) return children;
 
   return (
-    <div className="public-page-frame">
-      <header className="public-page-nav">
-        <Link href="/" className="landing-wordmark">
-          <span aria-hidden="true">F/</span> FindMySensi
-        </Link>
-        <nav aria-label="Public navigation">
-          <Link href="/tools/converter">Converter</Link>
-          <Link href="/leaderboards">Scores</Link>
-          <Link href="/#training" className="public-play-link">
-            Play as guest
-          </Link>
-        </nav>
-      </header>
+    <div className={`site-frame ${styles.frame}`}>
+      <PublicHeader path={path} />
       {children}
-      <footer className="public-page-footer">
-        <Link href="/guides">Guides</Link>
-        <Link href="/privacy">Privacy</Link>
-        <Link href="/terms">Terms</Link>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

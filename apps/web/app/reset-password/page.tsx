@@ -1,7 +1,6 @@
 "use client";
 
 import React, { Suspense, useState } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BrowserApiClient } from "@findmysensi/api-client";
 import { BackLink } from "../../src/components/BackLink.js";
@@ -59,13 +58,6 @@ function ResetPasswordForm() {
     <div className="app-card">
       <BackLink href="/login" label="Back to sign in" />
       <div className="app-card-header">
-        <Link
-          href="/"
-          className="landing-wordmark"
-          style={{ justifyContent: "center", marginBottom: 22 }}
-        >
-          <span>FMS</span>FindMySensi
-        </Link>
         <h1 className="app-heading">Set New Password</h1>
         <p className="app-subtext">Enter your new secure password</p>
       </div>
