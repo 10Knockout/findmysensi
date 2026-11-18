@@ -43,8 +43,10 @@ export function AuthenticatedPracticeResults({
       leaderboardEnabled={leaderboardEnabled}
     />
   ) : (
-    <main className="min-h-screen bg-zinc-950 text-zinc-300 grid place-items-center">
-      <p className="font-mono text-sm">Checking your session...</p>
+    <main className="app-shell">
+      <p className="app-help" role="status">
+        Checking your session…
+      </p>
     </main>
   );
 }

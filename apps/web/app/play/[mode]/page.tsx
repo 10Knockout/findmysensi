@@ -18,10 +18,12 @@ export default async function GuestPlayPage({
   if (!entry?.enabled || !entry.createAdapter) notFound();
 
   return (
-    <GuestTrainer
-      key={mode}
-      mode={mode}
-      title={entry.scenarioEntry.presentation.title}
-    />
+    <div className="site-frame guest-training">
+      <GuestTrainer
+        key={mode}
+        mode={mode}
+        title={entry.scenarioEntry.presentation.title}
+      />
+    </div>
   );
 }

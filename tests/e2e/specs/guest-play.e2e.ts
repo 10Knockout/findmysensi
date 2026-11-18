@@ -4,8 +4,12 @@ test("homepage lets guests open every drill", async ({ page }) => {
   test.setTimeout(60_000);
   await page.route("**/api/**", (route) => route.fulfill({ status: 503 }));
   await page.goto("/");
-  await page.getByRole("link", { name: "Play as guest", exact: true }).click();
-  await expect(page).toHaveURL(/#training$/);
+  await page
+    .getByRole("link", { name: /^start training$/i })
+    .first()
+    .click();
+  await expect(page).toHaveURL(/#guest-play$/);
+  await expect(page.locator(":target")).toContainText("Play as guest");
   const links = await page
     .locator("#training a[href^='/play/']")
     .evaluateAll((items) =>
@@ -66,10 +70,24 @@ test("guest practice completes locally with signed-in cookies present", async ({
   await page.goto("/play/pinpoint");
   await expect(page.getByText("Guest runs are unranked.")).toBeVisible();
   await page.getByRole("button", { name: "Settings", exact: true }).click();
-  await page
-    .getByLabel("FindMySensi Browser Sensitivity", { exact: true })
-    .fill("0.265");
-  await page.getByRole("button", { name: "SAVE & APPLY", exact: true }).click();
+  const sensitivity = page.getByLabel("FindMySensi Browser Sensitivity", {
+    exact: true,
+  });
+  const apply = page.getByRole("button", { name: "SAVE & APPLY", exact: true });
+  await sensitivity.clear();
+  await expect(sensitivity).toHaveValue("");
+  await sensitivity.pressSequentially("0");
+  await expect(sensitivity).toHaveValue("0");
+  await apply.click();
+  await expect(page.getByRole("status")).toContainText(
+    "Aim sensitivity is invalid",
+  );
+  await sensitivity.press("ControlOrMeta+a");
+  await sensitivity.press("Backspace");
+  await expect(sensitivity).toHaveValue("");
+  await sensitivity.pressSequentially("0.125");
+  await expect(sensitivity).toHaveValue("0.125");
+  await apply.click();
   const start = page.getByRole("button", {
     name: "START PRECISION SIX",
     exact: true,
@@ -78,6 +96,7 @@ test("guest practice completes locally with signed-in cookies present", async ({
   await expect
     .poll(() => page.evaluate(() => document.pointerLockElement?.id))
     .toBe("simulation-canvas");
+  await expect(page.getByText("3", { exact: true })).toBeVisible();
   await page.clock.runFor(64_000);
   await expect(
     page.getByRole("heading", { name: "Precision Six results" }),
@@ -92,7 +111,7 @@ test("guest practice completes locally with signed-in cookies present", async ({
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await expect(
     page.getByLabel("FindMySensi Browser Sensitivity", { exact: true }),
-  ).toHaveValue("0.265");
+  ).toHaveValue("0.125");
 });
 
 test("touch-only guest browsers show the mouse requirement", async ({

@@ -70,7 +70,7 @@ class PathlineModeAdapter implements ModeRuntimeAdapter<PathlineMetrics> {
   }
 
   public onSimulationTick(
-    _tick: Tick,
+    tick: Tick,
     yaw: AngleUnits,
     pitch: PitchUnits,
   ): void {
@@ -81,6 +81,7 @@ class PathlineModeAdapter implements ModeRuntimeAdapter<PathlineMetrics> {
     } else {
       this.leftCorridor = true;
     }
+    this.restartFailedSegment(tick);
   }
 
   public onShot(
@@ -91,13 +92,14 @@ class PathlineModeAdapter implements ModeRuntimeAdapter<PathlineMetrics> {
   ): void {
     if (!this.start || !this.end) return;
     this.onAimMove(yaw, pitch);
+    this.restartFailedSegment(tick);
     const hit = findHitTarget(yaw, pitch, this.targets);
     this.tracker.recordShot(tick, hit?.id ?? null);
     if (!hit) return;
 
     if (this.started) {
       this.segmentsCompleted++;
-      if (!this.leftCorridor) this.cleanSegments++;
+      this.cleanSegments++;
       this.start = this.end;
       this.end = this.scenario.next(prng);
     }
@@ -146,6 +148,12 @@ class PathlineModeAdapter implements ModeRuntimeAdapter<PathlineMetrics> {
   private activate(target: TargetSpawnSpec, tick: number): void {
     this.targets = [target];
     this.tracker.recordTargetSpawn(target.id, tick);
+  }
+
+  private restartFailedSegment(tick: Tick): void {
+    if (!this.started || !this.leftCorridor || !this.start) return;
+    this.started = false;
+    this.activate(this.start, tick);
   }
 
   private isInsideCorridor(yaw: AngleUnits, pitch: PitchUnits): boolean {

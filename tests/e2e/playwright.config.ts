@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const isCi = Boolean(process.env.CI);
+const externalBaseUrl = process.env.PLAYWRIGHT_BASE_URL;
 
 export default defineConfig({
   testDir: "./specs",
@@ -11,7 +12,7 @@ export default defineConfig({
   workers: 1,
   reporter: isCi ? "line" : "list",
   use: {
-    baseURL: "http://127.0.0.1:3100",
+    baseURL: externalBaseUrl ?? "http://127.0.0.1:3100",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
@@ -21,10 +22,12 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
     },
   ],
-  webServer: {
-    command: "npm --prefix ../../apps/web start -- -H 127.0.0.1 -p 3100",
-    url: "http://127.0.0.1:3100",
-    reuseExistingServer: !isCi,
-    timeout: 120_000,
-  },
+  webServer: externalBaseUrl
+    ? undefined
+    : {
+        command: "npm --prefix ../../apps/web start -- -H 127.0.0.1 -p 3100",
+        url: "http://127.0.0.1:3100",
+        reuseExistingServer: !isCi,
+        timeout: 120_000,
+      },
 });

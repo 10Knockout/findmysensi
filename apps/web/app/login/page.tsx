@@ -70,15 +70,10 @@ export default function LoginPage() {
       <div className="app-card">
         <BackLink href="/" label="Back to home" />
         <div className="app-card-header">
-          <Link
-            href="/"
-            className="landing-wordmark"
-            style={{ justifyContent: "center", marginBottom: 22 }}
-          >
-            <span>FMS</span>FindMySensi
-          </Link>
           <h1 className="app-heading">Sign In</h1>
-          <p className="app-subtext">Sign in to access aim training</p>
+          <p className="app-subtext">
+            Save your progress and compete on leaderboards.
+          </p>
         </div>
 
         {error && <div className="app-alert">{error}</div>}

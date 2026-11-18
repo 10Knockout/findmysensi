@@ -51,7 +51,7 @@ describe("Pathline practice", () => {
     expect(adapter.getAimCorridor?.()?.startYaw).toBe(guide.endYaw);
   });
 
-  it("marks a detour between simulation ticks and lets the player finish the path at reduced points", () => {
+  it("blocks completion after a detour until the player restarts from the same orb", () => {
     const { adapter, guide, prng } = startPath();
     adapter.onAimMove?.(
       createAngleUnits(guide.startYaw),
@@ -65,13 +65,31 @@ describe("Pathline practice", () => {
       prng,
     );
 
-    const metrics = adapter.computeMetrics(2);
-    expect(metrics).toMatchObject({
-      segmentsCompleted: 1,
+    const failedAttempt = adapter.computeMetrics(2);
+    expect(failedAttempt).toMatchObject({
+      segmentsCompleted: 0,
       cleanSegments: 0,
-      hits: 2,
+      hits: 1,
     });
-    expect(adapter.computeScore(metrics).score).toBe(500);
+    expect(adapter.computeScore(failedAttempt).score).toBe(0);
+    expect(adapter.getAimCorridor?.()?.leftCorridor).toBe(true);
+    expect(adapter.getRenderTargets()[0]?.xAngleUnits).toBe(guide.startYaw);
+
+    adapter.onShot(
+      createTick(3),
+      createAngleUnits(guide.startYaw),
+      createPitchUnits(guide.startPitch),
+      prng,
+    );
     expect(adapter.getAimCorridor?.()?.leftCorridor).toBe(false);
+    adapter.onShot(
+      createTick(4),
+      createAngleUnits(guide.endYaw),
+      createPitchUnits(guide.endPitch),
+      prng,
+    );
+    const metrics = adapter.computeMetrics(4);
+    expect(metrics).toMatchObject({ segmentsCompleted: 1, cleanSegments: 1 });
+    expect(adapter.computeScore(metrics).score).toBe(900);
   });
 });

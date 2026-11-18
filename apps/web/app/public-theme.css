@@ -127,6 +127,10 @@
   border: 0;
 }
 
+#guest-play {
+  scroll-margin-top: 6rem;
+}
+
 .landing-mode-rail a {
   justify-content: space-between;
   background: var(--public-surface);

@@ -6,9 +6,9 @@ import { BrowserApiClient } from "@findmysensi/api-client";
 import type { LeaderboardRowV2 } from "@findmysensi/protocol";
 import { gamerTagLabel } from "@findmysensi/trainer-runtime";
 import { PlayerAvatar } from "../profile/PlayerAvatar.js";
+import styles from "./LandingHero.module.css";
 
 const REFRESH_MS = 15_000;
-const ROTATE_MS = 8_000;
 
 export interface LeaderboardModeOption {
   readonly modeId: string;
@@ -22,11 +22,11 @@ export function LiveLeaderboard({
 }: {
   readonly modes: readonly LeaderboardModeOption[];
 }) {
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [selectedMode, setSelectedMode] = useState(modes[0]?.modeId ?? "");
   const [rows, setRows] = useState<LeaderboardRowV2[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [paused, setPaused] = useState(false);
-  const activeMode = modes[activeIndex] ?? modes[0];
+  const activeMode =
+    modes.find((mode) => mode.modeId === selectedMode) ?? modes[0];
 
   useEffect(() => {
     if (!activeMode) return;
@@ -88,136 +88,96 @@ export function LiveLeaderboard({
     };
   }, [activeMode]);
 
-  useEffect(() => {
-    if (paused || modes.length < 2) return;
-    const reduceMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-    if (reduceMotion) return;
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === "visible") {
-        setActiveIndex((index) => (index + 1) % modes.length);
-      }
-    }, ROTATE_MS);
-    return () => window.clearInterval(timer);
-  }, [modes.length, paused]);
-
   if (!activeMode) return null;
 
-  const move = (direction: -1 | 1) => {
-    setActiveIndex(
-      (index) => (index + direction + modes.length) % modes.length,
-    );
-  };
-
   return (
-    <div
-      className="landing-leaderboard-carousel"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-      onFocusCapture={() => setPaused(true)}
-      onBlurCapture={() => setPaused(false)}
-    >
-      <header className="landing-leaderboard-head">
-        <div>
-          <span>Top 10 · rotates every 8 seconds</span>
-          <h3 aria-live="polite">{activeMode.title}</h3>
-        </div>
-        <div className="landing-leaderboard-controls">
-          <button
-            type="button"
-            onClick={() => move(-1)}
-            aria-label="Previous game"
-          >
-            ←
-          </button>
-          <span>
-            {activeIndex + 1} / {modes.length}
-          </span>
-          <button type="button" onClick={() => move(1)} aria-label="Next game">
-            →
-          </button>
-        </div>
+    <div className={styles.board}>
+      <header className={styles.boardHead}>
+        <h3 aria-live="polite">Top scores · {activeMode.title}</h3>
+        <select
+          aria-label="Leaderboard drill"
+          value={activeMode.modeId}
+          onChange={(event) => {
+            if (event.target.value === activeMode.modeId) return;
+            setRows(null);
+            setError(null);
+            setSelectedMode(event.target.value);
+          }}
+        >
+          {modes.map((mode) => (
+            <option key={mode.modeId} value={mode.modeId}>
+              {mode.title}
+            </option>
+          ))}
+        </select>
       </header>
 
-      {error ? (
-        <div
-          role="alert"
-          className="landing-leaderboard-state landing-leaderboard-error"
-        >
-          Could not load {activeMode.title}. {error}
-        </div>
-      ) : rows === null ? (
-        <div className="landing-leaderboard-state">
-          Loading {activeMode.title}…
-        </div>
-      ) : rows.length === 0 ? (
-        <div className="landing-leaderboard-state">
-          No {activeMode.title} scores yet.
-        </div>
-      ) : (
-        <div className="landing-leaderboard-scroll">
-          <table className="landing-leaderboard-table">
-            <thead>
-              <tr>
-                <th>Rank</th>
-                <th>Player</th>
-                <th>Score</th>
-                <th>Accuracy</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => {
-                const tag = gamerTagLabel(row.tagId ?? "tag-none");
-                return (
-                  <tr key={`${row.rank}-${row.username}`}>
-                    <td>#{row.rank}</td>
-                    <td>
-                      <div className="app-leaderboard-player">
-                        <PlayerAvatar
-                          avatarId={row.avatarId ?? "avatar-default"}
-                          frameId={row.frameId ?? "frame-none"}
-                          label={row.username}
-                          size={36}
-                        />
-                        <span>
-                          <strong>{row.username}</strong>
-                          {tag ? <small>{tag}</small> : null}
-                        </span>
-                      </div>
-                    </td>
-                    <td>{row.score.toLocaleString("en-US")}</td>
-                    <td>
-                      {row.accuracyPercentage === null ||
-                      row.accuracyPercentage === undefined
-                        ? "—"
-                        : `${row.accuracyPercentage.toFixed(1)}%`}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      <div
-        className="landing-leaderboard-dots"
-        aria-label="Choose game leaderboard"
-      >
-        {modes.map((mode, index) => (
-          <button
-            type="button"
-            key={mode.modeId}
-            aria-label={`Show ${mode.title}`}
-            aria-pressed={index === activeIndex}
-            onClick={() => setActiveIndex(index)}
-          />
-        ))}
+      <div className={styles.boardBody}>
+        {error ? (
+          <div role="alert" className={styles.boardStatus}>
+            Could not load {activeMode.title}. {error}
+          </div>
+        ) : rows === null ? (
+          <div role="status" className={styles.boardStatus}>
+            Loading {activeMode.title}…
+          </div>
+        ) : rows.length === 0 ? (
+          <div className={styles.boardStatus}>
+            No {activeMode.title} scores yet.
+          </div>
+        ) : (
+          <div className={styles.boardScroll}>
+            <table
+              className={styles.boardTable}
+              aria-label={`${activeMode.title} leaderboard`}
+            >
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Player</th>
+                  <th>Score</th>
+                  <th>Accuracy</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => {
+                  const tag = gamerTagLabel(row.tagId ?? "tag-none");
+                  return (
+                    <tr key={`${row.rank}-${row.username}`}>
+                      <td>#{row.rank}</td>
+                      <td>
+                        <div className="app-leaderboard-player">
+                          <PlayerAvatar
+                            avatarId={row.avatarId ?? "avatar-default"}
+                            frameId={row.frameId ?? "frame-none"}
+                            label={row.username}
+                            size={36}
+                          />
+                          <span>
+                            <strong>{row.username}</strong>
+                            {tag ? <small>{tag}</small> : null}
+                          </span>
+                        </div>
+                      </td>
+                      <td>{row.score.toLocaleString("en-US")}</td>
+                      <td>
+                        {row.accuracyPercentage === null ||
+                        row.accuracyPercentage === undefined
+                          ? "—"
+                          : `${row.accuracyPercentage.toFixed(1)}%`}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
-      <Link href="/leaderboards" className="landing-arrow-link">
-        View all leaderboards
-      </Link>
+
+      <div className={styles.boardFoot}>
+        <Link href="/leaderboards">View all leaderboards</Link>
+      </div>
     </div>
   );
 }

@@ -153,13 +153,7 @@ export default function ProfilePage() {
   if (!user) {
     return (
       <main className="app-shell">
-        <p
-          style={{
-            fontFamily: "monospace",
-            fontSize: 13,
-            color: "rgba(255,255,255,0.5)",
-          }}
-        >
+        <p className="app-help" role="status">
           Checking your session…
         </p>
       </main>
@@ -190,7 +184,10 @@ export default function ProfilePage() {
             priority
           />
           <div>
-            <h1 className="app-section-title" style={{ marginBottom: 4 }}>
+            <h1
+              className="app-section-title"
+              style={{ marginBottom: 4, overflowWrap: "anywhere" }}
+            >
               {user.username ?? user.email}
             </h1>
             <p className="app-profile-rank">{title}</p>
