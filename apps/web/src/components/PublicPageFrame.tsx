@@ -15,9 +15,10 @@ export function PublicPageFrame({ children }: { children: ReactNode }) {
           <span aria-hidden="true">F/</span> FindMySensi
         </Link>
         <nav aria-label="Public navigation">
+          <Link href="/tools/calibrate">Calibrate</Link>
           <Link href="/tools/converter">Converter</Link>
           <Link href="/leaderboards">Scores</Link>
-          <Link href="/#training" className="public-play-link">
+          <Link href="/#guest-play" className="public-play-link">
             Play as guest
           </Link>
         </nav>

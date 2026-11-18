@@ -161,7 +161,7 @@ export function TrainerBootstrap({
   guest = false,
 }: TrainerBootstrapProps) {
   const router = useRouter();
-  const homeHref = guest ? "/#training" : "/app";
+  const homeHref = guest ? "/#guest-play" : "/app";
   const homeLabel = guest ? "Choose another drill" : "Back to trainer home";
   const modeEntry = trainerModeManifest.get(mode);
   const modeTitle =
@@ -336,9 +336,9 @@ export function TrainerBootstrap({
 
       if (guest || settingsOverride) {
         try {
-          const settings = guest
-            ? loadGuestTrainerSettings()
-            : TrainerSettingsSchema.parse(settingsOverride);
+          const settings = settingsOverride
+            ? TrainerSettingsSchema.parse(settingsOverride)
+            : loadGuestTrainerSettings();
           const resolved = resolveTrainerRuntimeConfig(settings);
           savedCrosshairRef.current = resolveSavedCrosshair(
             resolved.crosshairCode,
@@ -539,7 +539,7 @@ export function TrainerBootstrap({
         onComplete: (result, trace) => {
           // Hand the ephemeral per-run trace to the results screen we are
           // about to navigate to. In-memory only; gone on reload.
-          if (!guest) stashRunTrace(trace);
+          if (!guest && !onRunComplete) stashRunTrace(trace);
 
           if (onRunComplete) {
             onRunComplete(result);
@@ -563,7 +563,7 @@ export function TrainerBootstrap({
         durationTicks: modeDurationTicks,
         inputGain,
         inputBufferCapacity: runtimeConfig.inputBufferCapacity,
-        persistHistory: !guest,
+        persistHistory: !guest && !onRunComplete,
         // Evaluated when the run actually starts, so it reflects the
         // configuration and pointer-lock outcome the player really played
         // under rather than whatever was true at setup time.

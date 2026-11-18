@@ -35,7 +35,7 @@ export default function HomePage() {
           <Link href="/login" className="landing-login">
             Sign in
           </Link>
-          <a href="#training" className="landing-pill landing-pill-light">
+          <a href="#guest-play" className="landing-pill landing-pill-light">
             Play free
           </a>
         </div>
@@ -56,7 +56,7 @@ export default function HomePage() {
             your browser.
           </p>
           <div className="landing-hero-actions">
-            <a href="#training" className="landing-pill landing-pill-acid">
+            <a href="#guest-play" className="landing-pill landing-pill-acid">
               Play as guest
               <ArrowIcon />
             </a>
@@ -107,7 +107,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="landing-guest-intro">
+        <div id="guest-play" className="landing-guest-intro" tabIndex={-1}>
           <h3>Play as guest</h3>
           <p>
             Choose a drill with a desktop mouse or trackpad. Guest scores stay
@@ -143,15 +143,18 @@ export default function HomePage() {
         </div>
         <div className="landing-calibration-detail" data-reveal>
           <p>
-            Test several sensitivity values across five drills without seeing
-            the active value. FindMySensi recommends a setting from your runs.
+            Compare sensitivity values across several drills without seeing the
+            active value. Start a free calibration without an account.
           </p>
           <div className="landing-number-line">
             <span>0.125 Valorant</span>
             <i />
             <span>43.54 cm/360 at 2400 DPI</span>
           </div>
-          <Link href="/register" className="landing-pill landing-pill-dark">
+          <Link
+            href="/tools/calibrate"
+            className="landing-pill landing-pill-dark"
+          >
             Find my sensi
             <ArrowIcon />
           </Link>
@@ -177,10 +180,7 @@ export default function HomePage() {
       <section className="landing-chapter landing-chapter-tools">
         <div className="landing-tool-card" data-reveal>
           <h2>Sensitivity converter</h2>
-          <p>
-            Convert Valorant, CS2, Apex, or Aimlabs settings and adjust the
-            match for your browser.
-          </p>
+          <p>Convert between Valorant, CS2, Apex, Aimlabs, and FindMySensi.</p>
           <Link href="/tools/converter" className="landing-arrow-link">
             Open converter <ArrowIcon />
           </Link>
@@ -232,7 +232,7 @@ export default function HomePage() {
             <summary>What does Pathline train?</summary>
             <p>
               Hit one target, follow the visible corridor, and hit the next.
-              Your score rewards clean transfers along the path.
+              Leaving the corridor sends you back to the start of that path.
             </p>
           </details>
         </div>

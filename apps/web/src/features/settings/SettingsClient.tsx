@@ -94,13 +94,8 @@ export function SettingsClient() {
     setTrainer((current) => (current ? { ...current, [key]: value } : current));
   };
 
-  const fmsSensitivity = Number(trainer?.fmsSensitivity ?? "1");
-
-  const handleFindMySensiSensitivityChange = (rawValue: string) => {
-    const value = Number(rawValue);
-    if (!Number.isFinite(value) || value <= 0) return;
-    updateTrainer("fmsSensitivity", String(value));
-  };
+  const sensitivityDraft = trainer?.fmsSensitivity ?? "1";
+  const fmsSensitivity = Number(sensitivityDraft);
 
   const saveAll = async () => {
     if (!profile || !trainer) return;
@@ -120,6 +115,8 @@ export function SettingsClient() {
     const parsedProfile = ProfileSettingsSchema.safeParse(profile);
     const parsedTrainer = TrainerSettingsSchema.safeParse({
       ...trainer,
+      fmsSensitivity:
+        trainer.fmsSensitivity?.trim().replace(/^\.(?=\d)/, "0") ?? null,
       crosshairCode,
     });
     if (!parsedProfile.success) {
@@ -337,13 +334,11 @@ export function SettingsClient() {
                     </label>
                     <input
                       id="fms-sensitivity-number"
-                      type="number"
-                      min={0.005}
-                      max={10.0}
-                      step={0.005}
-                      value={fmsSensitivity}
+                      type="text"
+                      inputMode="decimal"
+                      value={sensitivityDraft}
                       onChange={(event) =>
-                        handleFindMySensiSensitivityChange(event.target.value)
+                        updateTrainer("fmsSensitivity", event.target.value)
                       }
                       className="app-input"
                       style={{
@@ -361,9 +356,13 @@ export function SettingsClient() {
                     min={0.005}
                     max={2}
                     step={0.005}
-                    value={Math.min(fmsSensitivity, 2)}
+                    value={
+                      Number.isFinite(fmsSensitivity)
+                        ? Math.min(fmsSensitivity, 2)
+                        : 1
+                    }
                     onChange={(event) =>
-                      handleFindMySensiSensitivityChange(event.target.value)
+                      updateTrainer("fmsSensitivity", event.target.value)
                     }
                     className="accent-acid"
                     style={{ width: "100%" }}

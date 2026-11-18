@@ -21,6 +21,56 @@ test("a personal browser match persists and can be reset", async ({ page }) => {
   await expect(result).toHaveText("0.245");
 });
 
+test("a guest can convert to Valorant from either a game or the browser", async ({
+  page,
+}) => {
+  await page.goto("/tools/converter");
+  await page.getByLabel("DPI / CPI").fill("2400");
+  const result = page.getByTestId("fms-sensitivity-result");
+  await expect(result).toHaveText("0.245");
+
+  const source = page.getByRole("combobox", { name: "Game", exact: true });
+  await source.selectOption("findmysensi");
+  await expect(page.getByRole("combobox", { name: "Convert to" })).toHaveValue(
+    "valorant",
+  );
+  await page.getByLabel("Sensitivity", { exact: true }).fill("0.25");
+  await expect(result).toHaveText("0.127551");
+
+  await source.selectOption("cs2");
+  await page.getByLabel("Sensitivity", { exact: true }).fill("0.398");
+  await expect(result).toHaveText("0.125086");
+});
+
+test("a guest can start blinded calibration blocks without an account or DPI", async ({
+  page,
+}) => {
+  await page.goto("/tools/calibrate");
+  await expect(
+    page.getByRole("heading", { name: "Find My Sensi" }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Mouse DPI", { exact: true })).toHaveValue("");
+  await page.getByLabel("Starting browser sensitivity").fill("0.25");
+  await page
+    .getByRole("button", { name: "Start Find My Sensi", exact: true })
+    .click();
+  await expect(
+    page.getByText("Discovery: Grid Rush, block 1 of 25", { exact: false }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "START GRID RUSH", exact: true }),
+  ).toBeVisible();
+  expect(new URL(page.url()).pathname).toBe("/tools/calibrate");
+  await page.reload();
+  await page.getByLabel("Starting browser sensitivity").fill("0.25");
+  await page.getByRole("button", { name: "Compare in 0.01 steps" }).click();
+  await expect(
+    page.getByText("Fine comparison: Grid Rush, block 1 of 15", {
+      exact: false,
+    }),
+  ).toBeVisible();
+});
+
 test("converted sensitivity survives saving, Settings, and in-game Settings", async ({
   page,
 }, testInfo) => {
