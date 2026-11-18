@@ -279,6 +279,19 @@
 }
 
 @media (max-width: 720px) {
+  .landing-nav-actions {
+    gap: 10px;
+  }
+
+  .landing-nav-actions .landing-login {
+    display: inline-flex;
+    white-space: nowrap;
+  }
+
+  .landing-nav-actions .landing-pill {
+    padding-inline: 12px;
+    white-space: nowrap;
+  }
   .landing-hero {
     align-items: flex-end;
     min-height: max(650px, 100dvh);
