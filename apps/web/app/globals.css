@@ -28,12 +28,12 @@
 }
 
 :root {
-  --fms-acid: #bdff2d;
-  --fms-black: #030504;
-  --fms-panel: #0b0e0c;
-  --fms-paper: #e9e9df;
-  --fms-line-dark: rgba(255, 255, 255, 0.18);
-  --fms-line-light: rgba(5, 5, 5, 0.18);
+  --fms-acid: oklch(0.74 0.16 49);
+  --fms-black: oklch(0.16 0.014 58);
+  --fms-panel: oklch(0.217 0.017 57);
+  --fms-paper: oklch(0.94 0.02 74);
+  --fms-line-dark: rgb(255 239 224 / 0.16);
+  --fms-line-light: rgb(24 14 9 / 0.16);
 }
 
 html {
@@ -512,6 +512,20 @@ html {
   letter-spacing: -0.05em;
 }
 
+.landing-guest-intro {
+  margin-top: 32px;
+}
+
+.landing-guest-intro h3 {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.landing-guest-intro p {
+  margin-top: 4px;
+  opacity: 0.78;
+}
+
 .landing-mode-rail {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
@@ -520,7 +534,7 @@ html {
   border-left: 1px solid var(--fms-line-light);
 }
 
-.landing-mode-rail span {
+.landing-mode-rail a {
   display: flex;
   min-height: 78px;
   align-items: center;
@@ -530,6 +544,15 @@ html {
   border-bottom: 1px solid var(--fms-line-light);
   font-size: 13px;
   font-weight: 590;
+}
+
+.landing-mode-rail a:hover {
+  background: rgb(0 0 0 / 0.06);
+}
+
+.landing-mode-rail a:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -3px;
 }
 
 .landing-mode-rail b {
@@ -1081,7 +1104,7 @@ html {
     min-height: 370px;
   }
 
-  .landing-mode-rail span {
+  .landing-mode-rail a {
     min-height: 66px;
   }
 
@@ -2031,7 +2054,7 @@ html {
   font-family: var(--font-turret-road), monospace;
 }
 
-.trainer-hud b {
+.trainer-hud :is(b, dt) {
   display: block;
   color: rgba(255, 255, 255, 0.4);
   font-size: 9px;
@@ -2040,7 +2063,7 @@ html {
   text-transform: uppercase;
 }
 
-.trainer-hud strong {
+.trainer-hud :is(strong, dd) {
   display: block;
   margin-top: 2px;
   color: white;

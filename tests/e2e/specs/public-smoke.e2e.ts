@@ -49,7 +49,10 @@ test("public home renders and shows a real-data error state when leaderboard is 
     level: 1,
     name: "Find your sensi.",
   });
-  const startTraining = page.getByRole("link", { name: "START TRAINING" });
+  const startTraining = page.getByRole("link", {
+    name: "Play as guest",
+    exact: true,
+  });
   const leaderboardError = page
     .getByRole("alert")
     .filter({ hasText: "Could not load Grid Rush" });
@@ -80,7 +83,8 @@ test("converter maps Valorant into the single FindMySensi sensitivity scale", as
 
   const response = await page.goto("/tools/converter");
   expect(response?.ok()).toBe(true);
-  await expect(page.getByLabel("SENSITIVITY")).toHaveValue("0.125");
+  const gameSensitivity = page.getByLabel("Sensitivity", { exact: true });
+  await expect(gameSensitivity).toHaveValue("0.125");
   await expect(page.getByTestId("fms-sensitivity-result")).toHaveText("0.245");
   await expect(page.getByTestId("fms-sensitivity-canonical")).toContainText(
     "0.175",
@@ -89,11 +93,11 @@ test("converter maps Valorant into the single FindMySensi sensitivity scale", as
     page.getByText("Every training game uses it.", { exact: false }),
   ).toBeVisible();
 
-  await page.getByLabel("SENSITIVITY").fill("0.25");
+  await gameSensitivity.fill("0.25");
   await expect(page.getByTestId("fms-sensitivity-result")).toHaveText("0.49");
   await page.getByRole("button", { name: "CS2 0.398", exact: true }).click();
   await expect(page.getByLabel("Game")).toHaveValue("cs2");
-  await expect(page.getByLabel("Sensitivity")).toHaveValue("0.398");
+  await expect(gameSensitivity).toHaveValue("0.398");
   await expect(page.getByTestId("fms-sensitivity-result")).toHaveText(
     "0.245168",
   );
@@ -187,6 +191,16 @@ test("authenticated Grid Rush shell initializes the real trainer canvas", async 
   page,
 }, testInfo) => {
   const browserErrors = captureBrowserErrors(page);
+  // Headless Chromium can accept fullscreen-first despite the activation
+  // requirement on desktop browsers. Observe each real request to verify order.
+  await page.addInitScript(() => {
+    const requestPointerLock = Element.prototype.requestPointerLock;
+    Element.prototype.requestPointerLock = function (...args) {
+      document.documentElement.dataset.pointerLockRequestedFrom =
+        document.fullscreenElement ? "fullscreen" : "windowed";
+      return requestPointerLock.apply(this, args);
+    };
+  });
   const session = {
     user: {
       id: "browser-user",
@@ -259,6 +273,17 @@ test("authenticated Grid Rush shell initializes the real trainer canvas", async 
   expect(
     await page.evaluate(() => document.pointerLockElement?.id ?? null),
   ).toBe("simulation-canvas");
+  expect(
+    await page.evaluate(
+      () =>
+        document.fullscreenElement?.contains(document.pointerLockElement) ??
+        false,
+    ),
+  ).toBe(true);
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-pointer-lock-requested-from",
+    "windowed",
+  );
   await page.screenshot({ path: testInfo.outputPath("gridshot-arena.png") });
 
   const canvas = page.getByLabel(GRID_MODE_CANVAS_LABEL);
@@ -421,6 +446,26 @@ test("authenticated Grid Rush shell initializes the real trainer canvas", async 
   expect(
     await page.evaluate(() => document.pointerLockElement?.id ?? null),
   ).toBe("simulation-canvas");
+  // Synthetic Escape does not release native pointer lock in headless
+  // Chromium. Use the native exit APIs to exercise pause and reacquisition.
+  await page.evaluate(async () => {
+    document.exitPointerLock();
+    await document.exitFullscreen();
+    delete document.documentElement.dataset.pointerLockRequestedFrom;
+  });
+  await page.getByRole("button", { name: "Resume", exact: true }).click();
+  await expect(page.getByText("TIME", { exact: true })).toBeVisible();
+  expect(
+    await page.evaluate(
+      () =>
+        document.fullscreenElement?.contains(document.pointerLockElement) ??
+        false,
+    ),
+  ).toBe(true);
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-pointer-lock-requested-from",
+    "windowed",
+  );
   expect(browserErrors).toEqual([]);
 });
 
@@ -590,6 +635,7 @@ test("authenticated Results page displays honest local results wording and metri
   page,
 }) => {
   const browserErrors = captureBrowserErrors(page);
+  let submissionCount = 0;
   const session = {
     user: {
       id: "browser-user",
@@ -619,6 +665,14 @@ test("authenticated Results page displays honest local results wording and metri
       scenarioVersion: number;
       scoringVersion: number;
     };
+    submissionCount += 1;
+    if (submissionCount === 1) {
+      await route.fulfill({
+        status: 503,
+        json: { message: "Run sync is temporarily unavailable." },
+      });
+      return;
+    }
     await route.fulfill({
       status: 201,
       contentType: "application/json",
@@ -627,7 +681,7 @@ test("authenticated Results page displays honest local results wording and metri
         runId: submitted.runId,
         submissionStatus: "stored",
         runClass: "practice",
-        competitiveStatus: "listed",
+        competitiveStatus: "practice-only",
         leaderboard: {
           board: {
             boardId: `${submitted.modeId}:scenario-${submitted.scenarioVersion}:scoring-${submitted.scoringVersion}`,
@@ -769,16 +823,26 @@ test("authenticated Results page displays honest local results wording and metri
   const response = await page.goto("/app/train/grid/results");
   expect(response?.ok()).toBe(true);
 
-  // Assert honest practice-sync badge and explanation.
+  // Keep the local result visible during an outage and retry the same run.
+  const runSummary = page.getByRole("region", { name: "Run Summary" });
   await expect(
-    page.getByText("Saved to Account", { exact: true }),
+    page.getByText("Run sync is temporarily unavailable."),
   ).toBeVisible();
-  await expect(page.getByText(/now on the public leaderboard/)).toBeVisible();
+  const retry = page.getByRole("button", { name: "Retry sync" });
+  await expect(retry).toBeVisible();
+  await expect(runSummary.getByText("72,450", { exact: true })).toBeVisible();
+  await retry.click();
+  await expect(
+    page.getByText("Saved to Account · Practice Only", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("No eligible score this season").first(),
+  ).toBeVisible();
+  expect(submissionCount).toBe(2);
 
   await expect(
     page.getByRole("heading", { name: "Grid Rush", level: 1 }),
   ).toBeVisible();
-  const runSummary = page.getByRole("region", { name: "Run Summary" });
   await expect(runSummary.getByText("72,450", { exact: true })).toBeVisible();
   await expect(runSummary.getByText("75,000", { exact: true })).toBeVisible();
   await expect(page.locator("text=−2,550")).toBeVisible();
@@ -811,5 +875,9 @@ test("authenticated Results page displays honest local results wording and metri
   await expect(page.locator("body")).not.toContainText(
     "Results from your practice session.",
   );
-  expect(browserErrors).toEqual([]);
+  expect(
+    browserErrors.filter(
+      (message) => !message.includes("503 (Service Unavailable)"),
+    ),
+  ).toEqual([]);
 });

@@ -21,9 +21,11 @@ interface InGameSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentSettings: TrainerSettings;
+  hitVoiceEnabled?: boolean;
   onSaveAndApply: (
     newSettings: TrainerSettings,
     newCrosshair: CrosshairConfig,
+    hitVoiceEnabled: boolean,
   ) => Promise<void>;
 }
 
@@ -41,10 +43,12 @@ export function InGameSettingsModal({
   isOpen,
   onClose,
   currentSettings,
+  hitVoiceEnabled = false,
   onSaveAndApply,
 }: InGameSettingsModalProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>("sensitivity");
   const [settings, setSettings] = useState<TrainerSettings>(currentSettings);
+  const [voiceEnabled, setVoiceEnabled] = useState(hitVoiceEnabled);
   const [crosshair, setCrosshair] = useState<CrosshairConfig>(
     CROSSHAIR_PRESETS[0]!.config,
   );
@@ -109,7 +113,7 @@ export function InGameSettingsModal({
         return;
       }
 
-      await onSaveAndApply(candidate.data, crosshair);
+      await onSaveAndApply(candidate.data, crosshair, voiceEnabled);
       setSaveStatus("Applied successfully!");
       window.setTimeout(() => {
         setSaveStatus(null);
@@ -397,6 +401,14 @@ export function InGameSettingsModal({
             <div className="settings-panel">
               <h3>Target Appearance & Color</h3>
               <p>Customize the look of training targets.</p>
+              <label className="settings-label">
+                <input
+                  type="checkbox"
+                  checked={voiceEnabled}
+                  onChange={(event) => setVoiceEnabled(event.target.checked)}
+                />{" "}
+                Announce target hits on this device
+              </label>
 
               <div
                 style={{

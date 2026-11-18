@@ -11,6 +11,7 @@ import {
   PitchUnits,
   PrngV1,
   RenderSnapshotView,
+  shortestSignedAngleDelta,
   SnapshotBuffer,
   wrapYaw,
 } from "@findmysensi/aim-core";
@@ -61,12 +62,16 @@ export interface PracticeRunCallbacks {
   onTickProgress: (currentTick: number, totalTicks: number) => void;
   onScoreUpdate: (currentScore: number, metrics: RuntimeMetrics) => void;
   onComplete: (result: RuntimeScoreResult, trace: RunTrace | null) => void;
+  hitFeedbackEnabled?: () => boolean;
+  hitFragmentsEnabled?: () => boolean;
+  onTargetHit?: () => void;
 }
 
 export interface PracticeRunOptions {
   readonly durationTicks?: number;
   readonly inputGain?: BrowserInputGain;
   readonly inputBufferCapacity?: number;
+  readonly persistHistory?: boolean;
   /**
    * Captures configuration as it stands the moment the run begins.
    *
@@ -163,6 +168,7 @@ export class PracticeRunController {
   private settingsSnapshot: RunSettingsSnapshot | null = null;
   private readonly captureSettingsSnapshot:
     (() => RunSettingsSnapshot | null) | null;
+  private readonly persistHistory: boolean;
 
   constructor(
     callbacks: PracticeRunCallbacks,
@@ -190,6 +196,7 @@ export class PracticeRunController {
     this.batchTarget = createRawInputBatchTarget(capacity);
     this.snapshotBuffer = createSnapshotBuffer(32);
     this.captureSettingsSnapshot = options.captureSettingsSnapshot ?? null;
+    this.persistHistory = options.persistHistory ?? true;
   }
 
   public getRingBuffer(): InputRingBuffer {
@@ -309,7 +316,9 @@ export class PracticeRunController {
     // Only click-discrete modes (MissBreakdownCapable) have a meaningful
     // per-shot spatial miss to plot.
     this.traceRecorder =
-      "getMissBreakdown" in this.adapter ? createRunTraceRecorder() : null;
+      this.persistHistory && "getMissBreakdown" in this.adapter
+        ? createRunTraceRecorder()
+        : null;
 
     this.writeSnapshot(0);
 
@@ -333,7 +342,10 @@ export class PracticeRunController {
       // every existing scoring/replay test) are completely untouched.
       onRender: () => {
         if (this.renderer) {
-          this.renderer.render(this.getDisplayRenderView());
+          this.renderer.render(
+            this.getDisplayRenderView(),
+            this.adapter.getAimCorridor?.(),
+          );
         }
       },
     });
@@ -424,6 +436,7 @@ export class PracticeRunController {
             // invisible mouse wall.
             this.playerYaw = wrapYaw(this.playerYaw + yawDelta);
             this.playerPitch = clampPitch(this.playerPitch - pitchDelta);
+            this.adapter.onAimMove?.(this.playerYaw, this.playerPitch);
             this.cumulativeEngineYawAngleUnits += yawDelta;
             this.cumulativeEnginePitchAngleUnits -= pitchDelta;
           } else if (event.kind === "shot") {
@@ -456,40 +469,43 @@ export class PracticeRunController {
     if (!this.prng) return;
 
     const tick = createTick(currentTick);
-    const hitsBefore = this.currentHitCount(currentTick + 1);
+    const feedback = this.callbacks.hitFeedbackEnabled?.() ?? false;
+    const observeHit = feedback || this.traceRecorder !== null;
+    const nearest = observeHit ? this.nearestTarget() : null;
+    const hitsBefore = observeHit ? this.currentHitCount(currentTick + 1) : 0;
     this.adapter.onShot(tick, this.playerYaw, this.playerPitch, this.prng);
-    this.recordTraceShot(currentTick, hitsBefore);
+    const hit =
+      observeHit && this.currentHitCount(currentTick + 1) > hitsBefore;
+    if (feedback && hit && nearest) {
+      if (this.callbacks.hitFragmentsEnabled?.()) {
+        this.renderer?.showTargetHit?.(
+          nearest.xAngleUnits,
+          nearest.yAngleUnits,
+          nearest.radiusAngleUnits,
+        );
+      }
+      this.callbacks.onTargetHit?.();
+    }
+    this.recordTraceShot(currentTick, hit, nearest);
 
     this.publishMetrics(currentTick + 1);
   }
 
-  /** Adapter hit count at a tick, or 0 when this run has no trace recorder. */
   private currentHitCount(elapsedTicks: number): number {
-    if (!this.traceRecorder) return 0;
     const metrics = this.adapter.computeMetrics(elapsedTicks);
     return isClickMetrics(metrics) ? metrics.hits : 0;
   }
 
-  /**
-   * Appends one shot to the per-run trace: aim direction, the nearest target
-   * centre, and whether the hit count went up. A shot fired into empty space
-   * (no active target) is recorded as a max-offset miss against its own aim so
-   * the analysis can still plot it.
-   */
-  private recordTraceShot(shotTick: number, hitsBefore: number): void {
-    const recorder = this.traceRecorder;
-    if (!recorder) return;
-
-    const hit = this.currentHitCount(shotTick + 1) > hitsBefore;
-    const aimYaw = Number(this.playerYaw);
-    const aimPitch = Number(this.playerPitch);
-
+  private nearestTarget() {
     const targets = this.adapter.getRenderTargets();
     let nearest: (typeof targets)[number] | null = null;
     let nearestDistanceSq = Number.POSITIVE_INFINITY;
     for (const target of targets) {
-      const dyaw = aimYaw - target.xAngleUnits;
-      const dpitch = aimPitch - target.yAngleUnits;
+      const dyaw = shortestSignedAngleDelta(
+        this.playerYaw,
+        createAngleUnits(target.xAngleUnits),
+      );
+      const dpitch = this.playerPitch - target.yAngleUnits;
       const distanceSq = dyaw * dyaw + dpitch * dpitch;
       if (distanceSq < nearestDistanceSq) {
         nearestDistanceSq = distanceSq;
@@ -497,6 +513,18 @@ export class PracticeRunController {
       }
     }
 
+    return nearest;
+  }
+
+  private recordTraceShot(
+    shotTick: number,
+    hit: boolean,
+    nearest: ReturnType<PracticeRunController["nearestTarget"]>,
+  ): void {
+    const recorder = this.traceRecorder;
+    if (!recorder) return;
+    const aimYaw = Number(this.playerYaw);
+    const aimPitch = Number(this.playerPitch);
     recorder.record(
       nearest
         ? {
@@ -598,6 +626,13 @@ export class PracticeRunController {
     const finalMetrics = this.adapter.computeMetrics(this.totalDurationTicks);
     const finalScore = this.adapter.computeScore(finalMetrics);
 
+    // Guest practice has a local results screen and never enters the account
+    // history used by the run submission flow.
+    if (!this.persistHistory) {
+      this.callbacks.onComplete(finalScore, null);
+      return;
+    }
+
     const completedAt = Date.now();
     const summaryBase = {
       id: `practice-${globalThis.crypto.randomUUID()}`,
@@ -610,7 +645,22 @@ export class PracticeRunController {
     };
 
     let summary: PracticeSummaryRecord;
-    if (isClickMetrics(finalMetrics)) {
+    if ("segmentsCompleted" in finalMetrics) {
+      summary = {
+        ...summaryBase,
+        modeId: "pathline",
+        hits: finalMetrics.hits,
+        shots: finalMetrics.shots,
+        misses: finalMetrics.misses,
+        accuracyPercentage: finalMetrics.accuracyPercentage,
+        killsPerSecond: finalMetrics.killsPerSecond,
+        averageAcquisitionTicks: finalMetrics.avgAcquisitionTicks,
+        segmentsCompleted: finalMetrics.segmentsCompleted,
+        cleanSegments: finalMetrics.cleanSegments,
+        corridorTicks: finalMetrics.corridorTicks,
+        pathTicks: finalMetrics.pathTicks,
+      };
+    } else if (isClickMetrics(finalMetrics)) {
       summary = {
         ...summaryBase,
         modeId: this.adapter.modeId as ClickModeId,
@@ -706,7 +756,7 @@ export class PracticeRunController {
       // includes any pause, tab scheduling delay, or countdown jitter.
       activeDurationMs: Math.round((this.totalDurationTicks / 128) * 1000),
       finalScore,
-      leaderboardEligible,
+      leaderboardEligible: leaderboardEligible && summary.modeId !== "pathline",
       invalidationReasons,
       settings,
       summary,
@@ -728,7 +778,7 @@ type TrackingModeId = "smooth-track" | "strafe";
 
 type ClickModeId = Exclude<
   PracticeSummaryRecord["modeId"],
-  TrackingModeId | "switch-track"
+  TrackingModeId | "switch-track" | "pathline"
 >;
 
 function isClickMetrics(

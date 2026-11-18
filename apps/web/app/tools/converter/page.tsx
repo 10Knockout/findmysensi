@@ -4,7 +4,13 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { BackLink } from "../../../src/components/BackLink.js";
 import {
+  setBrowserCalibrationScale,
+  useBrowserCalibrationScale,
+} from "../../../src/lib/browser-calibration.js";
+import {
   DEFAULT_BROWSER_INPUT_CALIBRATION_SCALE,
+  MAX_BROWSER_INPUT_CALIBRATION_SCALE,
+  MIN_BROWSER_INPUT_CALIBRATION_SCALE,
   SENSITIVITY_PROFILES,
   applyBrowserInputCalibration,
   convertSensitivity,
@@ -23,6 +29,11 @@ export default function SensitivityConverterPage() {
     useState<VerifiedSensitivityProfileId>("valorant");
   const [sourceSensitivity, setSourceSensitivity] = useState("0.125");
   const [sourceDpi, setSourceDpi] = useState("800");
+  const [matchedSensitivity, setMatchedSensitivity] = useState("");
+  const [calibrationMessage, setCalibrationMessage] = useState("");
+  const savedScale = useBrowserCalibrationScale();
+  const calibrationScale =
+    savedScale ?? DEFAULT_BROWSER_INPUT_CALIBRATION_SCALE;
 
   const result = useMemo(() => {
     const sensitivity = Number(sourceSensitivity);
@@ -53,9 +64,36 @@ export default function SensitivityConverterPage() {
     ? Number(result.formattedTargetSensitivity)
     : null;
   const calibratedSensitivity =
-    canonicalSensitivity !== null && Number.isFinite(canonicalSensitivity)
-      ? applyBrowserInputCalibration(canonicalSensitivity)
+    canonicalSensitivity !== null && canonicalSensitivity > 0
+      ? applyBrowserInputCalibration(canonicalSensitivity, calibrationScale)
       : null;
+
+  function saveBrowserMatch() {
+    const match = Number(matchedSensitivity);
+    if (
+      !canonicalSensitivity ||
+      !Number.isFinite(match) ||
+      match <= 0 ||
+      match > 100
+    ) {
+      setCalibrationMessage(
+        "Enter a valid FindMySensi sensitivity from above zero to 100.",
+      );
+      return;
+    }
+    const scale = match / canonicalSensitivity;
+    if (
+      scale < MIN_BROWSER_INPUT_CALIBRATION_SCALE ||
+      scale > MAX_BROWSER_INPUT_CALIBRATION_SCALE
+    ) {
+      setCalibrationMessage(
+        "That match is outside the supported range. Check both sensitivity values.",
+      );
+      return;
+    }
+    setBrowserCalibrationScale(scale);
+    setCalibrationMessage("Browser match applied to conversion estimates.");
+  }
 
   return (
     <main className="app-page">
@@ -142,15 +180,68 @@ export default function SensitivityConverterPage() {
                 className="app-help converter-canonical"
               >
                 cm/360 match {formatSensitivity(canonicalSensitivity)} ×{" "}
-                {DEFAULT_BROWSER_INPUT_CALIBRATION_SCALE} browser calibration
+                {formatSensitivity(calibrationScale)}{" "}
+                {savedScale === null
+                  ? "estimated browser multiplier"
+                  : "personal browser multiplier"}
               </div>
             ) : null}
             <p className="app-help converter-explanation">
               Enter this number once in FindMySensi. Every training game uses
-              it. It includes the current browser calibration estimate. Measure
-              a physical turn to verify the match on your device. No source-game
-              profile stays active during training.
+              it. Compare a full turn at the same DPI in both games to check the
+              estimate on your device.
             </p>
+            <details>
+              <summary>Calibrate to this browser</summary>
+              <p className="app-help">
+                Enter the FindMySensi value that matches the game and
+                sensitivity above. Try a full turn in both games using the same
+                mouse and DPI. This adjustment applies to conversions in this
+                browser.
+              </p>
+              <Field label="Matching FindMySensi sensitivity">
+                <input
+                  value={matchedSensitivity}
+                  onChange={(event) => {
+                    setMatchedSensitivity(event.target.value);
+                    setCalibrationMessage("");
+                  }}
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  max="100"
+                  step="any"
+                  className="app-input"
+                />
+              </Field>
+              <div className="converter-preset-buttons">
+                <button
+                  type="button"
+                  className="settings-chip"
+                  onClick={saveBrowserMatch}
+                  disabled={!calibratedSensitivity}
+                >
+                  Use this match
+                </button>
+                {savedScale !== null && (
+                  <button
+                    type="button"
+                    className="settings-chip"
+                    onClick={() => {
+                      setBrowserCalibrationScale(null);
+                      setCalibrationMessage(
+                        "Default browser estimate restored.",
+                      );
+                    }}
+                  >
+                    Restore default
+                  </button>
+                )}
+              </div>
+              <p className="app-help" role="status">
+                {calibrationMessage}
+              </p>
+            </details>
             <div className="converter-presets">
               <p className="settings-label">Quick starting values</p>
               <div className="converter-preset-buttons">

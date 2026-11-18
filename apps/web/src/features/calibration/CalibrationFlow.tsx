@@ -24,6 +24,7 @@ import {
 import { BackLink } from "../../components/BackLink.js";
 import { SensitivityGamePicker } from "../../components/SensitivityGamePicker.js";
 import { TrainerBootstrap } from "../../trainer/TrainerBootstrap.js";
+import { useBrowserCalibrationScale } from "../../lib/browser-calibration.js";
 
 const FIND_BLOCK_DURATION_TICKS = 12 * 128;
 
@@ -63,6 +64,7 @@ interface CalibrationBlock {
 
 export function CalibrationFlow() {
   const router = useRouter();
+  const calibrationScale = useBrowserCalibrationScale();
   const [settings, setSettings] = useState<TrainerSettings | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [blocks, setBlocks] = useState<readonly CalibrationBlock[]>([]);
@@ -114,6 +116,7 @@ export function CalibrationFlow() {
     if (!settings) return;
     const runtime = applyBrowserInputCalibration(
       Number(gameSensitivityToFms(game, sensitivity)),
+      calibrationScale,
     );
     setSettings({ ...settings, fmsSensitivity: formatSensitivity(runtime) });
     setTargetGame(game);
@@ -204,11 +207,12 @@ export function CalibrationFlow() {
         targetGame,
         selectedSensitivity,
         settings.nominalDpi,
+        calibrationScale,
       );
     } catch {
       return null;
     }
-  }, [selectedSensitivity, settings, targetGame]);
+  }, [selectedSensitivity, settings, targetGame, calibrationScale]);
 
   const saveSelected = async () => {
     if (!settings || selectedSensitivity === null) return;

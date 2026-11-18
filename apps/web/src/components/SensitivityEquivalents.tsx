@@ -3,6 +3,7 @@ import {
   removeBrowserInputCalibration,
   runtimeFmsToCmPer360,
 } from "@findmysensi/sensitivity";
+import { useBrowserCalibrationScale } from "../lib/browser-calibration.js";
 
 export function SensitivityEquivalents({
   sensitivity,
@@ -11,11 +12,14 @@ export function SensitivityEquivalents({
   sensitivity: number;
   dpi: number | null;
 }) {
+  const calibrationScale = useBrowserCalibrationScale();
   let canonical = "Unavailable";
   let distance = "Set your mouse DPI";
   try {
-    canonical = String(removeBrowserInputCalibration(sensitivity));
-    const cm = runtimeFmsToCmPer360(sensitivity, dpi);
+    canonical = String(
+      removeBrowserInputCalibration(sensitivity, calibrationScale),
+    );
+    const cm = runtimeFmsToCmPer360(sensitivity, dpi, calibrationScale);
     if (cm !== null) distance = `${cm.toFixed(2)} cm / 360°`;
   } catch {
     distance = "Unavailable";

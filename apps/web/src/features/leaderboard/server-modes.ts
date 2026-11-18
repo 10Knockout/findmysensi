@@ -3,7 +3,7 @@ import type { LeaderboardHubMode } from "./LeaderboardHub.js";
 
 export function getLeaderboardHubModes(): LeaderboardHubMode[] {
   return Array.from(trainerModeManifest.values())
-    .filter((entry) => entry.enabled)
+    .filter((entry) => entry.enabled && entry.leaderboardEnabled)
     .map((entry) => ({
       modeId: entry.modeId,
       title: entry.scenarioEntry.presentation.title,

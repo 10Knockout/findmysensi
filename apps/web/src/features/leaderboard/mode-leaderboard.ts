@@ -1,5 +1,6 @@
 import type { LeaderboardResponseV2 } from "@findmysensi/protocol";
 import { gamerTagLabel } from "@findmysensi/trainer-runtime";
+import { seasonRank } from "./season-rank.js";
 
 export interface LeaderboardViewerProfile {
   readonly username: string;
@@ -24,6 +25,7 @@ export interface LeaderboardView {
   readonly selfOutsideList: LeaderboardViewRow | null;
   readonly totalPlayers: number;
   readonly percentileLabel: string | null;
+  readonly seasonRankLabel: string | null;
   readonly seasonLabel: string;
   readonly resetLabel: string | null;
 }
@@ -97,9 +99,12 @@ export function buildLeaderboardView(
 
   const percentileLabel =
     standing && standing.percentile !== null
-      ? `Top ${(100 - standing.percentile).toLocaleString("en-US", {
-          maximumFractionDigits: 1,
-        })}%`
+      ? `Top ${((standing.rank / standing.totalPlayers) * 100).toLocaleString(
+          "en-US",
+          {
+            maximumFractionDigits: 1,
+          },
+        )}%`
       : null;
 
   return {
@@ -107,6 +112,9 @@ export function buildLeaderboardView(
     selfOutsideList,
     totalPlayers: response.totalPlayers,
     percentileLabel,
+    seasonRankLabel: standing
+      ? (seasonRank(standing.rank, standing.totalPlayers)?.name ?? null)
+      : null,
     seasonLabel: formatSeason(response.board.seasonId),
     resetLabel: formatReset(response.board.seasonEndsAt),
   };

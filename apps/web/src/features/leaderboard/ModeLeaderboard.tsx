@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { BrowserApiClient } from "@findmysensi/api-client";
-import { RANK_TIERS } from "@findmysensi/trainer-runtime";
+import { SEASON_RANK_MIN_PLAYERS, SEASON_RANKS } from "./season-rank.js";
 import { PlayerAvatar } from "../profile/PlayerAvatar.js";
 import {
   buildLeaderboardView,
@@ -208,6 +208,13 @@ function LeaderboardReadyState({
             {selfRow.score} points · {selfRow.accuracy} accuracy
           </span>
           {view.percentileLabel ? <span>{view.percentileLabel}</span> : null}
+          {view.seasonRankLabel ? (
+            <strong>{view.seasonRankLabel}</strong>
+          ) : (
+            <span>
+              Season tier unlocks at {SEASON_RANK_MIN_PLAYERS} players
+            </span>
+          )}
         </div>
       ) : null}
 
@@ -334,18 +341,17 @@ export function LeaderboardRules() {
         </li>
       </ul>
       <p className="app-subtext">
-        Aimer titles use best accuracy. These fixed thresholds stay comparable
-        across games; leaderboard place uses score inside one game only.
+        Seasonal tiers use your score position among eligible players in this
+        mode. A tier requires at least {SEASON_RANK_MIN_PLAYERS} players.
       </p>
       <div className="app-rank-grid">
-        {RANK_TIERS.map((tier, index) => (
+        {SEASON_RANKS.map((tier) => (
           <div key={tier.name}>
-            <strong>{tier.name} Aimer</strong>
+            <strong>{tier.name}</strong>
             <span>
-              {tier.minAccuracyPercentage}%
-              {index < RANK_TIERS.length - 1
-                ? `–${RANK_TIERS[index + 1]!.minAccuracyPercentage - 0.1}%`
-                : "+"}
+              {tier.topPercent === 100
+                ? "All other ranked players"
+                : `Top ${tier.topPercent}%`}
             </span>
           </div>
         ))}

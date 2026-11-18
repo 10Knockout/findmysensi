@@ -1,3 +1,5 @@
+import type { PathlineProgress } from "./pathline-adapter.js";
+
 export interface PracticeRunSummaryBase {
   readonly id: string;
   readonly timestamp: number;
@@ -27,6 +29,11 @@ export interface GridPracticeSummary extends ClickPracticeSummaryBase {
 
 export interface PinpointPracticeSummary extends ClickPracticeSummaryBase {
   readonly modeId: "pinpoint";
+}
+
+export interface PathlinePracticeSummary
+  extends ClickPracticeSummaryBase, PathlineProgress {
+  readonly modeId: "pathline";
 }
 
 export interface MultiPracticeSummary extends ClickPracticeSummaryBase {
@@ -88,6 +95,7 @@ export interface SwitchTrackPracticeSummary extends PracticeRunSummaryBase {
 export type PracticeSummaryRecord =
   | GridPracticeSummary
   | PinpointPracticeSummary
+  | PathlinePracticeSummary
   | MultiPracticeSummary
   | HeadlinePracticeSummary
   | StrafePracticeSummary

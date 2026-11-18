@@ -5,10 +5,19 @@ import type {
 
 export type { PracticeSummaryRecord, LifetimeStats };
 
+export function getPracticeStorage(): Storage | null {
+  try {
+    return typeof window === "undefined" ? null : (window.localStorage ?? null);
+  } catch {
+    return null;
+  }
+}
+
 const STORAGE_KEY = "findmysensi:practice_history:v1";
 const STATS_KEY = "findmysensi:practice_stats:v1";
 const CLICK_MODE_IDS = new Set<PracticeSummaryRecord["modeId"]>([
   "grid",
+  "pathline",
   "pinpoint",
   "multi",
   "headline",
@@ -70,6 +79,11 @@ export function isPracticeSummaryRecord(
       isFiniteNumber(record.misses) &&
       isFiniteNumber(record.accuracyPercentage) &&
       isFiniteNumber(record.killsPerSecond) &&
+      (record.modeId !== "pathline" ||
+        (isFiniteNumber(record.segmentsCompleted) &&
+          isFiniteNumber(record.cleanSegments) &&
+          isFiniteNumber(record.corridorTicks) &&
+          isFiniteNumber(record.pathTicks))) &&
       (record.averageAcquisitionTicks === undefined ||
         isFiniteNumber(record.averageAcquisitionTicks))
     );
@@ -108,23 +122,18 @@ function parseStoredHistory(raw: string): PracticeSummaryRecord[] | null {
 }
 
 export class LocalPracticeHistory {
-  private memoryFallback: PracticeSummaryRecord[] = [];
-  private memoryStatsFallback: LifetimeStats = { ...ZERO_LIFETIME_STATS };
-
-  private isLocalStorageAvailable(): boolean {
-    return (
-      typeof window !== "undefined" &&
-      typeof window.localStorage !== "undefined"
-    );
-  }
+  private memoryFallback: PracticeSummaryRecord[] | null = null;
+  private memoryStatsFallback: LifetimeStats | null = null;
 
   public save(record: PracticeSummaryRecord): void {
     const list = this.getAll();
     const updated = [record, ...list].slice(0, 100);
 
-    if (this.isLocalStorageAvailable()) {
+    const storage = getPracticeStorage();
+    if (storage) {
       try {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        storage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        this.memoryFallback = null;
       } catch {
         this.memoryFallback = updated;
       }
@@ -141,9 +150,10 @@ export class LocalPracticeHistory {
       totalPracticeSeconds:
         prevStats.totalPracticeSeconds + record.durationSeconds,
     };
-    if (this.isLocalStorageAvailable()) {
+    if (storage) {
       try {
-        window.localStorage.setItem(STATS_KEY, JSON.stringify(nextStats));
+        storage.setItem(STATS_KEY, JSON.stringify(nextStats));
+        this.memoryStatsFallback = null;
         return;
       } catch {
         // Fall back to in-memory stats when browser storage is unavailable.
@@ -159,32 +169,30 @@ export class LocalPracticeHistory {
    * 100 sessions.
    */
   public getLifetimeStats(): LifetimeStats {
-    if (this.isLocalStorageAvailable()) {
-      try {
-        const raw = window.localStorage.getItem(STATS_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw) as unknown;
-          if (isLifetimeStats(parsed)) return parsed;
-        }
-        return this.memoryStatsFallback;
-      } catch {
-        return this.memoryStatsFallback;
+    if (this.memoryStatsFallback) return this.memoryStatsFallback;
+    try {
+      const raw = getPracticeStorage()?.getItem(STATS_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as unknown;
+        if (isLifetimeStats(parsed)) return parsed;
       }
+    } catch {
+      // Missing or invalid storage has no lifetime totals.
     }
-    return this.memoryStatsFallback;
+    return { ...ZERO_LIFETIME_STATS };
   }
 
   public getAll(modeId?: string): readonly PracticeSummaryRecord[] {
-    let items = this.memoryFallback;
+    let items = this.memoryFallback ?? [];
 
-    if (this.isLocalStorageAvailable()) {
+    if (this.memoryFallback === null) {
       try {
-        const raw = window.localStorage.getItem(STORAGE_KEY);
+        const raw = getPracticeStorage()?.getItem(STORAGE_KEY);
         if (raw) {
-          items = parseStoredHistory(raw) ?? this.memoryFallback;
+          items = parseStoredHistory(raw) ?? [];
         }
       } catch {
-        items = this.memoryFallback;
+        // Unreadable storage has no local history.
       }
     }
 
@@ -197,10 +205,13 @@ export class LocalPracticeHistory {
   public clear(): void {
     this.memoryFallback = [];
     this.memoryStatsFallback = { ...ZERO_LIFETIME_STATS };
-    if (this.isLocalStorageAvailable()) {
+    const storage = getPracticeStorage();
+    if (storage) {
       try {
-        window.localStorage.removeItem(STORAGE_KEY);
-        window.localStorage.removeItem(STATS_KEY);
+        storage.removeItem(STORAGE_KEY);
+        this.memoryFallback = null;
+        storage.removeItem(STATS_KEY);
+        this.memoryStatsFallback = null;
       } catch {
         // Ignore storage cleanup failures.
       }

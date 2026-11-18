@@ -1,4 +1,7 @@
-import { RenderSnapshotView } from "@findmysensi/aim-core";
+import {
+  type AimCorridorView,
+  RenderSnapshotView,
+} from "@findmysensi/aim-core";
 import { ViewportTransform } from "./viewport-transform.js";
 
 export interface CrosshairConfig {
@@ -59,7 +62,8 @@ export interface AimRenderer {
     viewport: ViewportTransform,
     options?: PotatoRendererOptions,
   ): void;
-  render(snapshot: RenderSnapshotView): void;
+  render(snapshot: RenderSnapshotView, corridor?: AimCorridorView | null): void;
+  showTargetHit?(yaw: number, pitch: number, radius: number): void;
   resize(viewport: ViewportTransform): void;
   dispose(): void;
 }

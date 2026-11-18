@@ -14,6 +14,7 @@ export default async function ResultsPage({
     <AuthenticatedPracticeResults
       mode={mode}
       taskName={modeEntry.scenarioEntry.presentation.title}
+      leaderboardEnabled={modeEntry.leaderboardEnabled}
     />
   );
 }

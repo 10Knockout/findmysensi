@@ -9,6 +9,10 @@ import type { RunRecord } from "@findmysensi/trainer-runtime";
 export function toPracticeRunSubmissionV2(
   run: RunRecord,
 ): PracticeRunSubmissionV2 {
+  const summary = run.summary;
+  if (run.modeId === "pathline" || summary.modeId === "pathline") {
+    throw new RangeError("Pathline results are saved on this device only.");
+  }
   return {
     protocolVersion: 2,
     runClass: "practice",
@@ -31,7 +35,12 @@ export function toPracticeRunSubmissionV2(
       scalingMode: requireScalingMode(run.settings.scalingMode),
       graphicsPreset: requireGraphicsPreset(run.settings.graphicsPreset),
     },
-    summary: { ...run.summary },
+    // Expiring targets can incur an in-game miss penalty without a shot.
+    // V2 uses misses for missed shots and has no field for expired targets.
+    summary:
+      "shots" in summary
+        ? { ...summary, misses: summary.shots - summary.hits }
+        : { ...summary },
   };
 }
 

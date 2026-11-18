@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { BrowserApiClient } from "@findmysensi/api-client";
 import {
   RUN_INVALIDATION_MESSAGES,
@@ -24,6 +24,7 @@ interface PracticeResultsProps {
   readonly mode?: string;
   readonly taskName?: string;
   readonly syncEnabled?: boolean;
+  readonly leaderboardEnabled?: boolean;
   /**
    * The just-finished run's shot trace. Normally left unset -- the trainer
    * shell stashes it in `run-trace-handoff` and this component picks it up on
@@ -32,20 +33,23 @@ interface PracticeResultsProps {
   readonly trace?: RunTrace | null;
 }
 
-type RunSyncState = "local" | "syncing" | "saved" | "pending";
+type RunSyncState =
+  "local" | "syncing" | "listed" | "practice-only" | "pending";
 
 export function PracticeResults({
   mode = "grid",
   taskName,
   syncEnabled = false,
+  leaderboardEnabled = true,
   trace,
 }: PracticeResultsProps) {
   const [latestRun, setLatestRun] = useState<RunRecord | null>(null);
   const [overview, setOverview] = useState<ResultsOverview | null>(null);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [syncState, setSyncState] = useState<RunSyncState>("local");
+  const [syncAttempt, setSyncAttempt] = useState(0);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [runTrace, setRunTrace] = useState<RunTrace | null>(null);
-  const attemptedRunId = useRef<string | null>(null);
   const routes = getPracticeResultsRoutes(mode);
   const resolvedTaskName = taskName ?? formatModeLabel(mode);
   const syncCopy = getRunSyncCopy(syncState);
@@ -57,6 +61,7 @@ export function PracticeResults({
     setLatestRun(run);
     setOverview(run ? buildResultsOverview(run, history) : null);
     setSyncState("local");
+    setSyncError(null);
     setHistoryLoaded(true);
     // Consume the in-memory trace once. Absent after a reload or a direct
     // visit -- correct: there is no run in progress to analyse.
@@ -66,15 +71,16 @@ export function PracticeResults({
   useEffect(() => {
     if (
       !syncEnabled ||
+      !leaderboardEnabled ||
       !latestRun ||
-      attemptedRunId.current === latestRun.runId
+      latestRun.modeId !== mode
     ) {
       return;
     }
 
-    attemptedRunId.current = latestRun.runId;
     let active = true;
     setSyncState("syncing");
+    setSyncError(null);
 
     void (async () => {
       try {
@@ -83,6 +89,7 @@ export function PracticeResults({
         );
         if (!active) return;
         if (!result.ok || !result.data) {
+          setSyncError(result.error ?? "Account sync is unavailable.");
           setSyncState("pending");
           return;
         }
@@ -91,16 +98,19 @@ export function PracticeResults({
         setOverview(
           buildResultsOverview(latestRun, history, result.data.leaderboard),
         );
-        setSyncState("saved");
+        setSyncState(result.data.competitiveStatus);
       } catch {
-        if (active) setSyncState("pending");
+        if (active) {
+          setSyncError("Could not sync this run.");
+          setSyncState("pending");
+        }
       }
     })();
 
     return () => {
       active = false;
     };
-  }, [latestRun, syncEnabled]);
+  }, [latestRun, leaderboardEnabled, mode, syncAttempt, syncEnabled]);
 
   return (
     <main className="app-page app-results-page">
@@ -110,7 +120,21 @@ export function PracticeResults({
             <div className="app-results-tag">{syncCopy.tag}</div>
             <p className="app-section-label">Overview</p>
             <h1 className="app-heading">{resolvedTaskName}</h1>
-            <p className="app-subtext">{syncCopy.description}</p>
+            <p className="app-subtext" role="status">
+              {syncCopy.description}
+            </p>
+            {syncState === "pending" ? (
+              <div className="app-results-eligibility">
+                <p>{syncError}</p>
+                <button
+                  type="button"
+                  className="app-button app-button-ghost"
+                  onClick={() => setSyncAttempt((attempt) => attempt + 1)}
+                >
+                  Retry sync
+                </button>
+              </div>
+            ) : null}
           </header>
 
           {latestRun && overview ? (
@@ -133,7 +157,7 @@ export function PracticeResults({
                 </div>
               </section>
 
-              {!latestRun.leaderboardEligible ? (
+              {leaderboardEnabled && !latestRun.leaderboardEligible ? (
                 <div className="app-results-eligibility" role="note">
                   <strong>Not leaderboard eligible</strong>
                   <p>
@@ -177,15 +201,17 @@ export function PracticeResults({
                 </section>
               ) : null}
 
-              <ModeLeaderboard
-                mode={latestRun.modeId}
-                taskName={resolvedTaskName}
-                scenarioVersion={latestRun.scenarioVersion}
-                scoringVersion={latestRun.scoringVersion}
-                embedded
-                pageSize={10}
-                refreshKey={syncState}
-              />
+              {leaderboardEnabled ? (
+                <ModeLeaderboard
+                  mode={latestRun.modeId}
+                  taskName={resolvedTaskName}
+                  scenarioVersion={latestRun.scenarioVersion}
+                  scoringVersion={latestRun.scoringVersion}
+                  embedded
+                  pageSize={10}
+                  refreshKey={syncState}
+                />
+              ) : null}
             </>
           ) : historyLoaded ? (
             <p className="app-subtext app-results-empty">
@@ -201,12 +227,14 @@ export function PracticeResults({
             <a href={routes.playAgain} className="app-button">
               Play Again
             </a>
-            <a
-              href={routes.leaderboard}
-              className="app-button app-button-ghost"
-            >
-              View leaderboard
-            </a>
+            {leaderboardEnabled ? (
+              <a
+                href={routes.leaderboard}
+                className="app-button app-button-ghost"
+              >
+                View leaderboard
+              </a>
+            ) : null}
             <a href={routes.hub} className="app-button app-button-ghost">
               Return to Hub
             </a>
@@ -228,23 +256,26 @@ function getRunSyncCopy(state: RunSyncState): {
         description:
           "Run complete. Your local result is safe while private account sync finishes.",
       };
-    case "saved":
+    case "listed":
       return {
         tag: "Saved to Account",
-        description:
-          "Your best score for this mode is now on the public leaderboard.",
+        description: "Eligible for this mode’s leaderboard.",
+      };
+    case "practice-only":
+      return {
+        tag: "Saved to Account · Practice Only",
+        description: "This run is saved in your account history.",
       };
     case "pending":
       return {
         tag: "Local Result · Sync Pending",
         description:
-          "Your result is safe locally. Account sync can retry when this page is opened again.",
+          "Your result is available on this device. You can retry account sync.",
       };
     default:
       return {
         tag: "Local Result · Not Submitted",
-        description:
-          "Run complete. This result is stored locally; official leaderboard verification is not enabled yet.",
+        description: "This result is available on this device.",
       };
   }
 }

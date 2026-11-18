@@ -9,7 +9,7 @@ export default async function ModeLeaderboardPage({
 }) {
   const { mode } = await params;
   const modeEntry = trainerModeManifest.get(mode);
-  if (!modeEntry?.enabled) notFound();
+  if (!modeEntry?.enabled || !modeEntry.leaderboardEnabled) notFound();
 
   const { definition } = modeEntry.scenarioEntry;
   return (

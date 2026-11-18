@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import React from "react";
 import { Turret_Road } from "next/font/google";
 import "./globals.css";
+import "./public-theme.css";
+import { PublicPageFrame } from "../src/components/PublicPageFrame.js";
 import {
   SITE_URL,
   SITE_NAME,
@@ -121,7 +123,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={turretRoad.variable}>
       <body className="font-sans antialiased bg-zinc-950 text-zinc-50 min-h-screen m-0 p-0">
-        {children}
+        <PublicPageFrame>{children}</PublicPageFrame>
         <script
           type="application/ld+json"
           // JSON-LD is a data block, not executable script; it is not subject

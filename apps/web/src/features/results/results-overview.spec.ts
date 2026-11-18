@@ -169,6 +169,16 @@ describe("buildResultsOverview", () => {
     });
   });
 
+  it("distinguishes expired Precision Six targets from missed shots", () => {
+    const summary = clickSummary("pinpoint");
+    if (!("shots" in summary)) throw new Error("Expected a click summary");
+    const current = run({ summary: { ...summary, misses: 17 } });
+    const overview = buildResultsOverview(current, [current]);
+
+    expect(metric(overview.detailMetrics, "Missed Shots").value).toBe("10");
+    expect(metric(overview.detailMetrics, "Expired Targets").value).toBe("7");
+  });
+
   it("shows real acquisition timing as the primary metric for Reflex Rush", () => {
     const current = run({
       modeId: "reaction",
@@ -285,11 +295,11 @@ describe("buildResultsOverview", () => {
     });
     expect(metric(overview.summaryMetrics, "Percentile")).toMatchObject({
       value: "91.7%",
-      note: "Top of 25 ranked players",
+      note: "25 ranked players",
     });
   });
 
-  it("prompts to sync when there is no server standing yet", () => {
+  it("explains the absence of a rank when the server has no season score", () => {
     const current = run();
     const overview = buildResultsOverview(current, [current], {
       board: {
@@ -304,11 +314,11 @@ describe("buildResultsOverview", () => {
     });
     expect(metric(overview.summaryMetrics, "Leaderboard Rank")).toMatchObject({
       value: "—",
-      note: "Sync your run to see your rank",
+      note: "No eligible score this season",
     });
     expect(metric(overview.summaryMetrics, "Percentile")).toMatchObject({
       value: "—",
-      note: "Awaiting sync",
+      note: "No eligible score this season",
     });
   });
 });
