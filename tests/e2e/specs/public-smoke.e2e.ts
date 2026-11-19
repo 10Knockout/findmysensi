@@ -50,7 +50,7 @@ test("public home renders and shows a real-data error state when leaderboard is 
   const response = await page.goto("/");
   const hero = page.getByRole("heading", {
     level: 1,
-    name: /find your\s+sensitivity/i,
+    name: /find your\s+sensi\./i,
   });
   const startTraining = page
     .getByRole("link", { name: /^start training$/i })
@@ -559,7 +559,7 @@ test("authenticated Training shows the signed-in user, Grid Rush, and Settings",
   ).toBeVisible();
   await expect(page.locator(".account-frame")).toHaveCSS(
     "background-color",
-    /^oklch\(0\.2 /,
+    "rgb(3, 5, 4)",
   );
   expect(browserErrors).toEqual([]);
 });

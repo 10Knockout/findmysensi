@@ -3,9 +3,9 @@
   flex-direction: column;
   min-height: 100dvh;
   min-width: 0;
-  background: var(--site-paper);
-  color: var(--site-ink);
-  font-family: var(--site-font, Arial, sans-serif);
+  background: var(--fms-black);
+  color: var(--fms-paper);
+  color-scheme: dark;
 }
 
 .frame > main {
@@ -14,22 +14,20 @@
 
 .header,
 .footer {
-  background: var(--site-paper);
-  color: var(--site-ink);
-  font-family: var(--site-font, Arial, sans-serif);
+  background: var(--fms-black);
+  color: white;
+  font-family: var(--font-turret-road), sans-serif;
 }
 
 .header {
   position: relative;
   z-index: 5;
-  border-bottom: 1px solid var(--site-rule);
+  border-bottom: 1px solid var(--fms-line-dark);
 }
 
 .bar,
 .footerBar {
-  width: min(100%, 80rem);
-  margin-inline: auto;
-  padding-inline: var(--site-gutter, clamp(1rem, 4vw, 3rem));
+  padding-inline: clamp(20px, 4vw, 64px);
 }
 
 .bar {
@@ -37,28 +35,15 @@
   grid-template-columns: minmax(max-content, 1fr) auto minmax(max-content, 1fr);
   gap: 1.5rem;
   align-items: center;
-  min-height: 68px;
+  min-height: 76px;
 }
 
 .brand {
-  display: inline-flex;
-  width: fit-content;
-  align-items: center;
-  gap: 0.55rem;
-  color: var(--site-ink);
-  font-family: var(--site-font, Arial, sans-serif);
-  font-size: 1.14rem;
-  font-weight: 720;
-  line-height: 1;
-  letter-spacing: -0.055em;
+  min-height: 44px;
+  min-width: 0;
+  color: white;
+  font-family: var(--font-turret-road), sans-serif;
   white-space: nowrap;
-}
-
-.brandMark {
-  width: 1.35rem;
-  height: 1.35rem;
-  color: var(--site-accent);
-  flex: none;
 }
 
 .links,
@@ -72,7 +57,7 @@
 .links a,
 .login,
 .footerLinks a {
-  color: var(--site-muted);
+  color: rgb(255 255 255 / 0.72);
   text-decoration: none;
   white-space: nowrap;
 }
@@ -82,8 +67,9 @@
   display: inline-flex;
   min-height: 44px;
   align-items: center;
-  font-size: 0.875rem;
-  font-weight: 560;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   transition: color 160ms ease;
 }
 
@@ -92,7 +78,7 @@
 .footerLinks a:hover,
 .links a[aria-current="page"],
 .login[aria-current="page"] {
-  color: var(--site-accent);
+  color: var(--fms-acid);
 }
 
 .links a[aria-current="page"],
@@ -109,24 +95,19 @@
 
 .primary {
   display: inline-flex;
-  min-height: 42px;
+  min-height: 44px;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
   padding-inline: 0.875rem;
-  border-radius: var(--site-radius, 8px);
-  background: var(--site-accent);
-  color: var(--site-on-accent);
   text-decoration: none;
   white-space: nowrap;
-  font-size: 0.875rem;
-  font-weight: 650;
-  transition: background-color 160ms ease;
+  font-size: 13px;
 }
 
 .primary:hover {
-  background: color-mix(in oklch, var(--site-accent), var(--site-ink) 13%);
-  color: var(--site-on-accent);
+  background: var(--fms-acid);
+  color: var(--fms-black);
 }
 
 .mobileMenu,
@@ -135,7 +116,7 @@
 }
 
 .footer {
-  border-top: 1px solid var(--site-rule);
+  border-top: 1px solid var(--fms-line-dark);
 }
 
 .footerBar {
@@ -148,10 +129,11 @@
 }
 
 .footerBrand {
-  color: var(--site-ink);
-  font-size: 0.925rem;
+  color: white;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: -0.035em;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
 }
 
 .footerLinks {
@@ -168,14 +150,20 @@
 
 .header :is(a, summary):focus-visible,
 .footer a:focus-visible {
-  outline: 2px solid var(--site-accent);
+  outline: 2px solid var(--fms-acid);
   outline-offset: 3px;
+}
+
+.header .primary:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--fms-black);
+  background: var(--fms-acid);
 }
 
 @media (max-width: 56rem) {
   .bar {
     grid-template-columns: minmax(max-content, 1fr) auto;
-    min-height: 62px;
+    min-height: 66px;
   }
 
   .links,
@@ -197,9 +185,8 @@
     width: 42px;
     height: 42px;
     place-items: center;
-    border: 1px solid var(--site-rule);
-    border-radius: var(--site-radius, 8px);
-    color: var(--site-ink);
+    border: 1px solid var(--fms-line-dark);
+    color: white;
     list-style: none;
     cursor: pointer;
   }
@@ -209,8 +196,8 @@
   }
 
   .mobileMenu[open] summary {
-    color: var(--site-accent);
-    background: var(--site-surface);
+    color: var(--fms-acid);
+    background: var(--fms-panel);
   }
 
   .mobileMenu nav {
@@ -219,9 +206,8 @@
     right: 0;
     width: min(14rem, calc(100vw - 2rem));
     padding: 0.35rem;
-    border: 1px solid var(--site-rule);
-    border-radius: var(--site-radius, 8px);
-    background: var(--site-surface);
+    border: 1px solid var(--fms-line-dark);
+    background: var(--fms-panel);
   }
 
   .mobileMenu nav a {
@@ -229,15 +215,15 @@
     min-height: 44px;
     align-items: center;
     padding-inline: 0.7rem;
-    border-radius: max(0px, calc(var(--site-radius, 8px) - 0.35rem));
-    color: var(--site-ink);
-    font-size: 0.9rem;
-    font-weight: 550;
+    color: white;
+    font-size: 13px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
   }
 
   .mobileMenu nav a:is(:hover, [aria-current="page"]) {
-    color: var(--site-accent);
-    background: var(--site-paper);
+    color: var(--fms-acid);
+    background: var(--fms-black);
   }
 }
 
@@ -247,7 +233,7 @@
   }
 
   .brand {
-    font-size: 1.05rem;
+    font-size: 13px;
     gap: 0.4rem;
   }
 
@@ -275,11 +261,11 @@
 }
 
 @media (max-width: 22rem) {
-  .fullPlayLabel {
+  .bar .fullPlayLabel {
     display: none;
   }
 
-  .shortPlayLabel {
+  .bar .shortPlayLabel {
     display: inline;
   }
 }

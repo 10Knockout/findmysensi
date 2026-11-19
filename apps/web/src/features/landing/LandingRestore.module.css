@@ -1,0 +1,144 @@
+.mobileMenu {
+  position: relative;
+  display: none;
+}
+
+.mobileMenu summary {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 1px solid var(--fms-line-dark);
+  background: var(--fms-panel);
+  cursor: pointer;
+  list-style: none;
+}
+
+.mobileMenu summary::-webkit-details-marker {
+  display: none;
+}
+
+.mobileMenu nav {
+  position: absolute;
+  inset: calc(100% + 10px) 0 auto auto;
+  display: grid;
+  min-width: 164px;
+  padding: 6px;
+  border: 1px solid var(--fms-line-dark);
+  background: var(--fms-panel);
+}
+
+.mobileMenu nav a {
+  padding: 9px 12px;
+}
+
+.mobileMenu nav a:hover {
+  color: var(--fms-acid);
+}
+
+.guest {
+  scroll-margin-top: 20px;
+}
+
+.drills li {
+  min-width: 0;
+}
+
+.drills li a {
+  height: 100%;
+  justify-content: space-between;
+}
+
+.drills li strong,
+.drills li small {
+  display: block;
+}
+
+.drills li small {
+  margin-top: 2px;
+  color: rgb(0 0 0 / 0.66);
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+
+.drills li svg {
+  flex: none;
+}
+
+.questions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: clamp(24px, 6vw, 86px);
+}
+
+.questions h2 {
+  font-size: clamp(42px, 6vw, 76px);
+  font-weight: 700;
+  line-height: 0.95;
+  letter-spacing: -0.07em;
+}
+
+.questions details {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--fms-line-light);
+}
+
+.questions summary {
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.questions details p {
+  margin-top: 12px;
+  color: rgb(0 0 0 / 0.73);
+}
+
+.finalActions,
+.footerLinks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+
+.finalActions {
+  justify-content: center;
+}
+
+.footerLinks {
+  justify-self: end;
+}
+
+.boardPanel {
+  min-width: 0;
+}
+
+.boardSelect {
+  max-width: 100%;
+  min-height: 38px;
+  padding: 5px 9px;
+  border: 1px solid var(--fms-line-dark);
+  background: var(--fms-panel);
+  color: white;
+  font: inherit;
+}
+
+@media (max-width: 900px) {
+  .mobileMenu {
+    display: block;
+  }
+
+  .questions {
+    grid-template-columns: 1fr;
+  }
+
+  .footerLinks {
+    justify-self: start;
+  }
+}
+
+@media (max-width: 390px) {
+  .drills li a {
+    gap: 6px;
+  }
+}

@@ -6,7 +6,7 @@ import { BrowserApiClient } from "@findmysensi/api-client";
 import type { LeaderboardRowV2 } from "@findmysensi/protocol";
 import { gamerTagLabel } from "@findmysensi/trainer-runtime";
 import { PlayerAvatar } from "../profile/PlayerAvatar.js";
-import styles from "./LandingHero.module.css";
+import styles from "./LandingRestore.module.css";
 
 const REFRESH_MS = 15_000;
 
@@ -91,11 +91,12 @@ export function LiveLeaderboard({
   if (!activeMode) return null;
 
   return (
-    <div className={styles.board}>
-      <header className={styles.boardHead}>
+    <div className="landing-leaderboard-carousel">
+      <header className="landing-leaderboard-head">
         <h3 aria-live="polite">Top scores · {activeMode.title}</h3>
         <select
           aria-label="Leaderboard drill"
+          className={styles.boardSelect}
           value={activeMode.modeId}
           onChange={(event) => {
             if (event.target.value === activeMode.modeId) return;
@@ -112,72 +113,72 @@ export function LiveLeaderboard({
         </select>
       </header>
 
-      <div className={styles.boardBody}>
-        {error ? (
-          <div role="alert" className={styles.boardStatus}>
-            Could not load {activeMode.title}. {error}
-          </div>
-        ) : rows === null ? (
-          <div role="status" className={styles.boardStatus}>
-            Loading {activeMode.title}…
-          </div>
-        ) : rows.length === 0 ? (
-          <div className={styles.boardStatus}>
-            No {activeMode.title} scores yet.
-          </div>
-        ) : (
-          <div className={styles.boardScroll}>
-            <table
-              className={styles.boardTable}
-              aria-label={`${activeMode.title} leaderboard`}
-            >
-              <thead>
-                <tr>
-                  <th>Rank</th>
-                  <th>Player</th>
-                  <th>Score</th>
-                  <th>Accuracy</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => {
-                  const tag = gamerTagLabel(row.tagId ?? "tag-none");
-                  return (
-                    <tr key={`${row.rank}-${row.username}`}>
-                      <td>#{row.rank}</td>
-                      <td>
-                        <div className="app-leaderboard-player">
-                          <PlayerAvatar
-                            avatarId={row.avatarId ?? "avatar-default"}
-                            frameId={row.frameId ?? "frame-none"}
-                            label={row.username}
-                            size={36}
-                          />
-                          <span>
-                            <strong>{row.username}</strong>
-                            {tag ? <small>{tag}</small> : null}
-                          </span>
-                        </div>
-                      </td>
-                      <td>{row.score.toLocaleString("en-US")}</td>
-                      <td>
-                        {row.accuracyPercentage === null ||
-                        row.accuracyPercentage === undefined
-                          ? "—"
-                          : `${row.accuracyPercentage.toFixed(1)}%`}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      <div className={styles.boardFoot}>
-        <Link href="/leaderboards">View all leaderboards</Link>
-      </div>
+      {error ? (
+        <div
+          role="alert"
+          className="landing-leaderboard-state landing-leaderboard-error"
+        >
+          Could not load {activeMode.title}. {error}
+        </div>
+      ) : rows === null ? (
+        <div role="status" className="landing-leaderboard-state">
+          Loading {activeMode.title}…
+        </div>
+      ) : rows.length === 0 ? (
+        <div className="landing-leaderboard-state">
+          No {activeMode.title} scores yet.
+        </div>
+      ) : (
+        <div className="landing-leaderboard-scroll">
+          <table
+            className="landing-leaderboard-table"
+            aria-label={`${activeMode.title} leaderboard`}
+          >
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Player</th>
+                <th>Score</th>
+                <th>Accuracy</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => {
+                const tag = gamerTagLabel(row.tagId ?? "tag-none");
+                return (
+                  <tr key={`${row.rank}-${row.username}`}>
+                    <td>#{row.rank}</td>
+                    <td>
+                      <div className="app-leaderboard-player">
+                        <PlayerAvatar
+                          avatarId={row.avatarId ?? "avatar-default"}
+                          frameId={row.frameId ?? "frame-none"}
+                          label={row.username}
+                          size={36}
+                        />
+                        <span>
+                          <strong>{row.username}</strong>
+                          {tag ? <small>{tag}</small> : null}
+                        </span>
+                      </div>
+                    </td>
+                    <td>{row.score.toLocaleString("en-US")}</td>
+                    <td>
+                      {row.accuracyPercentage === null ||
+                      row.accuracyPercentage === undefined
+                        ? "—"
+                        : `${row.accuracyPercentage.toFixed(1)}%`}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <Link href="/leaderboards" className="landing-arrow-link">
+        View all leaderboards
+      </Link>
     </div>
   );
 }

@@ -1,9 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import React from "react";
-import { GeistSans } from "geist/font/sans";
 import { Turret_Road } from "next/font/google";
 import "./globals.css";
-import "./public-theme.css";
 import "./site-theme.css";
 import { PublicPageFrame } from "../src/components/PublicPageFrame.js";
 import {
@@ -67,8 +65,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#041d26",
-  colorScheme: "light",
+  themeColor: "#030504",
+  colorScheme: "dark",
 };
 
 // Per-request CSP nonces require dynamic rendering so Next can attach the
@@ -123,7 +121,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${turretRoad.variable} ${GeistSans.variable}`}>
+    <html lang="en" className={turretRoad.variable}>
       <body className="font-sans antialiased bg-zinc-950 text-zinc-50 min-h-screen m-0 p-0">
         <PublicPageFrame>{children}</PublicPageFrame>
         <script

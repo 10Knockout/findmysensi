@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { ArrowUpRight, Crosshair } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { AUTHOR_NAME, AUTHOR_URL, GITHUB_URL, SITE_NAME } from "../lib/site.js";
 import styles from "./SiteChrome.module.css";
 
 export function SiteBrand({ href = "/" }: { href?: string }) {
   return (
-    <Link className={styles.brand} href={href}>
-      <Crosshair className={styles.brandMark} strokeWidth={1.6} aria-hidden />
+    <Link className={`landing-wordmark ${styles.brand}`} href={href}>
+      <span aria-hidden="true">F/</span>
       {SITE_NAME}
     </Link>
   );
