@@ -13,16 +13,13 @@ const destinations = [
   { label: "Leaderboards", href: "/leaderboards" },
 ];
 
-function TrainingLink({
-  path,
-  guest = false,
-}: {
-  path: string;
-  guest?: boolean;
-}) {
-  const anchor = guest ? "#guest-play" : "#training";
-  const contents = guest ? (
-    <>
+function GuestPlayLink() {
+  return (
+    <Link
+      href="/#guest-play"
+      className={`landing-pill landing-pill-light ${styles.primary}`}
+      aria-label="Play as guest"
+    >
       <span className={styles.fullPlayLabel}>Play as guest</span>
       <span className={styles.shortPlayLabel} aria-hidden>
         Play
@@ -33,21 +30,6 @@ function TrainingLink({
         strokeWidth={1.8}
         aria-hidden
       />
-    </>
-  ) : (
-    "Train"
-  );
-  const attributes = guest
-    ? { className: styles.primary, "aria-label": "Play as guest" }
-    : {};
-
-  return path === "/" ? (
-    <a href={anchor} {...attributes}>
-      {contents}
-    </a>
-  ) : (
-    <Link href={`/${anchor}`} {...attributes}>
-      {contents}
     </Link>
   );
 }
@@ -55,7 +37,7 @@ function TrainingLink({
 function PublicDestinations({ path }: { path: string }) {
   return (
     <>
-      <TrainingLink path={path} />
+      <Link href="/#training">Train</Link>
       {destinations.map(({ href, label }) => (
         <Link
           key={href}
@@ -85,7 +67,7 @@ function PublicHeader({ path }: { path: string }) {
           >
             Log in
           </Link>
-          <TrainingLink path={path} guest />
+          <GuestPlayLink />
           <details
             className={styles.mobileMenu}
             onKeyDown={(event) => {
@@ -127,7 +109,7 @@ function PublicHeader({ path }: { path: string }) {
 
 export function PublicPageFrame({ children }: { children: ReactNode }) {
   const path = usePathname();
-  if (/^\/(?:app|play)(?:\/|$)/.test(path)) return children;
+  if (path === "/" || /^\/(?:app|play)(?:\/|$)/.test(path)) return children;
 
   return (
     <div className={`site-frame ${styles.frame}`}>

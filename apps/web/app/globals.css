@@ -28,19 +28,16 @@
 }
 
 :root {
-  --fms-acid: oklch(0.74 0.16 49);
-  --fms-black: oklch(0.16 0.014 58);
-  --fms-panel: oklch(0.217 0.017 57);
-  --fms-paper: oklch(0.94 0.02 74);
-  --fms-line-dark: rgb(255 239 224 / 0.16);
-  --fms-line-light: rgb(24 14 9 / 0.16);
-}
-
-html {
+  --fms-acid: #bdff2d;
+  --fms-black: #030504;
+  --fms-panel: #0b0e0c;
+  --fms-paper: #e9e9df;
+  --fms-line-dark: rgb(255 255 255 / 0.18);
+  --fms-line-light: rgb(5 5 5 / 0.18);
 }
 
 .landing-shell {
-  min-height: 100vh;
+  min-height: 100dvh;
   overflow: clip;
   background: var(--fms-black);
   color: white;
@@ -1914,7 +1911,7 @@ html {
   display: flex;
   width: 100%;
   max-width: 880px;
-  max-height: 92vh;
+  max-height: 92dvh;
   flex-direction: column;
   border: 1px solid var(--fms-line-dark);
   background: var(--fms-black);

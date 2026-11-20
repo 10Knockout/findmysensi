@@ -14,40 +14,61 @@ test.describe("homepage without JavaScript", () => {
 
     const heading = page.getByRole("heading", { level: 1 });
     await expect(heading).toHaveCount(1);
-    await expect(heading).toHaveAccessibleName(/find your\s+sensitivity/i);
+    await expect(heading).toHaveAccessibleName(/find your\s+sensi\./i);
     await expect(heading).toBeVisible();
 
     const start = page.getByRole("link", { name: /^start training$/i }).first();
     await expect(start).toHaveAttribute("href", "#guest-play");
     await start.click();
     await expect(page).toHaveURL(/#guest-play$/);
-    await expect(page.locator(":target")).toContainText("Play as guest");
+    const guest = page.locator(":target");
+    await expect(guest).toContainText("Play as guest");
+    await expect(
+      guest.getByRole("link", { name: /pathline/i }),
+    ).toHaveAttribute("href", "/play/pathline");
   });
 });
 
-test("the desktop aim trace responds to the pointer without pinning the page", async ({
+test("the desktop homepage restores the original hero and chapter colors", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/");
 
-  const stage = page.getByTestId("hero-stage");
-  await expect(stage.locator("canvas")).toHaveAttribute("data-ready", "true");
-  await expect(stage).toHaveCSS("position", "relative");
+  const hero = page.locator(".landing-hero");
+  await expect(hero).toBeInViewport();
+  const photo = hero.getByRole("img", { name: /a precision gaming mouse/i });
+  await expect(photo).toHaveAttribute("src", /aim-desk-hero\.png/);
+  await expect(photo).toHaveJSProperty("complete", true);
+  expect(
+    await photo.evaluate(
+      (element) => (element as HTMLImageElement).naturalWidth,
+    ),
+  ).toBeGreaterThan(0);
+  await expect(hero.locator("h1 em")).toHaveCSS("color", "rgb(189, 255, 45)");
+  await expect(page.locator(".landing-shell")).toHaveCSS(
+    "background-color",
+    "rgb(3, 5, 4)",
+  );
+  await expect(page.locator("#training")).toHaveCSS(
+    "background-color",
+    "rgb(233, 233, 223)",
+  );
+  await expect(page.locator("#calibration")).toHaveCSS(
+    "background-color",
+    "rgb(189, 255, 45)",
+  );
+  await expect(hero.locator("canvas")).toHaveCount(0);
 
-  const canvas = stage.locator("canvas");
-  const initial = await canvas.evaluate((element) => element.toDataURL());
-  await stage.hover({ position: { x: 700, y: 280 } });
-  await expect
-    .poll(() => canvas.evaluate((element) => element.toDataURL()))
-    .not.toBe(initial);
-  await page.getByRole("link", { name: /^start training$/i }).click();
+  await hero.getByRole("link", { name: /^start training$/i }).click();
   await expect(page.locator(":target")).toHaveAttribute("id", "guest-play");
-  await expect(stage).not.toBeInViewport({ ratio: 0.5 });
-  await page.evaluate(() => window.scrollTo(0, 0));
-  await expect(stage).toBeInViewport();
-  expect(await canvas.evaluate((element) => element.toDataURL())).toBe(initial);
+  await expect(hero).not.toBeInViewport({ ratio: 0.5 });
+  await expect(
+    page
+      .locator("#calibration")
+      .getByRole("link", { name: "Find my sensitivity" }),
+  ).toHaveAttribute("href", "/tools/calibrate");
 
   const drill = page.getByRole("combobox", { name: "Leaderboard drill" });
   await drill.selectOption({ label: "Precision Six" });
@@ -61,7 +82,13 @@ test("reduced motion keeps the hero static on desktop", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
 
-  await expect(page.getByText("Move to aim")).not.toBeVisible();
+  expect(
+    await page
+      .locator(".landing-crosshair")
+      .evaluate((element) =>
+        Number.parseFloat(getComputedStyle(element).animationDuration),
+      ),
+  ).toBeLessThan(0.05);
 
   const hero = page.getByRole("heading", { level: 1 });
   await expect(hero).toBeVisible();
@@ -81,13 +108,15 @@ test("compact viewport keeps navigation usable without horizontal overflow", asy
   await page.getByLabel("Menu", { exact: true }).click();
   const menu = page.getByRole("navigation", { name: "Mobile navigation" });
   for (const label of [
-    "Train",
-    "Calibrate",
+    "Training",
+    "Calibration",
     "Converter",
-    "Leaderboards",
-    "Log in",
+    "Scores",
+    "Sign in",
   ]) {
-    await expect(menu.getByRole("link", { name: label })).toBeVisible();
+    await expect(
+      menu.getByRole("link", { name: label, exact: true }),
+    ).toBeVisible();
   }
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),
@@ -104,12 +133,7 @@ test("compact viewport keeps navigation usable without horizontal overflow", asy
 test("public routes use the same navigation and page background", async ({
   page,
 }) => {
-  await page.goto("/");
   const frame = page.locator(".site-frame");
-  const background = await frame.evaluate(
-    (element) => getComputedStyle(element).backgroundColor,
-  );
-  expect(background).toMatch(/^oklch\(0\.2 /);
 
   for (const path of [
     "/tools/converter",
@@ -124,7 +148,7 @@ test("public routes use the same navigation and page background", async ({
     "/forgot-password",
   ]) {
     await page.goto(path);
-    await expect(frame).toHaveCSS("background-color", background);
+    await expect(frame).toHaveCSS("background-color", "rgb(3, 5, 4)");
     await expect(
       page.getByRole("navigation", { name: "Main navigation" }),
     ).toBeVisible();

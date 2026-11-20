@@ -1,328 +1,57 @@
 :root {
-  --station-navy: oklch(0.2 0.041 222);
-  --station-ghost: oklch(0.976 0.01 248);
-  --station-pear: oklch(0.904 0.196 123);
-  --site-paper: var(--station-navy);
-  --site-surface: color-mix(
-    in oklch,
-    var(--station-navy),
-    var(--station-ghost) 5%
-  );
-  --site-ink: var(--station-ghost);
-  --site-muted: color-mix(
-    in oklch,
-    var(--station-ghost),
-    var(--station-navy) 24%
-  );
-  --site-accent: var(--station-pear);
-  --site-accent-soft: color-mix(
-    in oklch,
-    var(--station-navy),
-    var(--station-pear) 12%
-  );
-  --site-on-accent: var(--station-navy);
-  --site-rule: color-mix(in oklch, var(--station-ghost) 15%, transparent);
-  --site-accent-rule: color-mix(in oklch, var(--station-pear) 42%, transparent);
-  --site-radius: 5px;
-  --site-control-radius: calc(var(--site-radius) - 4px);
-  --site-font: var(--font-geist-sans, Arial), Helvetica, system-ui, sans-serif;
-  --site-gutter: clamp(20px, 4vw, 64px);
-  --site-content: 1160px;
+  --site-surface: var(--fms-panel);
+  --site-ink: var(--fms-paper);
+  --site-muted: rgb(255 255 255 / 0.67);
+  --site-accent: var(--fms-acid);
+  --site-accent-soft: color-mix(in oklch, var(--fms-black), var(--fms-acid) 9%);
+  --site-accent-rule: color-mix(in oklch, var(--fms-acid) 42%, transparent);
 }
 
 :is(.site-frame, .account-frame) {
-  background: var(--site-paper);
-  color: var(--site-ink);
-  font-family: var(--site-font);
+  background: var(--fms-black);
+  color: var(--fms-paper);
   color-scheme: dark;
-  min-height: 100dvh;
-}
-
-:is(.site-frame, .account-frame)
-  :is(.app-shell, .app-page, .app-card, .converter-faq) {
-  --fms-acid: var(--site-accent);
-  --fms-panel: var(--site-surface);
-  --fms-line-dark: var(--site-rule);
-  background: transparent;
-  color: var(--site-ink);
-  font-family: var(--site-font);
+  accent-color: var(--fms-acid);
 }
 
 :is(.site-frame, .account-frame) .app-shell {
-  min-height: min(700px, calc(100dvh - 140px));
-  padding-inline: var(--site-gutter);
+  min-height: min(700px, calc(100dvh - 76px));
 }
 
 .guest-training > .app-shell {
   min-height: 100dvh;
 }
 
-:is(.site-frame, .account-frame) .app-card .trainer-hud {
-  background: var(--site-paper);
-  border-color: var(--site-rule);
-  border-radius: var(--site-control-radius);
-  font-family: var(--site-font);
-}
-
-:is(.site-frame, .account-frame) .app-card .trainer-hud dt {
-  color: var(--site-muted);
-}
-
-:is(.site-frame, .account-frame) .app-card .trainer-hud dd {
-  color: var(--site-ink);
+:is(.site-frame, .account-frame) .app-page {
+  min-height: auto;
 }
 
 :is(.site-frame, .account-frame) .app-leaderboard-mode-tabs {
   flex-wrap: wrap;
-  padding-bottom: 0;
 }
 
-:is(.site-frame, .account-frame) .app-page {
-  min-height: auto;
-  padding: clamp(36px, 6vw, 82px) var(--site-gutter);
-}
-
-:is(.site-frame, .account-frame) .app-page-inner {
-  max-width: var(--site-content);
-}
-
-:is(.site-frame, .account-frame) .app-page-inner.converter-tool {
-  max-width: 1040px;
-}
-
-:is(.site-frame, .account-frame) .app-page-header {
-  align-items: flex-end;
-  border-color: var(--site-rule);
-}
-
-:is(.site-frame, .account-frame) :is(.app-heading, .app-section-title) {
-  color: var(--site-ink);
-  font-weight: 650;
-  line-height: 1.07;
-  letter-spacing: -0.05em;
-  text-transform: none;
-  text-wrap: balance;
-}
-
-:is(.site-frame, .account-frame) .app-heading {
-  font-size: clamp(27px, 4.4vw, 52px);
-}
-
-:is(.site-frame, .account-frame)
-  :is(.app-shell, .converter-panel)
-  .app-heading {
-  font-size: clamp(25px, 3vw, 36px);
-}
-
-:is(.site-frame, .account-frame)
-  :is(.app-kicker, .app-section-label, .app-mode-card-cta, .app-toast-otp) {
-  color: var(--site-accent);
-  font-family: var(--site-font);
-  letter-spacing: 0.08em;
-}
-
-:is(.site-frame, .account-frame)
-  :is(
-    .app-subtext,
-    .app-section-copy,
-    .app-label,
-    .app-help,
-    .app-note,
-    .app-back-link
-  ) {
-  color: var(--site-muted);
-}
-
-:is(.site-frame, .account-frame) :is(.app-label, .app-back-link) {
-  font-family: var(--site-font);
-  font-size: 13px;
-  letter-spacing: 0;
-  text-transform: none;
-}
-
-:is(.site-frame, .account-frame) :is(.app-subtext, .app-section-copy) {
-  max-width: 68ch;
-  font-size: 15px;
-  line-height: 1.6;
-}
-
-:is(.site-frame, .account-frame) :is(.app-link, .app-back-link:hover) {
-  color: var(--site-accent);
-  text-underline-offset: 0.2em;
-}
-
-:is(.site-frame, .account-frame)
-  :is(
-    .app-card,
-    .app-workout-card,
-    .app-callout,
-    .app-results-eligibility,
-    .app-toast
-  ) {
-  border: 1px solid var(--site-rule);
-  border-radius: var(--site-radius);
-  background: var(--site-surface);
-  color: var(--site-ink);
-  clip-path: none;
-}
-
-:is(.site-frame, .account-frame) :is(.app-input, .app-button, .app-chip) {
-  border-radius: var(--site-control-radius);
-  font-family: var(--site-font);
-}
-
-:is(.site-frame, .account-frame) .app-input {
-  min-height: 44px;
-  border-color: var(--site-rule);
-  background: var(--site-surface);
-  color: var(--site-ink);
-  accent-color: var(--site-accent);
-}
-
-:is(.site-frame, .account-frame) .app-input::placeholder {
-  color: var(--site-muted);
-}
-
-:is(.site-frame, .account-frame) .app-input:focus {
-  border-color: var(--site-accent);
-}
-
-:is(.site-frame, .account-frame) .app-button {
-  background: var(--site-accent);
-  color: var(--site-on-accent);
-  clip-path: none;
-  font-weight: 650;
-  letter-spacing: 0;
-  text-transform: none;
-  transition:
-    background-color 160ms ease,
-    border-color 160ms ease;
-}
-
-:is(.site-frame, .account-frame) .app-button:hover:not(:disabled) {
-  background: var(--site-ink);
-  transform: none;
-}
-
-:is(.site-frame, .account-frame) :is(.app-button-ghost, .app-chip) {
-  border: 1px solid var(--site-rule);
-  background: var(--site-surface);
-  color: var(--site-ink);
-  font-weight: 590;
-  letter-spacing: 0;
-  text-transform: none;
-}
-
-:is(.site-frame, .account-frame)
-  :is(
-    .app-button-ghost:hover:not(:disabled),
-    .app-chip:hover,
-    .app-chip-acid,
-    .app-tag-option:hover,
-    .app-tag-option-active
-  ) {
-  border-color: var(--site-accent-rule);
-  background: var(--site-accent-soft);
-  color: var(--site-accent);
-}
-
-:is(.site-frame, .account-frame)
+:is(.site-frame, .account-frame, .landing-shell)
   :is(a, button, input, select, textarea, summary):focus-visible {
-  outline: 2px solid var(--site-accent);
+  outline: 2px solid var(--fms-acid);
   outline-offset: 3px;
 }
 
-:is(.site-frame, .account-frame) .app-alert {
-  border-radius: var(--site-control-radius);
-  color: var(--site-accent);
-}
-
-:is(.site-frame, .account-frame) .app-profile-cover-locked {
-  color: var(--site-muted);
-}
-
-:is(.site-frame, .account-frame) :is(.app-stat-grid, .app-mode-grid) {
-  border-color: var(--site-rule);
-  border-radius: var(--site-radius);
-  background: var(--site-rule);
-  overflow: clip;
-}
-
-:is(.site-frame, .account-frame)
-  :is(
-    .app-card .trainer-badge,
-    :is(.app-page, .settings-modal) .settings-panel
-  ) {
-  border-color: var(--site-rule);
-  border-radius: var(--site-control-radius);
-  background: var(--site-surface);
-}
-
-:is(.site-frame, .account-frame) .app-card .trainer-badge {
-  color: var(--site-accent);
-  font-family: var(--site-font);
-}
-
-:is(.site-frame, .account-frame)
-  :is(.app-page, .app-card, .settings-modal)
-  :is(.settings-label, .settings-panel > p) {
-  color: var(--site-muted);
-}
-
-:is(.site-frame, .account-frame)
-  :is(.app-page, .app-card, .settings-modal)
-  .settings-chip {
-  min-height: 36px;
-  border-color: var(--site-rule);
-  border-radius: var(--site-control-radius);
-  color: var(--site-ink);
-}
-
-:is(.site-frame, .account-frame)
-  :is(.app-page, .app-card, .settings-modal)
-  :is(.settings-chip:hover, .settings-chip-active) {
-  border-color: var(--site-accent-rule);
-  background: var(--site-accent-soft);
-  color: var(--site-accent);
-}
-
-.account-frame .settings-overlay:has(> .app-card) {
-  background: color-mix(in oklch, var(--site-paper) 52%, transparent);
-}
-
-.settings-overlay:has(> .settings-modal) {
-  background: color-mix(in oklch, var(--site-paper) 68%, transparent);
+:is(.landing-chapter-light, .landing-chapter-acid, .landing-chapter-tools)
+  :is(a, button, summary):focus-visible {
+  outline-color: var(--fms-black);
 }
 
 .settings-modal {
-  --fms-acid: var(--site-accent);
-  --fms-line-dark: var(--site-rule);
-  max-height: 92dvh;
   overflow: hidden;
-  border-color: var(--site-rule);
-  border-radius: var(--site-radius);
-  background: var(--site-paper);
-  color: var(--site-ink);
   color-scheme: dark;
-  font-family: var(--site-font);
-  accent-color: var(--site-accent);
-}
-
-.settings-modal :is(.settings-header, .settings-footer) {
-  gap: 12px;
-  border-color: var(--site-rule);
-  background: var(--site-surface);
+  accent-color: var(--fms-acid);
 }
 
 .settings-modal .settings-body {
   min-height: 0;
 }
 
-.settings-modal :is(.settings-tab, .settings-close) {
-  min-height: 38px;
-  color: var(--site-muted);
-  font-weight: 650;
-  letter-spacing: 0.03em;
+.settings-modal .settings-tab {
   white-space: nowrap;
 }
 
@@ -330,346 +59,83 @@
   outline-offset: -3px;
 }
 
-.settings-modal
-  :is(.settings-tab:hover, .settings-tab-active, .settings-close:hover) {
-  color: var(--site-accent);
+.settings-modal :is(.text-cyan-300, .text-cyan-400) {
+  color: var(--fms-acid);
 }
 
-.settings-modal .settings-tab-active {
-  border-bottom-color: var(--site-accent);
+.settings-modal :is(.accent-cyan-400, .accent-acid) {
+  accent-color: var(--fms-acid);
 }
 
-.settings-modal .settings-close {
-  border-radius: var(--site-control-radius);
+/* Guides and policy pages use utilities alongside the shared app styles. */
+.site-frame main.bg-zinc-950 {
+  background: var(--fms-black);
 }
 
-.settings-modal .settings-panel :is(h2, h3) {
-  font-size: 16px;
-  letter-spacing: -0.02em;
-  text-transform: none;
+.site-frame main.bg-zinc-950 :is(.text-emerald-300, .text-emerald-400) {
+  color: var(--fms-acid);
 }
 
-.settings-modal .settings-panel :is(.text-zinc-300, .text-zinc-400) {
+.app-google-signin {
+  margin-block: 18px;
+}
+
+.app-google-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding-inline: 12px;
+  border: 1px solid #747775;
+  border-radius: 4px;
+  background: #fff;
+  color: #1f1f1f;
+  font:
+    500 14px / 20px "Google Sans",
+    Roboto,
+    Arial,
+    sans-serif;
+  cursor: pointer;
+}
+
+.app-google-button:hover:not(:disabled) {
+  background: #f2f5fa;
+}
+
+.app-google-button:disabled {
+  cursor: wait;
+  opacity: 0.75;
+}
+
+.app-google-divider {
+  margin-top: 18px;
   color: var(--site-muted);
+  text-align: center;
+  font-size: 13px;
 }
 
-.settings-modal .settings-panel :is(.text-white, .text-zinc-200) {
-  color: var(--site-ink);
+.app-google-confirm:not([hidden]) {
+  display: grid;
+  gap: 12px;
+  margin-block: 18px;
+  font-size: 13px;
 }
 
-.settings-modal .settings-panel :is(.text-cyan-300, .text-cyan-400) {
-  color: var(--site-accent);
+.app-google-confirm .app-field {
+  margin-bottom: 0;
 }
 
-.settings-modal .settings-panel :is(.accent-cyan-400, .accent-acid) {
-  accent-color: var(--site-accent);
+.app-google-confirm > label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
 }
 
-.settings-modal .settings-panel :is(.border-zinc-700, .border-zinc-800) {
-  border-color: var(--site-rule);
-}
-
-.settings-modal
-  .settings-panel
-  :is(input.bg-zinc-900, select.bg-zinc-900, input[type="color"]) {
-  background: var(--site-surface);
-}
-
-.settings-modal .settings-panel :is(.bg-zinc-800, .bg-zinc-950\/60) {
-  background: var(--site-paper);
-}
-
-.settings-modal
-  .settings-panel
-  :is(.bg-cyan-500\/20, .hover\:bg-zinc-700:hover) {
-  background: var(--site-accent-soft);
-}
-
-.settings-modal
-  .settings-panel
-  button:is(
-    .border-white,
-    [style*="border:2px solid white"],
-    [style*="border: 2px solid white"]
-  ) {
-  outline: 2px solid var(--site-accent);
-  outline-offset: 2px;
-}
-
-:is(.site-frame, .account-frame) :is(.app-mode-card, .app-stat-card) {
-  background: var(--site-surface);
-  color: var(--site-ink);
-}
-
-:is(.site-frame, .account-frame) .app-mode-card:focus-visible {
-  outline-offset: -3px;
-}
-
-:is(.site-frame, .account-frame)
-  :is(.app-mode-card:hover, .app-workout-step:hover) {
-  background: var(--site-accent-soft);
-  color: var(--site-accent);
-}
-
-:is(.site-frame, .account-frame)
-  :is(
-    .app-mode-card h3,
-    .app-workout-card h2,
-    .app-results-section-title,
-    .app-results-section-heading
-  ) {
-  letter-spacing: -0.025em;
-  text-transform: none;
-}
-
-:is(.site-frame, .account-frame)
-  :is(
-    .app-mode-card p,
-    .app-stat-card b,
-    .app-stat-card span,
-    .app-callout p,
-    .app-workout-card p,
-    .app-results-eligibility p,
-    .app-results-empty,
-    .app-achievement-card p,
-    .app-leaderboard-meta,
-    .app-leaderboard-player small,
-    .app-leaderboard-rules ul,
-    .app-rank-grid span,
-    .app-profile-status,
-    .converter-canonical,
-    .converter-faq dd
-  ) {
-  color: var(--site-muted);
-  font-family: var(--site-font);
-}
-
-:is(.site-frame, .account-frame)
-  :is(
-    .app-stat-card strong,
-    .converter-value,
-    .converter-metric-value,
-    .app-leaderboard-table
-  ) {
-  font-family: var(--site-font);
-  font-variant-numeric: tabular-nums;
-}
-
-:is(.site-frame, .account-frame)
-  :is(
-    .app-stat-card strong,
-    .app-results-eligibility strong,
-    .app-workout-step,
-    .app-leaderboard-standing strong,
-    .app-leaderboard-player strong,
-    .app-rank-grid strong,
-    .app-tag-option,
-    .converter-faq dt
-  ) {
-  color: var(--site-ink);
-}
-
-:is(.site-frame, .account-frame)
-  :is(
-    .app-results-tag,
-    .app-leaderboard-standing,
-    .app-leaderboard-self,
-    .app-avatar-swatch-active,
-    .converter-badge,
-    .converter-result,
-    .app-profile-cover-locked
-  ) {
-  border-color: var(--site-accent-rule);
-  background: var(--site-accent-soft);
-}
-
-:is(.site-frame, .account-frame)
-  :is(
-    .app-results-tag,
-    .app-results-overview .app-stat-card-featured strong,
-    .app-results-overview .app-stat-card-accent strong,
-    .app-profile-rank,
-    .app-profile-cover-locked .app-section-label,
-    .converter-badge,
-    .converter-value,
-    .converter-metric-value
-  ) {
-  color: var(--site-accent);
-}
-
-:is(.site-frame, .account-frame)
-  .app-results-overview
-  .app-stat-card-positive
-  strong {
-  color: var(--site-ink);
-}
-
-:is(.site-frame, .account-frame)
-  .app-results-overview
-  .app-stat-card-negative
-  strong {
-  color: var(--site-accent);
-}
-
-:is(.site-frame, .account-frame)
-  .app-results-overview
-  .app-stat-card-muted
-  strong {
-  color: var(--site-muted);
-}
-
-:is(.site-frame, .account-frame)
-  :is(
-    .app-results-tag,
-    .app-leaderboard-standing,
-    .app-achievement-card,
-    .app-workout-step,
-    .app-profile-cover-locked,
-    .converter-badge,
-    .converter-metric-grid > div
-  ) {
-  border-radius: var(--site-control-radius);
-}
-
-:is(.site-frame, .account-frame)
-  :is(
-    .app-achievement-card-unlocked b,
-    .app-profile-cover-locked .app-section-title,
-    .app-callout b,
-    .app-workout-step b,
-    .app-profile-tag
-  ) {
-  color: var(--site-ink);
-}
-
-:is(.site-frame, .account-frame)
-  :is(
-    .app-leaderboard-table th,
-    .app-leaderboard-table td,
-    .app-leaderboard-pagination,
-    .app-leaderboard-rules,
-    .app-leaderboard-embedded,
-    .app-rank-grid > div,
-    .converter-faq dl > div,
-    .converter-metric-grid > div
-  ) {
-  border-color: var(--site-rule);
-}
-
-:is(.site-frame, .account-frame) .app-leaderboard-table th {
-  color: var(--site-muted);
-  font-size: 12px;
-  font-weight: 630;
-}
-
-:is(.site-frame, .account-frame)
-  :is(.app-leaderboard-pinned, .app-rank-grid > div) {
-  border-color: var(--site-rule);
-  border-radius: var(--site-control-radius);
-  background: var(--site-paper);
-}
-
-/* Guides, legal pages and public score pages still use shared zinc utilities. */
-:is(.site-frame, .account-frame) main.bg-zinc-950 {
-  min-height: auto;
-  padding-inline: var(--site-gutter);
-  background: var(--site-paper);
-  color: var(--site-ink);
-}
-
-:is(.site-frame, .account-frame)
-  main.bg-zinc-950
-  :is(.text-white, .text-zinc-100, .text-zinc-200) {
-  color: var(--site-ink);
-}
-
-:is(.site-frame, .account-frame)
-  main.bg-zinc-950
-  :is(.text-zinc-300, .text-zinc-400, .text-zinc-500) {
-  color: var(--site-muted);
-}
-
-:is(.site-frame, .account-frame)
-  :is(main.bg-zinc-950, .app-page, .app-card)
-  :is(.text-emerald-300, .text-emerald-400) {
-  color: var(--site-accent);
-}
-
-:is(.site-frame, .account-frame)
-  main.bg-zinc-950
-  :is(.border-zinc-700, .border-zinc-800) {
-  border-color: var(--site-rule);
-}
-
-:is(.site-frame, .account-frame)
-  main.bg-zinc-950
-  :is(input.bg-zinc-950, .bg-zinc-900, .bg-zinc-900\/50, .bg-zinc-900\/60) {
-  background: var(--site-surface);
-}
-
-:is(.site-frame, .account-frame)
-  main.bg-zinc-950
-  :is(
-    .border-emerald-500\/30,
-    .border-emerald-500\/50,
-    .hover\:border-emerald-500\/40:hover
-  ) {
-  border-color: var(--site-accent-rule);
-}
-
-:is(.site-frame, .account-frame) main.bg-zinc-950 .bg-emerald-950\/20 {
-  background: var(--site-accent-soft);
-}
-
-:is(.site-frame, .account-frame)
-  :is(main.bg-zinc-950, .app-card)
-  .text-red-300 {
-  color: var(--site-accent);
-}
-
-/* Match legacy inline colors in both server-rendered and updated elements. */
-:is(.site-frame, .account-frame)
-  :is(.app-card, .app-page, .app-shell, .settings-modal)
-  :is(
-    [style^="color:rgba(255,255,255,"],
-    [style*=";color:rgba(255,255,255,"],
-    [style^="color: rgba(255, 255, 255,"],
-    [style*="; color: rgba(255, 255, 255,"]
-  ) {
-  color: var(--site-muted) !important;
-}
-
-:is(.site-frame, .account-frame)
-  :is(.app-page, .app-card, .settings-modal)
-  :is(
-    [style*="border:1px solid rgba(189,255,45,"],
-    [style*="border: 1px solid rgba(189, 255, 45,"]
-  ) {
-  border-color: var(--site-accent-rule) !important;
-}
-
-:is(.site-frame, .account-frame)
-  :is(.app-page, .app-card)
-  :is(
-    [style*="background:rgba(189,255,45,"],
-    [style*="background: rgba(189, 255, 45,"]
-  ) {
-  background: var(--site-accent-soft) !important;
-}
-
-.site-frame
-  .app-card
-  strong:is([style="color:white"], [style="color: white;"]) {
-  color: var(--site-ink) !important;
-}
-
-:is(.site-frame, .account-frame)
-  .app-card
-  .app-kicker:is(
-    [style*="color:#f5a524"],
-    [style*="color: rgb(245, 165, 36)"]
-  ) {
-  color: var(--site-accent) !important;
+.app-google-confirm + .app-button-ghost {
+  margin-top: 12px;
 }
 
 @media (prefers-reduced-motion: reduce) {
